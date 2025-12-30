@@ -226,14 +226,30 @@ async function timeoutUser(broadcasterId, targetUsername, duration) {
                 return { success: true };
             } catch (e) {
                 console.log(`❌ Endpoint failed (${url}):`, e.response?.status, JSON.stringify(e.response?.data) || e.message);
+
+                // 401 ise token tazele ve bir sonraki turda yeni tokenı kullan
+                if (e.response?.status === 401) {
+                    console.log("🔄 Token süresi dolmuş, tazeleniyor...");
+                    await refreshChannelToken(broadcasterId);
+                    const freshRef = await db.ref('channels/' + broadcasterId).once('value');
+                    channelData.access_token = freshRef.val()?.access_token;
+                }
                 lastError = e;
             }
         }
 
-        return { success: false, error: lastError?.response?.data?.message || lastError?.message || 'Tüm endpointler başarısız' };
+        // --- SON ÇARE: CHAT KOMUTU ---
+        console.log(`⚠️ API başarısız. Chat komutu deneniyor: /timeout ${targetUsername}`);
+        try {
+            await sendChatMessage(`/timeout @${targetUsername} ${duration}`, broadcasterId);
+            return { success: true, note: "Chat fallback" };
+        } catch (chatErr) {
+            console.log("❌ Chat fallback de başarısız.");
+            return { success: false, error: lastError?.response?.data?.message || lastError?.message || 'Tüm yöntemler başarısız' };
+        }
     } catch (e) {
-        console.log("❌ Timeout Error:", e.response?.status, e.response?.data || e.message);
-        return { success: false, error: e.response?.data?.message || e.message };
+        console.log("❌ Timeout Fatal:", e.message);
+        return { success: false, error: e.message };
     }
 }
 
@@ -743,6 +759,7 @@ app.post('/kick/webhook', async (req, res) => {
     }
 
     else if (lowMsg.startsWith('!doğrulama') || lowMsg.startsWith('!kod')) {
+        console.log(`🔍 Doğrulama denemesi: ${user} - Kod: ${args[0]}`);
         const code = args[0];
         if (!code) return await reply(`@${user}, Lütfen mağazadaki 6 haneli kodu yazın. Örn: !doğrulama 123456`);
 
@@ -750,12 +767,67 @@ app.post('/kick/webhook', async (req, res) => {
         const pendingSnap = await db.ref('pending_auth/' + cleanUser).once('value');
         const pending = pendingSnap.val();
 
-        if (pending && pending.code === code) {
+        if (pending && String(pending.code) === String(code)) {
             await db.ref('auth_success/' + cleanUser).set(true);
             await db.ref('pending_auth/' + cleanUser).remove();
             await reply(`✅ @${user}, Kimliğin doğrulandı! Mağaza sayfasına geri dönebilirsin. 🛍️`);
         } else {
+            console.log(`❌ Doğrulama başarısız. Beklenen: ${pending?.code}, Gelen: ${code}`);
             await reply(`❌ @${user}, Geçersiz veya süresi dolmuş kod! Lütfen mağazadan yeni bir kod al.`);
+        }
+    }
+
+    else if (lowMsg.startsWith('!tahmin') || lowMsg.startsWith('!oyla') || lowMsg.startsWith('!sonuç') || lowMsg.startsWith('!piyango')) {
+        // TAHMİN
+        if (lowMsg === '!tahmin iptal' && isAuthorized && activePrediction && activePrediction.channel === broadcasterId) {
+            activePrediction = null; await reply(`❌ Tahmin iptal edildi.`);
+        }
+        else if (lowMsg.startsWith('!tahmin') && isAuthorized) {
+            const ft = args.join(" "); const [q, opts] = ft.split("|");
+            if (!q || !opts) return await reply(`@${user}, !tahmin Soru | Seç1 - Seç2`);
+            activePrediction = { q: q.trim(), options: opts.split("-").map(s => s.trim()), v1: 0, v2: 0, voters: {}, channel: broadcasterId };
+            await reply(`📊 TAHMİN: ${q.trim()} | !oyla 1 veya !oyla 2`);
+        }
+        else if (lowMsg.startsWith('!oyla') && activePrediction && activePrediction.channel === broadcasterId) {
+            if (!activePrediction.voters[user]) {
+                const pick = args[0];
+                if (pick === '1' || pick === '2') {
+                    activePrediction[pick === '1' ? 'v1' : 'v2']++;
+                    activePrediction.voters[user] = pick;
+                    await reply(`🗳️ @${user} oy kullandı.`);
+                }
+            }
+        }
+        else if (lowMsg.startsWith('!sonuç') && activePrediction && activePrediction.channel === broadcasterId && isAuthorized) {
+            await reply(`📊 SONUÇ: Evet: ${activePrediction.v1} - Hayır: ${activePrediction.v2}`);
+            activePrediction = null;
+        }
+        // PİYANGO
+        else if (lowMsg.startsWith('!piyango')) {
+            const sub = args[0]?.toLowerCase();
+            if (sub === 'başla' && isAuthorized) {
+                activePiyango = { p: [], cost: parseInt(args[1]) || 500, pool: 0, channel: broadcasterId };
+                await reply(`🎰 PİYANGO BAŞLADI! Giriş: ${activePiyango.cost} 💰 | !piyango katıl`);
+            }
+            else if (sub === 'katıl' && activePiyango && activePiyango.channel === broadcasterId) {
+                if (!activePiyango.p.includes(user)) {
+                    const d = (await userRef.once('value')).val() || { balance: 0 };
+                    if (d.balance >= activePiyango.cost) {
+                        await userRef.update({ balance: d.balance - activePiyango.cost });
+                        activePiyango.p.push(user); activePiyango.pool += activePiyango.cost;
+                        await reply(`🎟️ @${user} katıldı! Havuz: ${activePiyango.pool}`);
+                    } else await reply('Bakiye yetersiz.');
+                }
+            }
+            else if (sub === 'bitir' && activePiyango && activePiyango.channel === broadcasterId && isAuthorized) {
+                if (!activePiyango.p.length) { activePiyango = null; await reply('Katılım yok.'); }
+                else {
+                    const win = activePiyango.p[Math.floor(Math.random() * activePiyango.p.length)];
+                    await db.ref('users/' + win.toLowerCase()).transaction(u => { if (u) u.balance += activePiyango.pool; return u; });
+                    await reply(`🎉 PİYANGO KAZANANI: @${win} (+${activePiyango.pool} 💰)`);
+                    activePiyango = null;
+                }
+            }
         }
     }
 
