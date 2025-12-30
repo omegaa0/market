@@ -470,10 +470,20 @@
                 const mYT = data.settings && data.settings.yt_mult ? data.settings.yt_mult : 2;
                 const mKutu = data.settings && data.settings.kutu_mult ? data.settings.kutu_mult : 3;
 
+                const overlayUrl = `${window.location.origin}/overlay?key=${data.overlay_key || 'YOK'}`;
+
                 const html = `
                     <div class="card">
                         <h3>${data.username} <span class="status-dot"></span></h3>
                         <p style="font-size:0.8rem; color:#666;">ID: ${id}</p>
+
+                        <div style="margin: 15px 0; padding:10px; background:#000; border:1px solid #333; border-radius:8px;">
+                            <h4 style="margin-bottom:10px; color:var(--primary); font-size:0.9rem;">🔗 Overlay Linki</h4>
+                            <input type="text" readonly value="${overlayUrl}" class="inp" 
+                                style="margin:0; font-size:0.7rem; color:var(--muted); height:30px;" onclick="this.select(); document.execCommand('copy'); alert('Kopyalandı!')">
+                            <button class="btn action-btn" style="width:100%; margin-top:5px; height:25px; padding:0; font-size:0.7rem;" 
+                                onclick="resetOverlayKey('${id}')">YENİ ANAHTAR OLUŞTUR</button>
+                        </div>
                         
                         <div style="margin: 15px 0; padding:10px; background:#f0f0f0; border-radius:8px;">
                             <h4 style="margin-bottom:10px; color:#333; font-size:0.9rem;">🎰 Kazanma Oranları (%)</h4>
@@ -527,17 +537,6 @@
                                     <input type="number" class="inp" value="${soygunLimit}" min="1" max="24"
                                         style="height:35px; background:#000; border-color:#333;"
                                         onchange="toggleCmd('${id}', 'soygun_limit', parseInt(this.value))">
-                                </div>
-                            </div>
-
-                            <h4 style="margin: 15px 0 10px 0; color:#333; font-size:0.9rem;">💎 Etkileşim Ücretleri</h4>
-
-                            <div style="display:grid; grid-template-columns: 1fr 1fr; gap:10px;">
-                                <div>
-                                    <label style="font-size:0.75rem;">TTS Ücreti:</label>
-                                    <input type="number" class="inp" value="${ttsCost}" step="100"
-                                        style="height:35px; background:#000; border-color:#333;"
-                                        onchange="toggleCmd('${id}', 'tts_cost', parseInt(this.value))">
                                 </div>
                                 <div>
                                     <label style="font-size:0.75rem;">Ses Ücreti:</label>
@@ -593,6 +592,50 @@
                                         onchange="toggleCmd('${id}', 'kutu_mult', parseFloat(this.value))">
                                 </div>
                             </div>
+
+                            <h4 style="margin: 15px 0 10px 0; color:#333; font-size:0.9rem;">💎 Etkileşim Ücretleri</h4>
+
+                            <div style="display:grid; grid-template-columns: 1fr 1fr; gap:10px;">
+                                <div>
+                                    <label style="font-size:0.75rem;">TTS Ücreti:</label>
+                                    <input type="number" class="inp" value="${ttsCost}" step="100"
+                                        style="height:35px; background:#000; border-color:#333;"
+                                        onchange="toggleCmd('${id}', 'tts_cost', parseInt(this.value))">
+                                </div>
+                                <div>
+                                    <label style="font-size:0.75rem;">Sustur Ücreti:</label>
+                                    <input type="number" class="inp" value="${muteCost}" step="500"
+                                        style="height:35px; background:#000; border-color:#333;"
+                                        onchange="toggleCmd('${id}', 'mute_cost', parseInt(this.value))">
+                                </div>
+                                <div>
+                                    <label style="font-size:0.75rem;">Günlük Ödül:</label>
+                                    <input type="number" class="inp" value="${dailyRew}" step="100"
+                                        style="height:35px; background:#000; border-color:#333;"
+                                        onchange="toggleCmd('${id}', 'daily_reward', parseInt(this.value))">
+                                </div>
+                                <div>
+                                    <label style="font-size:0.75rem;">Pasif Gelir (10dk):</label>
+                                    <input type="number" class="inp" value="${passiveRew}" step="10"
+                                        style="height:35px; background:#000; border-color:#333;"
+                                        onchange="toggleCmd('${id}', 'passive_reward', parseInt(this.value))">
+                                </div>
+                            </div>
+
+                            <h4 style="margin: 15px 0 10px 0; color:#333; font-size:0.9rem;">🔊 Ses Yönetimi</h4>
+                            <div id="sound-list-${id}" style="font-size:0.8rem; background:#000; padding:10px; border-radius:8px; margin-bottom:10px; max-height:150px; overflow-y:auto;">
+                                <!-- Sesler JS ile dolacak -->
+                            </div>
+                            <div style="display:grid; gap:5px; margin-bottom:10px;">
+                                <div style="display:flex; gap:5px;">
+                                    <input type="text" id="snd-name-${id}" placeholder="Komut (örn: gol)" class="inp" style="margin:0; height:30px; font-size:0.7rem; flex:1;">
+                                    <input type="number" id="snd-cost-${id}" placeholder="Ücret" class="inp" style="margin:0; height:30px; width:70px; font-size:0.7rem;">
+                                </div>
+                                <div style="display:flex; gap:5px;">
+                                    <input type="text" id="snd-url-${id}" placeholder="MP3 URL" class="inp" style="margin:0; height:30px; font-size:0.7rem; flex:1;">
+                                    <button class="btn" style="width:40px; height:30px; padding:0;" onclick="addSound('${id}')">EKLE</button>
+                                </div>
+                            </div>
                         </div>
 
                         <div class="toggle-group">
@@ -602,7 +645,58 @@
                     </div>
                 `;
                 container.innerHTML += html;
+                renderSoundList(id, data.settings?.custom_sounds || {});
             }
+        }
+
+        function renderSoundList(channelId, sounds) {
+            const container = document.getElementById(`sound-list-${channelId}`);
+            if (!container) return;
+            container.innerHTML = "";
+            Object.entries(sounds).forEach(([name, data]) => {
+                container.innerHTML += `
+                    <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:5px; padding-bottom:5px; border-bottom:1px solid #222;">
+                        <span>!ses ${name} (${data.cost} 💰)</span>
+                        <button onclick="removeSound('${channelId}', '${name}')" style="background:none; border:none; color:var(--danger); cursor:pointer;">✖</button>
+                    </div>
+                `;
+            });
+            if (Object.keys(sounds).length === 0) container.innerHTML = "<p style='color:#555;'>Ses eklenmemiş.</p>";
+        }
+
+        async function addSound(channelId) {
+            const name = document.getElementById(`snd-name-${channelId}`).value.toLowerCase().trim();
+            const url = document.getElementById(`snd-url-${channelId}`).value.trim();
+            const cost = parseInt(document.getElementById(`snd-cost-${channelId}`).value) || 1000;
+
+            if (!name || !url) return alert("Ad ve URL boş olamaz!");
+
+            // Mevcut ayarları çek
+            const res = await fetch('/admin-api/channels', {
+                method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ key: sessionKey })
+            });
+            const channels = await res.json();
+            const currentSounds = channels[channelId]?.settings?.custom_sounds || {};
+
+            currentSounds[name] = { url, cost };
+
+            await toggleCmd(channelId, 'custom_sounds', currentSounds);
+            loadChannels();
+        }
+
+        async function removeSound(channelId, name) {
+            if (!confirm("Sesi silmek istiyor musun?")) return;
+
+            const res = await fetch('/admin-api/channels', {
+                method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ key: sessionKey })
+            });
+            const channels = await res.json();
+            const currentSounds = channels[channelId]?.settings?.custom_sounds || {};
+
+            delete currentSounds[name];
+
+            await toggleCmd(channelId, 'custom_sounds', currentSounds);
+            loadChannels();
         }
 
         async function toggleCmd(channelId, cmd, val) {
@@ -757,6 +851,19 @@
                 body: JSON.stringify({ key: sessionKey, user, result: res })
             });
             alert("KUMAR AYARLANDI! 🎰");
+        }
+
+        async function resetOverlayKey(channelId) {
+            if (!confirm("Overlay anahtarını sıfırlamak istiyor musun? Eski link artık çalışmayacaktır.")) return;
+            const res = await fetch('/admin-api/reset-overlay-key', {
+                method: 'POST', headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({ key: sessionKey, channelId })
+            });
+            const data = await res.json();
+            if (data.success) {
+                alert("Yeni anahtar oluşturuldu!");
+                loadChannels();
+            }
         }
 
         async function chatAction(act) {

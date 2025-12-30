@@ -774,26 +774,46 @@ app.post('/kick/webhook', async (req, res) => {
         if ((snap.val()?.balance || 0) < ttsCost) return await reply(`@${user}, TTS için ${ttsCost.toLocaleString()} 💰 lazım!`);
 
         await userRef.transaction(u => { if (u) u.balance -= ttsCost; return u; });
-        await db.ref('stream_events/tts').push({ text: `@${user} diyor ki: ${text}`, played: false, timestamp: Date.now() });
+        await db.ref('stream_events/tts').push({
+            text: `@${user} diyor ki: ${text}`,
+            played: false,
+            timestamp: Date.now(),
+            broadcasterId: broadcasterId
+        });
         await reply(`🎙️ @${user}, Mesajın yayına gönderildi! (-${ttsCost.toLocaleString()} 💰)`);
     }
 
     else if (lowMsg.startsWith('!ses')) {
-        const soundId = args[0]?.toLowerCase();
-        const sounds = ["alkis", "gol", "korku", "gulme"];
-        if (!soundId || !sounds.includes(soundId)) return await reply(`@${user}, Geçersiz ses! Mevcutlar: ${sounds.join(', ')}`);
+        const soundTrigger = args[0]?.toLowerCase();
+        const customSounds = settings.custom_sounds || {};
 
-        const soundCost = settings.sound_cost || 1000;
+        if (!soundTrigger || !customSounds[soundTrigger]) {
+            const keys = Object.keys(customSounds);
+            return await reply(`@${user}, Geçersiz ses! Mevcutlar: ${keys.length > 0 ? keys.join(', ') : 'Henüz ses eklenmemiş.'}`);
+        }
+
+        const sound = customSounds[soundTrigger];
+        const soundCost = parseInt(sound.cost) || 1000;
+
         const snap = await userRef.once('value');
-        if ((snap.val()?.balance || 0) < soundCost) return await reply(`@${user}, Ses efekti için ${soundCost.toLocaleString()} 💰 lazım!`);
+        if ((snap.val()?.balance || 0) < soundCost) return await reply(`@${user}, "${soundTrigger}" sesi için ${soundCost.toLocaleString()} 💰 lazım!`);
 
         await userRef.transaction(u => { if (u) u.balance -= soundCost; return u; });
-        await db.ref('stream_events/sound').push({ soundId, played: false, timestamp: Date.now() });
-        await reply(`🎵 @${user}, ${soundId} sesi çalınıyor! (-${soundCost.toLocaleString()} 💰)`);
+        await db.ref('stream_events/sound').push({
+            soundId: soundTrigger,
+            url: sound.url,
+            played: false,
+            timestamp: Date.now(),
+            broadcasterId: broadcasterId
+        });
+        await reply(`🎵 @${user}, ${soundTrigger} sesi çalınıyor! (-${soundCost.toLocaleString()} 💰)`);
     }
 
     else if (lowMsg === '!sesler') {
-        await reply(`🔊 Mevcut Sesler: alkis, gol, korku, gulme (!ses [ad] ile kullanabilirsin)`);
+        const customSounds = settings.custom_sounds || {};
+        const keys = Object.keys(customSounds);
+        if (keys.length === 0) return await reply(`@${user}, Bu kanalda henüz özel ses eklenmemiş.`);
+        await reply(`🎵 Mevcut Sesler: ${keys.map(k => `!ses ${k} (${parseInt(customSounds[k].cost).toLocaleString()} 💰)`).join(' | ')}`);
     }
 
     // --- ADMIN / MOD ---
@@ -1034,7 +1054,16 @@ app.get('/api/overlay-config', (req, res) => {
     });
 });
 
-app.get('/overlay', (req, res) => { res.sendFile(path.join(__dirname, 'overlay.html')); });
+app.post('/admin-api/reset-overlay-key', authAdmin, async (req, res) => {
+    const { channelId } = req.body;
+    const newKey = crypto.randomBytes(16).toString('hex');
+    await db.ref(`channels/${channelId}`).update({ overlay_key: newKey });
+    res.json({ success: true, key: newKey });
+});
+
+app.get('/overlay', (req, res) => {
+    res.sendFile(path.join(__dirname, 'overlay.html'));
+});
 
 app.get('/', (req, res) => { res.sendFile(path.join(__dirname, 'shop.html')); });
 
