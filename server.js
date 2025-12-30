@@ -191,55 +191,42 @@ async function timeoutUser(broadcasterId, targetUsername, duration) {
 
         console.log(`✅ User ID bulundu: ${targetUsername} -> ${targetUserId}`);
 
-        // Timeout uygula (Çoklu Endpoint Denemesi)
-        const endpoints = [
-            `https://api.kick.com/public/v1/bans`,                                                  // 1. Yeni V1 (Body'de broadcaster_user_id ile)
-            `https://api.kick.com/public/v1/channels/${channelData.slug || channelData.username}/bans`, // 2. Slug
-            `https://api.kick.com/public/v1/channels/${broadcasterId}/bans`                         // 3. ID
-        ];
-
         let lastError = null;
-        for (const url of endpoints) {
-            console.log(`Trying Ban Endpoint: ${url}`);
-            try {
-                // Request Body
-                const body = {
-                    banned_user_id: String(targetUserId),
-                    duration: parseInt(duration),
-                    reason: "Susturuldu (Bot)"
-                };
 
-                // Eğer URL spesifik değilse (flat v1), broadcaster_user_id ekle
-                if (url === `https://api.kick.com/public/v1/bans`) {
-                    body.broadcaster_user_id = String(broadcasterId);
+        // Timeout uygula (RESMİ V1 MODERATION ENDPOINT)
+        try {
+            const url = `https://api.kick.com/public/v1/moderation/bans`;
+            console.log(`Trying Official Ban Endpoint: ${url}`);
+
+            const body = {
+                broadcaster_user_id: parseInt(broadcasterId),
+                user_id: parseInt(targetUserId),
+                duration: parseInt(duration), // Dakika cinsinden
+                reason: "Bot Moderasyon"
+            };
+
+            const banRes = await axios.post(url, body, {
+                headers: {
+                    'Authorization': `Bearer ${channelData.access_token}`,
+                    'Content-Type': 'application/json',
+                    'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36',
+                    'Accept': 'application/json'
                 }
+            });
+            console.log("✅ Ban/Timeout başarılı! Status:", banRes.status);
+            return { success: true };
+        } catch (e) {
+            console.log(`❌ Official Endpoint failed:`, e.response?.status, JSON.stringify(e.response?.data) || e.message);
 
-                const banRes = await axios.post(url, body, {
-                    headers: {
-                        'Authorization': `Bearer ${channelData.access_token}`,
-                        'Content-Type': 'application/json',
-                        'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36',
-                        'Accept': 'application/json'
-                    }
-                });
-                console.log("✅ Ban başarılı! Status:", banRes.status);
-                return { success: true };
-            } catch (e) {
-                console.log(`❌ Endpoint failed (${url}):`, e.response?.status, JSON.stringify(e.response?.data) || e.message);
-
-                // 401 ise token tazele ve bir sonraki turda yeni tokenı kullan
-                if (e.response?.status === 401) {
-                    console.log("🔄 Token süresi dolmuş, tazeleniyor...");
-                    await refreshChannelToken(broadcasterId);
-                    const freshRef = await db.ref('channels/' + broadcasterId).once('value');
-                    channelData.access_token = freshRef.val()?.access_token;
-                }
-                lastError = e;
+            if (e.response?.status === 401) {
+                console.log("🔄 Token tazeleniyor...");
+                await refreshChannelToken(broadcasterId);
             }
+            lastError = e;
         }
 
         // --- SON ÇARE: CHAT KOMUTU ---
-        console.log(`⚠️ API başarısız. Chat komutu deneniyor: /timeout ${targetUsername}`);
+        console.log(`⚠️ API başarısız. Chat komutu deneniyor: /timeout @${targetUsername} ${duration}`);
         try {
             await sendChatMessage(`/timeout @${targetUsername} ${duration}`, broadcasterId);
             return { success: true, note: "Chat fallback" };
@@ -260,35 +247,22 @@ async function setSlowMode(broadcasterId, enabled, delay = 10) {
     if (!channelData) return { success: false, error: 'Kanal bulunamadı' };
 
     try {
-        // Öncelik: Flat V1 endpoint
-        const endpoints = [
-            'https://api.kick.com/public/v1/chat-settings',
-            `https://api.kick.com/public/v1/channels/${channelData.slug || channelData.username || broadcasterId}/chat-settings`
-        ];
+        const url = 'https://api.kick.com/public/v1/chat-settings';
+        const body = {
+            broadcaster_user_id: parseInt(broadcasterId),
+            slow_mode: enabled,
+            slow_mode_interval: parseInt(delay)
+        };
 
-        let lastErr = null;
-        for (const url of endpoints) {
-            try {
-                const body = {
-                    slow_mode: enabled,
-                    slow_mode_interval: parseInt(delay)
-                };
-                if (url === 'https://api.kick.com/public/v1/chat-settings') {
-                    body.broadcaster_user_id = String(broadcasterId);
-                }
-
-                await axios.patch(url, body, {
-                    headers: {
-                        'Authorization': `Bearer ${channelData.access_token}`,
-                        'Content-Type': 'application/json',
-                        'User-Agent': 'Mozilla/5.0'
-                    }
-                });
-                console.log("✅ SlowMode güncellendi:", url);
-                return { success: true };
-            } catch (err) { lastErr = err; }
-        }
-        return { success: false, error: lastErr?.response?.data?.message || lastErr?.message };
+        await axios.patch(url, body, {
+            headers: {
+                'Authorization': `Bearer ${channelData.access_token}`,
+                'Content-Type': 'application/json',
+                'User-Agent': 'Mozilla/5.0'
+            }
+        });
+        console.log("✅ SlowMode güncellendi:", url);
+        return { success: true };
     } catch (e) {
         console.log("❌ SlowMode Error:", e.response?.status, e.response?.data || e.message);
         return { success: false, error: e.response?.data?.message || e.message };
@@ -302,31 +276,20 @@ async function clearChat(broadcasterId) {
     if (!channelData) return { success: false, error: 'Kanal bulunamadı' };
 
     try {
-        const endpoints = [
-            'https://api.kick.com/public/v1/chat/clear',
-            `https://api.kick.com/public/v1/channels/${channelData.slug || channelData.username || broadcasterId}/chat/clear`
-        ];
+        const url = 'https://api.kick.com/public/v1/chat/clear';
+        const body = {
+            broadcaster_user_id: parseInt(broadcasterId)
+        };
 
-        let lastErr = null;
-        for (const url of endpoints) {
-            try {
-                const body = {};
-                if (url === 'https://api.kick.com/public/v1/chat/clear') {
-                    body.broadcaster_user_id = String(broadcasterId);
-                }
-
-                await axios.post(url, body, {
-                    headers: {
-                        'Authorization': `Bearer ${channelData.access_token}`,
-                        'Content-Type': 'application/json',
-                        'User-Agent': 'Mozilla/5.0'
-                    }
-                });
-                console.log("✅ Chat temizlendi:", url);
-                return { success: true };
-            } catch (err) { lastErr = err; }
-        }
-        return { success: false, error: lastErr?.response?.data?.message || lastErr?.message };
+        await axios.post(url, body, {
+            headers: {
+                'Authorization': `Bearer ${channelData.access_token}`,
+                'Content-Type': 'application/json',
+                'User-Agent': 'Mozilla/5.0'
+            }
+        });
+        console.log("✅ Chat temizlendi:", url);
+        return { success: true };
     } catch (e) {
         console.log("❌ ClearChat Error:", e.response?.status, e.response?.data || e.message);
         return { success: false, error: e.response?.data?.message || e.message };
@@ -334,16 +297,15 @@ async function clearChat(broadcasterId) {
 }
 
 // ---------------------------------------------------------
+// ---------------------------------------------------------
 // 4. WEBHOOK (KOMUTLAR & OTO KAYIT)
 // ---------------------------------------------------------
 app.post('/kick/webhook', async (req, res) => {
     res.status(200).send('OK');
     const payload = req.body;
-    console.log("📩 WEBHOOK RECEIVED:", JSON.stringify(payload).substring(0, 500)); // Debug Log
-
     const event = payload.data || payload;
 
-    // Sağlam Broadcaster ID Bulma (Tüm olası yerlere bak)
+    // Robust Broadcaster ID Discovery
     let broadcasterId =
         event.broadcaster_user_id ||
         payload.broadcaster_user_id ||
@@ -358,12 +320,7 @@ app.post('/kick/webhook', async (req, res) => {
         event.chatroom_id ||
         payload.chatroom_id;
 
-    if (!broadcasterId) {
-        console.log("❌ Broadcaster ID bulunamadı! Full Payload:", JSON.stringify(payload));
-        return;
-    }
-
-    console.log("✅ Broadcaster ID bulundu:", broadcasterId);
+    if (!broadcasterId) return;
 
     const channelRef = await db.ref('channels/' + broadcasterId).once('value');
     const channelData = channelRef.val();
