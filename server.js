@@ -193,7 +193,7 @@ app.post('/kick/webhook', async (req, res) => {
     };
 
     // --- OYUNLAR (AYAR KONTROLLÜ) ---
-    else if (settings.slot !== false && lowMsg.startsWith('!slot')) {
+    if (settings.slot !== false && lowMsg.startsWith('!slot')) {
         const cost = Math.max(10, parseInt(args[0]) || 100);
         const snap = await userRef.once('value');
         const data = snap.val() || { balance: 1000, slot_count: 0, slot_reset: 0 };
