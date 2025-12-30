@@ -27,16 +27,38 @@ let authToken = null;
 
 async function refreshAccessToken() {
     try {
-        const response = await axios.post('https://id.kick.com/oauth/token', {
-            grant_type: 'client_credentials',
-            client_id: process.env.KICK_CLIENT_ID,
-            client_secret: process.env.KICK_CLIENT_SECRET,
-            scope: 'chat.message:write chat.message:read'
+        const params = new URLSearchParams();
+        params.append('grant_type', 'client_credentials');
+        params.append('client_id', process.env.KICK_CLIENT_ID);
+        params.append('client_secret', process.env.KICK_CLIENT_SECRET);
+        params.append('scope', 'chat.message:write chat.message:read');
+
+        const response = await axios.post('https://id.kick.com/oauth/token', params, {
+            headers: {
+                'Content-Type': 'application/x-www-form-urlencoded'
+            }
         });
+
         authToken = response.data.access_token;
-        console.log("🔑 [Kick API] Access Token yenileni.");
+        console.log("🔑 [Kick API] Access Token yenilendi.");
     } catch (error) {
-        console.error("❌ [Kick API] Token alınamadı:", error.response?.data || error.message);
+        const errorData = error.response?.data;
+        console.error("❌ [Kick API] Token alınamadı:", errorData || error.message);
+        if (errorData?.error === 'invalid_scope') {
+            console.log("ℹ️ Scope hatası algılandı, scope'suz deneniyor...");
+            // Scope'suz tekrar dene (bazı uygulamalarda scope gerekmez)
+            try {
+                const params = new URLSearchParams();
+                params.append('grant_type', 'client_credentials');
+                params.append('client_id', process.env.KICK_CLIENT_ID);
+                params.append('client_secret', process.env.KICK_CLIENT_SECRET);
+                const res = await axios.post('https://id.kick.com/oauth/token', params);
+                authToken = res.data.access_token;
+                console.log("🔑 [Kick API] Access Token (Scope'suz) başarıyla alındı.");
+            } catch (e) {
+                console.error("❌ [Kick API] Tamamen başarısız.");
+            }
+        }
     }
 }
 
