@@ -1,0 +1,82 @@
+<!DOCTYPE html>
+<html lang="tr">
+
+<head>
+    <meta charset="UTF-8">
+    <title>Aloske Bot Overlay</title>
+    <script src="https://www.gstatic.com/firebasejs/8.10.1/firebase-app.js"></script>
+    <script src="https://www.gstatic.com/firebasejs/8.10.1/firebase-database.js"></script>
+    <style>
+        body {
+            background: transparent;
+            overflow: hidden;
+            font-family: sans-serif;
+        }
+
+        #status {
+            color: white;
+            position: absolute;
+            top: 0;
+            left: 0;
+            font-size: 10px;
+            opacity: 0.5;
+        }
+    </style>
+</head>
+
+<body>
+    <div id="status">Overlay Aktif</div>
+
+    <script>
+        // Sunucudan ayarları alacağız veya burayı manuel dolduracağız
+        // Güvenlik için Firebase config'i server.js'den buraya enjekte edebilirsin
+        // Şimdilik standart bir fetch ile sunucudan config'i alalım
+
+        fetch('/api/overlay-config')
+            .then(res => res.json())
+            .then(config => {
+                firebase.initializeApp(config);
+                const db = firebase.database();
+                console.log("✅ Firebase Bağlandı");
+
+                // TTS Dinle
+                db.ref('stream_events/tts').on('child_added', (snap) => {
+                    const data = snap.val();
+                    if (!data || data.played) return;
+
+                    console.log("🎙️ TTS Okunuyor:", data.text);
+                    const utterance = new SpeechSynthesisUtterance(data.text);
+                    utterance.lang = 'tr-TR';
+                    utterance.rate = 1.0;
+                    window.speechSynthesis.speak(utterance);
+
+                    // Okundu olarak işaretle
+                    db.ref('stream_events/tts/' + snap.key).update({ played: true });
+                });
+
+                // Ses Dinle
+                db.ref('stream_events/sound').on('child_added', (snap) => {
+                    const data = snap.val();
+                    if (!data || data.played) return;
+
+                    const sounds = {
+                        "alkis": "https://www.myinstants.com/media/sounds/applause_8.mp3",
+                        "gol": "https://www.myinstants.com/media/sounds/gol-gol-gol.mp3",
+                        "korku": "https://www.myinstants.com/media/sounds/scary-movie-laugh.mp3",
+                        "gulme": "https://www.myinstants.com/media/sounds/laugh-clown.mp3"
+                    };
+
+                    const url = sounds[data.soundId.toLowerCase()];
+                    if (url) {
+                        console.log("🎵 Ses Çalınıyor:", data.soundId);
+                        const audio = new Audio(url);
+                        audio.play();
+                    }
+
+                    db.ref('stream_events/sound/' + snap.key).update({ played: true });
+                });
+            });
+    </script>
+</body>
+
+</html>

@@ -322,6 +322,7 @@ app.post('/kick/webhook', async (req, res) => {
         payload.chatroom_id;
 
     if (!broadcasterId) return;
+    broadcasterId = String(broadcasterId); // String'e çevir ki cooldown objesi şaşmasın
 
     const channelRef = await db.ref('channels/' + broadcasterId).once('value');
     const channelData = channelRef.val();
@@ -604,8 +605,9 @@ app.post('/kick/webhook', async (req, res) => {
             heistHistory[broadcasterId] = (heistHistory[broadcasterId] || []).filter(ts => ts > hourAgo);
 
             if (heistHistory[broadcasterId].length >= 2) {
-                const nextAvailable = 60 - Math.floor((now - heistHistory[broadcasterId][0]) / 60000);
-                return await reply(`🚨 Bu kanal için soygun limiti doldu! (Saatte maks 2). Yeni soygun için ~${nextAvailable} dk bekleyin.`);
+                const nextAvailableTs = heistHistory[broadcasterId][0] + 3600000;
+                const nextAvailableMin = Math.ceil((nextAvailableTs - now) / 60000);
+                return await reply(`🚨 Bu kanal için soygun limiti doldu! (Saatte maks 2). Yeni soygun için ~${nextAvailableMin} dk bekleyin.`);
             }
 
             channelHeists[broadcasterId] = { p: [user], start: now };
@@ -642,9 +644,29 @@ app.post('/kick/webhook', async (req, res) => {
         }
     }
 
-    // --- SOSYAL & DİĞER ---
     else if (isEnabled('fal') && lowMsg === '!fal') {
-        const list = ["Geleceğin parlak.", "Yakında güzel haber var.", "Dikkatli ol!", "Aşk kapıda."];
+        const list = [
+            "Geleceğin parlak görünüyor, ama bugün adımlarına dikkat et. 🌟",
+            "Beklediğin o haber çok yakın, telefonunu yanından ayırma. 📱",
+            "Aşk hayatında sürpriz gelişmeler var, kalbinin sesini dinle. ❤️",
+            "Maddi konularda şansın dönüyor, küçük bir yatırımın meyvesini alabilirsin. 💰",
+            "Bir dostun sana sürpriz yapacak, eski günleri yad edeceksiniz. 👋",
+            "Bugün enerjin çok yüksek, başladığın işleri bitirme vakti. ⚡",
+            "Kayıp bir eşyanı hiç ummadığın bir yerde bulacaksın. 🔍",
+            "Yolculuk planların varsa tam vakti, bavulunu hazırla. ✈️",
+            "Sabırlı ol, meyvesini en tatlı haliyle alacaksın. 🍎",
+            "Kalbinden geçen o kişi seni düşünüyor, bir işaret bekle. 💭",
+            "Bugün karşına çıkan fırsatları iyi değerlendir, şans kapında. 🚪",
+            "Sağlığına biraz daha dikkat etmelisin, dinlenmek sana iyi gelecek. 🛌",
+            "Yeni bir hobi edinmek için harika bir gün. 🎨",
+            "Çevrendeki insanların sana ihtiyacı var, bir yardım eli uzat.🤝",
+            "Hayallerine giden yol bugün netleşmeye başlıyor. 🛣️",
+            "Unutma, her karanlık gecenin bir sabahı vardır. 🌅",
+            "Bugün aldığın kararlar geleceğini şekillendirecek, sakin kal. 🧘",
+            "Bir projende büyük başarı yakalamak üzeresin, pes etme. 🏆",
+            "Sosyal çevrende parlayacağın bir gün, spot ışıkları üzerinde. ✨",
+            "Eskiden gelen bir borç veya alacak bugün kapanabilir. 💳"
+        ];
         await reply(`🔮 @${user}, Falın: ${list[Math.floor(Math.random() * list.length)]}`);
     }
 
@@ -706,7 +728,30 @@ app.post('/kick/webhook', async (req, res) => {
     }
 
     else if (settings.soz !== false && lowMsg === '!söz') {
-        const list = ["Gülüşüne yağmur yağsa, sırılsıklam olurum.", "Seninle her şey güzel, sensiz her şey boş.", "Gözlerin gökyüzü, ben ise kayıp bir uçurtma.", "Hayat kısa, kuşlar uçuyor."];
+        const list = [
+            "Gülüşüne yağmur yağsa, sırılsıklam olurum.",
+            "Seninle her şey güzel, sensiz her şey boş.",
+            "Gözlerin gökyüzü, ben ise kayıp bir uçurtma.",
+            "Hayat kısa, kuşlar uçuyor. - Cemal Süreya",
+            "Sevmek, birbirine bakmak değil; birlikte aynı yöne bakmaktır. - Saint-Exupéry",
+            "Zor diyorsun, zor olacak ki imtihan olsun. - Mevlana",
+            "En büyük engel, zihnindeki sınırlardır.",
+            "Ya olduğun gibi görün, ya göründüğün gibi ol. - Mevlana",
+            "Mutluluk paylaşıldığında çoğalan tek şeydir.",
+            "Başarı, hazırlık ve fırsatın buluştuğu noktadır.",
+            "Kalp kırmak, Kabe yıkmak gibidir.",
+            "Umut, uyanık insanların rüyasıdır.",
+            "En karanlık gece bile sona erer ve güneş tekrar doğar.",
+            "İyi ki varsın, hayatıma renk kattın.",
+            "Bir gülüşünle dünyam değişiyor.",
+            "Sen benim en güzel manzaramsın.",
+            "Aşk, kelimelerin bittiği yerde başlar.",
+            "Sonsuzluğa giden yolda seninle yürümek istiyorum.",
+            "Her şey vaktini bekler, ne gül vaktinden önce açar, ne güneş vaktinden önce doğar.",
+            "Gelecek, hayallerinin güzelliğine inananlarındır.",
+            "Dün geçti, yarın gelmedi; bugün ise bir armağandır.",
+            "Hayat bir kitaptır, gezmeyenler sadece bir sayfasını okur."
+        ];
         await reply(`✍️ @${user}: ${list[Math.floor(Math.random() * list.length)]}`);
     }
 
