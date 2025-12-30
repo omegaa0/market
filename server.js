@@ -1,4 +1,4 @@
-require('dotenv').config();
+﻿require('dotenv').config();
 const express = require('express');
 const bodyParser = require('body-parser');
 const axios = require('axios');
@@ -25,11 +25,12 @@ const REDIRECT_URI = "https://aloskegangbot-market.onrender.com/auth/kick/callba
 
 // GLOBAL STATES
 const activeDuels = {};
-let currentHeist = null;
-let activePiyango = null;
-let activePrediction = null;
-const riggedGambles = {}; // Admin panel tarafından ayarlanır
-const riggedShips = {};   // Admin panel tarafından ayarlanır
+const channelHeists = {};
+const channelLotteries = {};
+const channelPredictions = {};
+const heistHistory = {}; // { broadcasterId: [timestamp1, timestamp2] }
+const riggedGambles = {};
+const riggedShips = {};
 
 // PKCE
 function base64UrlEncode(str) { return str.toString('base64').replace(/\+/g, '-').replace(/\//g, '_').replace(/=/g, ''); }
@@ -54,7 +55,7 @@ app.get('/login', async (req, res) => {
 app.get('/auth/kick/callback', async (req, res) => {
     const { code, state } = req.query;
     const tempAuth = (await db.ref('temp_auth/' + state).once('value')).val();
-    if (!tempAuth) return res.send("Oturum zaman aşımı.");
+    if (!tempAuth) return res.send("Oturum zaman aÅŸÄ±mÄ±.");
     try {
         const params = new URLSearchParams();
         params.append('grant_type', 'authorization_code');
@@ -69,14 +70,14 @@ app.get('/auth/kick/callback', async (req, res) => {
         const userData = userRes.data.data[0];
         const bid = userData.user_id;
 
-        // Kanalı ayrı olarak kaydet
+        // KanalÄ± ayrÄ± olarak kaydet
         await db.ref('channels/' + bid).set({
             access_token: response.data.access_token,
             refresh_token: response.data.refresh_token,
             username: userData.name.toLowerCase(),
             broadcaster_id: bid,
             updatedAt: Date.now(),
-            settings: { // Varsayılan hepsi açık
+            settings: { // VarsayÄ±lan hepsi aÃ§Ä±k
                 slot: true, yazitura: true, kutu: true,
                 duello: true, soygun: true, fal: true,
                 ship: true, hava: true, soz: true, zenginler: true
@@ -84,7 +85,7 @@ app.get('/auth/kick/callback', async (req, res) => {
         });
 
         await subscribeToChat(response.data.access_token, bid);
-        res.send(`<body style='background:#111;color:lime;text-align:center;padding-top:100px;'><h1>✅ ${userData.name} KANALI EKLENDİ!</h1></body>`);
+        res.send(`<body style='background:#111;color:lime;text-align:center;padding-top:100px;'><h1>âœ… ${userData.name} KANALI EKLENDÄ°!</h1></body>`);
     } catch (e) { res.status(500).json({ error: e.message }); }
 });
 
@@ -126,23 +127,23 @@ async function refreshChannelToken(broadcasterId) {
     } catch (e) { console.log("Refresh token error", e.message); }
 }
 
-// KICK API MODERATION FONKSİYONLARI
+// KICK API MODERATION FONKSÄ°YONLARI
 async function timeoutUser(broadcasterId, targetUsername, duration) {
     const channelRef = await db.ref('channels/' + broadcasterId).once('value');
     const channelData = channelRef.val();
-    if (!channelData) return { success: false, error: 'Kanal bulunamadı' };
+    if (!channelData) return { success: false, error: 'Kanal bulunamadÄ±' };
 
     try {
         let targetUserId = null;
 
-        // YÖNTEM 0: Veritabanından bak (En garantisi)
+        // YÃ–NTEM 0: VeritabanÄ±ndan bak (En garantisi)
         const dbIdSnap = await db.ref('kick_ids/' + targetUsername.toLowerCase()).once('value');
         if (dbIdSnap.exists()) {
             targetUserId = dbIdSnap.val();
-            console.log(`✅ ID Veritabanından bulundu: ${targetUsername} -> ${targetUserId}`);
+            console.log(`âœ… ID VeritabanÄ±ndan bulundu: ${targetUsername} -> ${targetUserId}`);
         }
 
-        // Yöntem 1: Public channel endpoint (herkesin kanalı var)
+        // YÃ¶ntem 1: Public channel endpoint (herkesin kanalÄ± var)
         if (!targetUserId) {
             try {
                 const chRes = await axios.get(`https://kick.com/api/v2/channels/${encodeURIComponent(targetUsername)}`, {
@@ -158,7 +159,7 @@ async function timeoutUser(broadcasterId, targetUsername, duration) {
             }
         }
 
-        // Yöntem 2: Public v1 channels endpoint
+        // YÃ¶ntem 2: Public v1 channels endpoint
         if (!targetUserId) {
             try {
                 const chRes = await axios.get(`https://api.kick.com/public/v1/channels?slug=${encodeURIComponent(targetUsername)}`, {
@@ -172,7 +173,7 @@ async function timeoutUser(broadcasterId, targetUsername, duration) {
             }
         }
 
-        // Yöntem 3: Check username endpoint
+        // YÃ¶ntem 3: Check username endpoint
         if (!targetUserId) {
             try {
                 const checkRes = await axios.get(`https://kick.com/api/v1/channels/check-username/${encodeURIComponent(targetUsername)}`);
@@ -185,15 +186,15 @@ async function timeoutUser(broadcasterId, targetUsername, duration) {
         }
 
         if (!targetUserId) {
-            console.log(`❌ Tüm yöntemler başarısız: ${targetUsername}`);
-            return { success: false, error: 'Kullanıcı bulunamadı (Kick API)' };
+            console.log(`âŒ TÃ¼m yÃ¶ntemler baÅŸarÄ±sÄ±z: ${targetUsername}`);
+            return { success: false, error: 'KullanÄ±cÄ± bulunamadÄ± (Kick API)' };
         }
 
-        console.log(`✅ User ID bulundu: ${targetUsername} -> ${targetUserId}`);
+        console.log(`âœ… User ID bulundu: ${targetUsername} -> ${targetUserId}`);
 
         let lastError = null;
 
-        // Timeout uygula (RESMİ V1 MODERATION ENDPOINT)
+        // Timeout uygula (RESMÄ° V1 MODERATION ENDPOINT)
         try {
             const url = `https://api.kick.com/public/v1/moderation/bans`;
             console.log(`Trying Official Ban Endpoint: ${url}`);
@@ -213,29 +214,29 @@ async function timeoutUser(broadcasterId, targetUsername, duration) {
                     'Accept': 'application/json'
                 }
             });
-            console.log("✅ Ban/Timeout başarılı! Status:", banRes.status);
+            console.log("âœ… Ban/Timeout baÅŸarÄ±lÄ±! Status:", banRes.status);
             return { success: true };
         } catch (e) {
-            console.log(`❌ Official Endpoint failed:`, e.response?.status, JSON.stringify(e.response?.data) || e.message);
+            console.log(`âŒ Official Endpoint failed:`, e.response?.status, JSON.stringify(e.response?.data) || e.message);
 
             if (e.response?.status === 401) {
-                console.log("🔄 Token tazeleniyor...");
+                console.log("ğŸ”„ Token tazeleniyor...");
                 await refreshChannelToken(broadcasterId);
             }
             lastError = e;
         }
 
-        // --- SON ÇARE: CHAT KOMUTU ---
-        console.log(`⚠️ API başarısız. Chat komutu deneniyor: /timeout @${targetUsername} ${duration}`);
+        // --- SON Ã‡ARE: CHAT KOMUTU ---
+        console.log(`âš ï¸ API baÅŸarÄ±sÄ±z. Chat komutu deneniyor: /timeout @${targetUsername} ${duration}`);
         try {
             await sendChatMessage(`/timeout @${targetUsername} ${duration}`, broadcasterId);
             return { success: true, note: "Chat fallback" };
         } catch (chatErr) {
-            console.log("❌ Chat fallback de başarısız.");
-            return { success: false, error: lastError?.response?.data?.message || lastError?.message || 'Tüm yöntemler başarısız' };
+            console.log("âŒ Chat fallback de baÅŸarÄ±sÄ±z.");
+            return { success: false, error: lastError?.response?.data?.message || lastError?.message || 'TÃ¼m yÃ¶ntemler baÅŸarÄ±sÄ±z' };
         }
     } catch (e) {
-        console.log("❌ Timeout Fatal:", e.message);
+        console.log("âŒ Timeout Fatal:", e.message);
         return { success: false, error: e.message };
     }
 }
@@ -244,7 +245,7 @@ async function timeoutUser(broadcasterId, targetUsername, duration) {
 async function setSlowMode(broadcasterId, enabled, delay = 10) {
     const channelRef = await db.ref('channels/' + broadcasterId).once('value');
     const channelData = channelRef.val();
-    if (!channelData) return { success: false, error: 'Kanal bulunamadı' };
+    if (!channelData) return { success: false, error: 'Kanal bulunamadÄ±' };
 
     try {
         const url = 'https://api.kick.com/public/v1/chat-settings';
@@ -261,10 +262,10 @@ async function setSlowMode(broadcasterId, enabled, delay = 10) {
                 'User-Agent': 'Mozilla/5.0'
             }
         });
-        console.log("✅ SlowMode güncellendi:", url);
+        console.log("âœ… SlowMode gÃ¼ncellendi:", url);
         return { success: true };
     } catch (e) {
-        console.log("❌ SlowMode Error:", e.response?.status, e.response?.data || e.message);
+        console.log("âŒ SlowMode Error:", e.response?.status, e.response?.data || e.message);
         return { success: false, error: e.response?.data?.message || e.message };
     }
 }
@@ -273,7 +274,7 @@ async function setSlowMode(broadcasterId, enabled, delay = 10) {
 async function clearChat(broadcasterId) {
     const channelRef = await db.ref('channels/' + broadcasterId).once('value');
     const channelData = channelRef.val();
-    if (!channelData) return { success: false, error: 'Kanal bulunamadı' };
+    if (!channelData) return { success: false, error: 'Kanal bulunamadÄ±' };
 
     try {
         const url = 'https://api.kick.com/public/v1/chat/clear';
@@ -288,10 +289,10 @@ async function clearChat(broadcasterId) {
                 'User-Agent': 'Mozilla/5.0'
             }
         });
-        console.log("✅ Chat temizlendi:", url);
+        console.log("âœ… Chat temizlendi:", url);
         return { success: true };
     } catch (e) {
-        console.log("❌ ClearChat Error:", e.response?.status, e.response?.data || e.message);
+        console.log("âŒ ClearChat Error:", e.response?.status, e.response?.data || e.message);
         return { success: false, error: e.response?.data?.message || e.message };
     }
 }
@@ -326,16 +327,16 @@ app.post('/kick/webhook', async (req, res) => {
     const channelData = channelRef.val();
 
     if (!channelData) {
-        console.log(`❌ Kanal veritabanında yok: ${broadcasterId}`);
+        console.log(`âŒ Kanal veritabanÄ±nda yok: ${broadcasterId}`);
         return;
     }
 
-    // SLUG GÜNCELLEME (API için kritik)
+    // SLUG GÃœNCELLEME (API iÃ§in kritik)
     const currentSlug = event.broadcaster?.channel_slug || event.channel?.slug || payload.broadcaster?.channel_slug;
     if (currentSlug && channelData.slug !== currentSlug) {
         await db.ref('channels/' + broadcasterId).update({ slug: currentSlug });
         channelData.slug = currentSlug; // Local memory update
-        console.log(`🔄 Kanal slug güncellendi: ${currentSlug}`);
+        console.log(`ğŸ”„ Kanal slug gÃ¼ncellendi: ${currentSlug}`);
     }
 
     const settings = channelData.settings || {};
@@ -349,78 +350,87 @@ app.post('/kick/webhook', async (req, res) => {
     const args = rawMsg.trim().split(/\s+/).slice(1);
     const userRef = db.ref('users/' + user.toLowerCase());
 
-    // --- OTOMATİK KAYIT ---
+    // --- OTOMATÄ°K KAYIT & AKTÄ°FLÄ°K TAKÄ°BÄ° ---
     const userSnap = await userRef.once('value');
-    if (!userSnap.exists()) await userRef.set({ balance: 1000, created_at: Date.now() });
+    if (!userSnap.exists()) {
+        await userRef.set({ balance: 1000, last_seen: Date.now(), created_at: Date.now() });
+    } else {
+        await userRef.update({ last_seen: Date.now() });
+    }
 
-    // KICK ID KAYDET (Susturma işlemleri için)
+    // KICK ID KAYDET (Susturma iÅŸlemleri iÃ§in)
     if (event.sender?.user_id) {
         await db.ref('kick_ids/' + user.toLowerCase()).set(event.sender.user_id);
     }
 
-    // --- ADMIN / MOD YETKİ KONTROLÜ ---
+    // --- ADMIN / MOD YETKÄ° KONTROLÃœ ---
     const isAuthorized = event.sender?.identity?.badges?.some(b => b.type === 'broadcaster' || b.type === 'moderator') || user.toLowerCase() === "omegacyr";
 
     const reply = (msg) => sendChatMessage(msg, broadcasterId);
 
-    // --- RIG KONTROLÜ ---
+    // --- RIG KONTROLÃœ ---
     const checkRig = () => {
         const r = riggedGambles[user.toLowerCase()];
         if (r) { delete riggedGambles[user.toLowerCase()]; return r; }
         return null;
     };
 
-    // Komut aktif mi kontrolü (undefined = aktif, false = kapalı)
+    // Komut aktif mi kontrolÃ¼ (undefined = aktif, false = kapalÄ±)
     const isEnabled = (cmd) => settings[cmd] !== false;
 
-    // --- KOMUT ZİNCİRİ ---
-    // SELAM - Sadece tam kelime olarak geçiyorsa cevap ver (ve cooldown)
-    // SELAM - Sadece tam kelime olarak geçiyorsa cevap ver (ve cooldown)
-    const selamRegex = /\b(sa|sea|selam|selamlar|slm|as|selamün aleyküm|selamünaleyküm)\b/i;
+    // --- KOMUT ZÄ°NCÄ°RÄ° ---
+    // SELAM - Sadece tam kelime olarak geÃ§iyorsa cevap ver (ve cooldown)
+    const selamRegex = /\b(sa|sea|selam|selamlar|slm|selamÃ¼n aleykÃ¼m|selamÃ¼naleykÃ¼m)\b/i;
     const selamCooldowns = global.selamCooldowns || (global.selamCooldowns = {});
     const userCooldownKey = `${broadcasterId}_${user.toLowerCase()}`;
     const now = Date.now();
 
-    if (selamRegex.test(lowMsg) && !lowMsg.startsWith('!') && !lowMsg.includes('aleyküm')) {
-        // Aynı kullanıcıya 60 saniye içinde tekrar cevap verme
+    if (selamRegex.test(lowMsg) && !lowMsg.startsWith('!') && !lowMsg.includes('aleykÃ¼m')) {
+        // AynÄ± kullanÄ±cÄ±ya 60 saniye iÃ§inde tekrar cevap verme
         if (!selamCooldowns[userCooldownKey] || now - selamCooldowns[userCooldownKey] > 60000) {
             selamCooldowns[userCooldownKey] = now;
-            await reply(`Aleyküm selam @${user}! Hoş geldin. 👋`);
+            await reply(`AleykÃ¼m selam @${user}! HoÅŸ geldin. ğŸ‘‹`);
         }
     }
 
     else if (lowMsg === '!bakiye') {
         const snap = await userRef.once('value');
-        await reply(`@${user}, Bakiyeniz: ${(snap.val()?.balance || 0).toLocaleString()} 💰`);
+        await reply(`@${user}, Bakiyeniz: ${(snap.val()?.balance || 0).toLocaleString()} ğŸ’°`);
     }
 
-    else if (lowMsg === '!günlük') {
+    else if (lowMsg === '!gÃ¼nlÃ¼k') {
         const snap = await userRef.once('value');
         const data = snap.val() || { balance: 1000, lastDaily: 0 };
         const now = Date.now();
         if (now - data.lastDaily < 86400000) {
             const diff = 86400000 - (now - data.lastDaily);
             const hours = Math.floor(diff / 3600000);
-            return await reply(`@${user}, ⏳ Günlük ödül için ${hours} saat beklemelisin.`);
+            return await reply(`@${user}, â³ GÃ¼nlÃ¼k Ã¶dÃ¼l iÃ§in ${hours} saat beklemelisin.`);
         }
         data.balance = (data.balance || 0) + 500; data.lastDaily = now;
         await userRef.set(data);
-        await reply(`🎁 @${user}, +500 💰 eklendi! ✅`);
+        await reply(`ğŸ @${user}, +500 ğŸ’° eklendi! âœ…`);
     }
 
-    // --- OYUNLAR (AYAR KONTROLLÜ) ---
-    // Kumar kazanç oranları (varsayılan değerler)
+    // --- OYUNLAR (AYAR KONTROLLÃœ) ---
+    // Kumar kazanÃ§ oranlarÄ± (varsayÄ±lan deÄŸerler)
     const wrSlot = settings.wr_slot || 30;
     const wrYazitura = settings.wr_yazitura || 50;
     const wrKutu = settings.wr_kutu || 40;
     const wrSoygun = settings.wr_soygun || 40;
+
+    // Kazanç Çarpanları
+    const multSlot3 = settings.slot_mult_3 || 5;
+    const multSlot2 = settings.slot_mult_2 || 1.5;
+    const multYT = settings.yt_mult || 2;
+    const multKutu = settings.kutu_mult || 3;
 
     if (isEnabled('slot') && lowMsg.startsWith('!slot')) {
         const cost = Math.max(10, parseInt(args[0]) || 100);
         const snap = await userRef.once('value');
         let data = snap.val() || { balance: 1000, slot_count: 0, slot_reset: 0 };
 
-        // Veri güvenliği (NaN önleme)
+        // Veri gÃ¼venliÄŸi (NaN Ã¶nleme)
         data.balance = parseInt(data.balance) || 1000;
         data.slot_count = parseInt(data.slot_count) || 0;
         data.slot_reset = parseInt(data.slot_reset) || 0;
@@ -428,41 +438,37 @@ app.post('/kick/webhook', async (req, res) => {
         const now = Date.now();
 
         if (now > data.slot_reset) { data.slot_count = 0; data.slot_reset = now + 3600000; }
-        if (data.slot_count >= 5) return await reply(`@${user}, 🚨 Slot limitin doldu! (5/saat)`);
+        if (data.slot_count >= 5) return await reply(`@${user}, ğŸš¨ Slot limitin doldu! (5/saat)`);
         if (data.balance < cost) return await reply(`@${user}, Yetersiz bakiye!`);
 
         data.balance -= cost;
         data.slot_count++;
         const rig = checkRig();
-        const sym = ["🍒", "🍋", "🍇", "🔔", "💎", "7️⃣", "🍉", "🍀"];
+        const sym = ["🍋", "🍒", "🍇", "🔔", "💎", "7️⃣", "🍊", "🍓"];
         let s, mult;
 
         if (rig === 'win') {
-            s = ["7️⃣", "7️⃣", "7️⃣"]; mult = 5;
+            s = ["7️⃣", "7️⃣", "7️⃣"]; mult = multSlot3;
         } else if (rig === 'lose') {
-            s = ["🍒", "🍋", "🍇"]; mult = 0;
+            s = ["🍋", "🍒", "🍇"]; mult = 0;
         } else {
             // Kazanç oranına göre belirleme (SLOT)
             const roll = Math.random() * 100;
             if (roll < wrSlot) {
                 // Kazandır - 2'li veya 3'lü eşleşme
-                const jackpotChance = wrSlot / 10; // Jackpot şansı daha düşük
+                const jackpotChance = wrSlot / 10;
                 if (roll < jackpotChance) {
-                    // JACKPOT - 3'lü
                     const winSym = sym[Math.floor(Math.random() * 8)];
                     s = [winSym, winSym, winSym];
-                    mult = 5;
+                    mult = multSlot3;
                 } else {
-                    // 2'li eşleşme
                     const winSym = sym[Math.floor(Math.random() * 8)];
                     const otherSym = sym[Math.floor(Math.random() * 8)];
                     s = [winSym, winSym, otherSym];
-                    mult = 1.5;
+                    mult = multSlot2;
                 }
             } else {
-                // Kaybettir
                 s = [sym[Math.floor(Math.random() * 8)], sym[Math.floor(Math.random() * 8)], sym[Math.floor(Math.random() * 8)]];
-                // Eşleşme olmadığından emin ol
                 while (s[0] === s[1] || s[1] === s[2] || s[0] === s[2]) {
                     s = [sym[Math.floor(Math.random() * 8)], sym[Math.floor(Math.random() * 8)], sym[Math.floor(Math.random() * 8)]];
                 }
@@ -479,7 +485,7 @@ app.post('/kick/webhook', async (req, res) => {
         } else {
             data.balance += prize;
             await userRef.update(data);
-            await reply(`🎰 | ${s[0]} | ${s[1]} | ${s[2]} | @${user} KAZANDIN (+${prize}) 💰`);
+            await reply(`🎰 | ${s[0]} | ${s[1]} | ${s[2]} | @${user} KAZANDIN (+${prize.toLocaleString()}) 💰`);
         }
     }
 
@@ -512,8 +518,9 @@ app.post('/kick/webhook', async (req, res) => {
 
         const resDisplay = win ? (isYazi ? 'YAZI' : 'TURA') : (isYazi ? 'TURA' : 'YAZI');
         if (win) {
-            data.balance += cost * 2;
-            await reply(`🪙 Para fırlatıldı... ${resDisplay}! @${user} KAZANDIN (+${cost * 2})`);
+            const prize = Math.floor(cost * multYT);
+            data.balance += prize;
+            await reply(`🪙 Para fırlatıldı... ${resDisplay}! @${user} KAZANDIN (+${prize.toLocaleString()})`);
         } else {
             const refund = Math.floor(cost * 0.1);
             data.balance += refund;
@@ -547,12 +554,12 @@ app.post('/kick/webhook', async (req, res) => {
         }
 
         if (resultType === 'odul') {
-            const prize = cost * 3;
+            const prize = Math.floor(cost * multKutu);
             data.balance += prize;
-            await reply(`📦 @${user} Kutu ${choice}: 🎉 BÜYÜK ÖDÜL! (+${prize})`);
+            await reply(`📦 @${user} Kutu ${choice}: 🎉 BÜYÜK ÖDÜL! (+${prize.toLocaleString()})`);
         } else if (resultType === 'iade') {
             data.balance += cost;
-            await reply(`📦 @${user} Kutu ${choice}: 🔄 Para İade Edildi (+${cost})`);
+            await reply(`📦 @${user} Kutu ${choice}: 🔄 Para İade Edildi (+${cost.toLocaleString()})`);
         } else { // Bomba
             const refund = Math.floor(cost * 0.1);
             data.balance += refund;
@@ -564,7 +571,7 @@ app.post('/kick/webhook', async (req, res) => {
     else if (isEnabled('duello') && lowMsg.startsWith('!duello')) {
         const target = args[0]?.replace('@', '').toLowerCase();
         const amt = parseInt(args[1]);
-        if (!target || isNaN(amt)) return await reply(`@${user}, Kullanım: !duello @target [miktar]`);
+        if (!target || isNaN(amt)) return await reply(`@${user}, KullanÄ±m: !duello @target [miktar]`);
 
         const snap = await userRef.once('value');
         const userData = snap.val() || { balance: 0 };
@@ -574,7 +581,7 @@ app.post('/kick/webhook', async (req, res) => {
         if (!targetSnap.exists() || targetSnap.val().balance < amt) return await reply('Rakibin bakiyesi yetersiz.');
 
         activeDuels[target] = { challenger: user, amount: amt, expire: Date.now() + 60000, channel: broadcasterId };
-        await reply(`⚔️ @${target}, @${user} sana ${amt} 💰 karşılığında meydan okudu! Kabul için: !kabul`);
+        await reply(`âš”ï¸ @${target}, @${user} sana ${amt} ğŸ’° karÅŸÄ±lÄ±ÄŸÄ±nda meydan okudu! Kabul iÃ§in: !kabul`);
     }
 
     else if (lowMsg === '!kabul') {
@@ -585,41 +592,67 @@ app.post('/kick/webhook', async (req, res) => {
         const loser = winner === user ? d.challenger : user;
         await db.ref('users/' + winner.toLowerCase()).transaction(u => { if (u) u.balance += d.amount; return u; });
         await db.ref('users/' + loser.toLowerCase()).transaction(u => { if (u) u.balance -= d.amount; return u; });
-        await reply(`🏆 @${winner} düelloyu kazandı ve ${d.amount} 💰 kaptı! ⚔️`);
+        await reply(`ğŸ† @${winner} dÃ¼elloyu kazandÄ± ve ${d.amount} ğŸ’° kaptÄ±! âš”ï¸`);
     }
 
     else if (isEnabled('soygun') && lowMsg === '!soygun') {
-        if (!currentHeist) {
-            currentHeist = { p: [user], start: Date.now(), channel: broadcasterId };
-            await reply(`🚨 SOYGUN! Katılmak için !soygun yazın! (90sn)`);
-            setTimeout(async () => {
-                const h = currentHeist; currentHeist = null;
-                if (!h || h.p.length < 3) return await reply(`❌ Soygun İptal: Yetersiz katılımcı.`);
+        const h = channelHeists[broadcasterId];
+        if (!h) {
+            // Cooldown kontrolü: Saatte 2 kere
+            const now = Date.now();
+            const hourAgo = now - 3600000;
+            heistHistory[broadcasterId] = (heistHistory[broadcasterId] || []).filter(ts => ts > hourAgo);
 
-                // WinRate kontrolü (SOYGUN)
+            if (heistHistory[broadcasterId].length >= 2) {
+                const nextAvailable = 60 - Math.floor((now - heistHistory[broadcasterId][0]) / 60000);
+                return await reply(`🚨 Bu kanal için soygun limiti doldu! (Saatte maks 2). Yeni soygun için ~${nextAvailable} dk bekleyin.`);
+            }
+
+            channelHeists[broadcasterId] = { p: [user], start: now };
+            heistHistory[broadcasterId].push(now);
+            await reply(`🚨 SOYGUN BAŞLADI! Katılmak için !soygun yazın! (90sn)`);
+
+            setTimeout(async () => {
+                const activeH = channelHeists[broadcasterId];
+                delete channelHeists[broadcasterId];
+                if (!activeH || activeH.p.length < 3) return await reply(`❌ Soygun İptal: Yetersiz ekip (En az 3 kişi lazım).`);
+
+                // WinRate ve Ödül Ayarları
+                const wrSoy = settings.wr_soygun || 40;
                 const roll = Math.random() * 100;
-                if (roll < wrSoygun) {
-                    const share = Math.floor((15000 + Math.random() * 10000) / h.p.length);
-                    for (let p of h.p) await db.ref('users/' + p.toLowerCase()).transaction(u => { if (u) u.balance += share; return u; });
-                    await reply(`💥 BANKA PATLADI! Herkese +${share} 💰 dağıtıldı! 🔥`);
-                } else await reply(`🚔 POLİS BASKINI! Soygun başarısız. 👮‍♂️`);
+
+                if (roll < wrSoy) {
+                    const totalPot = settings.soygun_reward || 30000;
+                    const share = Math.floor(totalPot / activeH.p.length);
+                    for (let pName of activeH.p) {
+                        await db.ref('users/' + pName.toLowerCase()).transaction(u => {
+                            if (!u) u = { balance: 0 };
+                            u.balance = (u.balance || 0) + share;
+                            return u;
+                        });
+                    }
+                    await reply(`💥 BANKA PATLADI! Ekip toplam ${totalPot.toLocaleString()} 💰 kaptı! Kişi başı: +${share.toLocaleString()} 💰`);
+                } else {
+                    await reply(`🚔 POLİS BASKINI! Soygun başarısız, herkes dağılsın! 👮‍♂️`);
+                }
             }, 90000);
-        } else if (currentHeist && currentHeist.channel === broadcasterId && !currentHeist.p.includes(user)) {
-            currentHeist.p.push(user); await reply(`@${user} ekibe katıldı!`);
+        } else if (!h.p.includes(user)) {
+            h.p.push(user);
+            await reply(`@${user} ekibe katıldı! Ekip: ${h.p.length} kişi`);
         }
     }
 
-    // --- SOSYAL & DİĞER ---
+    // --- SOSYAL & DÄ°ÄER ---
     else if (isEnabled('fal') && lowMsg === '!fal') {
-        const list = ["Geleceğin parlak.", "Yakında güzel haber var.", "Dikkatli ol!", "Aşk kapıda."];
-        await reply(`🔮 @${user}, Falın: ${list[Math.floor(Math.random() * list.length)]}`);
+        const list = ["GeleceÄŸin parlak.", "YakÄ±nda gÃ¼zel haber var.", "Dikkatli ol!", "AÅŸk kapÄ±da."];
+        await reply(`ğŸ”® @${user}, FalÄ±n: ${list[Math.floor(Math.random() * list.length)]}`);
     }
 
     else if (isEnabled('ship') && lowMsg.startsWith('!ship')) {
         let target = args[0]?.replace('@', '');
         const rig = riggedShips[user.toLowerCase()];
 
-        // Hedef yoksa rastgele birini seç (veritabanından)
+        // Hedef yoksa rastgele birini seÃ§ (veritabanÄ±ndan)
         if (!target && !rig) {
             const allUsers = await db.ref('users').limitToFirst(50).once('value');
             const userList = Object.keys(allUsers.val() || {}).filter(u => u !== user.toLowerCase());
@@ -633,26 +666,26 @@ app.post('/kick/webhook', async (req, res) => {
         if (rig) {
             target = rig.target || target || "Gizli Hayran";
             const perc = rig.percent;
-            await reply(`❤️ @${user} & @${target} Uyumu: %${perc} ${perc >= 100 ? '🔥 RUH EŞİ BULUNDU!' : '💔'}`);
+            await reply(`â¤ï¸ @${user} & @${target} Uyumu: %${perc} ${perc >= 100 ? 'ğŸ”¥ RUH EÅžÄ° BULUNDU!' : 'ğŸ’”'}`);
             delete riggedShips[user.toLowerCase()];
         } else {
             const perc = Math.floor(Math.random() * 101);
-            await reply(`❤️ @${user} & @${target} Uyumu: %${perc} ${perc > 80 ? '🔥' : perc > 50 ? '😏' : '💔'}`);
+            await reply(`â¤ï¸ @${user} & @${target} Uyumu: %${perc} ${perc > 80 ? 'ğŸ”¥' : perc > 50 ? 'ğŸ˜' : 'ğŸ’”'}`);
         }
     }
 
     else if (settings.zenginler !== false && lowMsg === '!zenginler') {
         const snap = await db.ref('users').once('value');
         const sorted = Object.entries(snap.val() || {}).sort((a, b) => (b[1].balance || 0) - (a[1].balance || 0)).slice(0, 5);
-        let txt = "🏆 EN ZENGİNLER: ";
+        let txt = "ğŸ† EN ZENGÄ°NLER: ";
         sorted.forEach((u, i) => txt += `${i + 1}. ${u[0]} (${u[1].balance}) | `);
         await reply(txt);
     }
 
     else if (settings.hava !== false && lowMsg.startsWith('!hava')) {
         const city = args.join(' ');
-        if (city.toLowerCase() === "kürdistan") {
-            return await reply("Aponunda kürdistanında amına çaktım 🇹🇷");
+        if (city.toLowerCase() === "kÃ¼rdistan") {
+            return await reply("Aponunda kÃ¼rdistanÄ±nda amÄ±na Ã§aktÄ±m ğŸ‡¹ğŸ‡·");
         }
         try {
             const geo = await axios.get(`https://geocoding-api.open-meteo.com/v1/search?name=${encodeURIComponent(city)}&count=1&language=tr&format=json`);
@@ -661,25 +694,56 @@ app.post('/kick/webhook', async (req, res) => {
                 const weather = await axios.get(`https://api.open-meteo.com/v1/forecast?latitude=${latitude}&longitude=${longitude}&current_weather=true`);
                 const w = weather.data.current_weather;
                 const code = w.weathercode;
-                let cond = "Açık"; let emoji = "☀️";
-                if (code >= 1 && code <= 3) { cond = "Bulutlu"; emoji = "☁️"; }
-                else if (code >= 45 && code <= 48) { cond = "Sisli"; emoji = "🌫️"; }
-                else if (code >= 51 && code <= 67) { cond = "Yağmurlu"; emoji = "🌧️"; }
-                else if (code >= 71 && code <= 86) { cond = "Karlı"; emoji = "❄️"; }
-                else if (code >= 95) { cond = "Fırtına"; emoji = "⛈️"; }
-                await reply(`🌍 Hava Durumu (${name}): ${cond} ${emoji}, ${w.temperature}°C, Rüzgar: ${w.windspeed} km/s`);
-            } else await reply("Şehir bulunamadı.");
-        } catch { await reply("Hava durumu servisi şu an kullanılamıyor."); }
+                let cond = "AÃ§Ä±k"; let emoji = "â˜€ï¸";
+                if (code >= 1 && code <= 3) { cond = "Bulutlu"; emoji = "â˜ï¸"; }
+                else if (code >= 45 && code <= 48) { cond = "Sisli"; emoji = "ğŸŒ«ï¸"; }
+                else if (code >= 51 && code <= 67) { cond = "YaÄŸmurlu"; emoji = "ğŸŒ§ï¸"; }
+                else if (code >= 71 && code <= 86) { cond = "KarlÄ±"; emoji = "â„ï¸"; }
+                else if (code >= 95) { cond = "FÄ±rtÄ±na"; emoji = "â›ˆï¸"; }
+                await reply(`ğŸŒ Hava Durumu (${name}): ${cond} ${emoji}, ${w.temperature}Â°C, RÃ¼zgar: ${w.windspeed} km/s`);
+            } else await reply("Åžehir bulunamadÄ±.");
+        } catch { await reply("Hava durumu servisi ÅŸu an kullanÄ±lamÄ±yor."); }
     }
 
-    else if (settings.soz !== false && lowMsg === '!söz') {
-        const list = ["Gülüşüne yağmur yağsa, sırılsıklam olurum.", "Seninle her şey güzel, sensiz her şey boş.", "Gözlerin gökyüzü, ben ise kayıp bir uçurtma.", "Hayat kısa, kuşlar uçuyor."];
-        await reply(`✍️ @${user}: ${list[Math.floor(Math.random() * list.length)]}`);
+    else if (settings.soz !== false && lowMsg === '!sÃ¶z') {
+        const list = ["GÃ¼lÃ¼ÅŸÃ¼ne yaÄŸmur yaÄŸsa, sÄ±rÄ±lsÄ±klam olurum.", "Seninle her ÅŸey gÃ¼zel, sensiz her ÅŸey boÅŸ.", "GÃ¶zlerin gÃ¶kyÃ¼zÃ¼, ben ise kayÄ±p bir uÃ§urtma.", "Hayat kÄ±sa, kuÅŸlar uÃ§uyor."];
+        await reply(`âœï¸ @${user}: ${list[Math.floor(Math.random() * list.length)]}`);
     }
 
     else if (isEnabled('fal') && lowMsg === '!efkar') {
         const p = Math.floor(Math.random() * 101);
-        await reply(`🚬 @${user} Efkar Seviyesi: %${p} ${p > 70 ? '😭🚬' : '🍷'}`);
+        await reply(`ğŸš¬ @${user} Efkar Seviyesi: %${p} ${p > 70 ? 'ğŸ˜­ğŸš¬' : 'ğŸ·'}`);
+    }
+
+    // --- YENÄ° BAKÄ°YE HARCAMA KOMUTLARI: TTS & SES ---
+    else if (lowMsg.startsWith('!tts')) {
+        const text = args.join(' ');
+        if (!text) return await reply(`@${user}, !tts [mesaj] ÅŸeklinde kullanmalÄ±sÄ±n!`);
+        if (text.length > 100) return await reply(`@${user}, Mesaj Ã§ok uzun! (Maks 100 karakter)`);
+
+        const snap = await userRef.once('value');
+        if ((snap.val()?.balance || 0) < 2500) return await reply(`@${user}, TTS iÃ§in 2.500 ğŸ’° lazÄ±m!`);
+
+        await userRef.transaction(u => { if (u) u.balance -= 2500; return u; });
+        await db.ref('stream_events/tts').push({ text: `@${user} diyor ki: ${text}`, played: false, timestamp: Date.now() });
+        await reply(`ğŸ™ï¸ @${user}, MesajÄ±n yayÄ±na gÃ¶nderildi! (-2,500 ğŸ’°)`);
+    }
+
+    else if (lowMsg.startsWith('!ses')) {
+        const soundId = args[0]?.toLowerCase();
+        const sounds = ["alkis", "gol", "korku", "gulme"];
+        if (!soundId || !sounds.includes(soundId)) return await reply(`@${user}, GeÃ§ersiz ses! Mevcutlar: ${sounds.join(', ')}`);
+
+        const snap = await userRef.once('value');
+        if ((snap.val()?.balance || 0) < 1000) return await reply(`@${user}, Ses efekti iÃ§in 1.000 ğŸ’° lazÄ±m!`);
+
+        await userRef.transaction(u => { if (u) u.balance -= 1000; return u; });
+        await db.ref('stream_events/sound').push({ soundId, played: false, timestamp: Date.now() });
+        await reply(`ğŸµ @${user}, ${soundId} sesi Ã§alÄ±nÄ±yor! (-1,000 ğŸ’°)`);
+    }
+
+    else if (lowMsg === '!sesler') {
+        await reply(`🔊 Mevcut Sesler: alkis, gol, korku, gulme (!ses [ad] ile kullanabilirsin)`);
     }
 
     // --- ADMIN / MOD ---
@@ -688,14 +752,14 @@ app.post('/kick/webhook', async (req, res) => {
         if (target) {
             const snap = await userRef.once('value');
             if ((snap.val()?.balance || 0) < 10000) {
-                await reply(`@${user}, 10.000 💰 bakiye lazım!`);
+                await reply(`@${user}, 10.000 ğŸ’° bakiye lazÄ±m!`);
             } else {
                 const result = await timeoutUser(broadcasterId, target, 600);
                 if (result.success) {
                     await userRef.transaction(u => { if (u) u.balance -= 10000; return u; });
-                    await reply(`🔇 @${user}, @${target} kullanıcısını 10 dakika susturdu! (-10.000 💰)`);
+                    await reply(`ğŸ”‡ @${user}, @${target} kullanÄ±cÄ±sÄ±nÄ± 10 dakika susturdu! (-10.000 ğŸ’°)`);
 
-                    // BAN İSTATİSTİĞİ (Target kullanıcısının ban sayısını artır)
+                    // BAN Ä°STATÄ°STÄ°ÄÄ° (Target kullanÄ±cÄ±sÄ±nÄ±n ban sayÄ±sÄ±nÄ± artÄ±r)
                     const targetRef = db.ref(`users/${target}`);
                     await targetRef.transaction(u => {
                         if (!u) u = { balance: 0 };
@@ -736,68 +800,81 @@ app.post('/kick/webhook', async (req, res) => {
 
     else if (lowMsg.startsWith('!tahmin') || lowMsg.startsWith('!oyla') || lowMsg.startsWith('!sonuç') || lowMsg.startsWith('!piyango')) {
         // TAHMİN
-        if (lowMsg === '!tahmin iptal' && isAuthorized && activePrediction && activePrediction.channel === broadcasterId) {
-            activePrediction = null; await reply(`❌ Tahmin iptal edildi.`);
+        const pred = channelPredictions[broadcasterId];
+        if (lowMsg === '!tahmin iptal' && isAuthorized && pred) {
+            delete channelPredictions[broadcasterId];
+            await reply(`❌ Tahmin iptal edildi.`);
         }
         else if (lowMsg.startsWith('!tahmin') && isAuthorized) {
-            const ft = args.join(" "); const [q, opts] = ft.split("|");
+            const ft = args.join(" ");
+            const [q, opts] = ft.split("|");
             if (!q || !opts) return await reply(`@${user}, !tahmin Soru | Seç1 - Seç2`);
-            activePrediction = { q: q.trim(), options: opts.split("-").map(s => s.trim()), v1: 0, v2: 0, voters: {}, channel: broadcasterId };
+            channelPredictions[broadcasterId] = { q: q.trim(), options: opts.split("-").map(s => s.trim()), v1: 0, v2: 0, voters: {} };
             await reply(`📊 TAHMİN: ${q.trim()} | !oyla 1 veya !oyla 2`);
         }
-        else if (lowMsg.startsWith('!oyla') && activePrediction && activePrediction.channel === broadcasterId) {
-            if (!activePrediction.voters[user]) {
+        else if (lowMsg.startsWith('!oyla') && pred) {
+            if (!pred.voters[user]) {
                 const pick = args[0];
                 if (pick === '1' || pick === '2') {
-                    activePrediction[pick === '1' ? 'v1' : 'v2']++;
-                    activePrediction.voters[user] = pick;
+                    pred[pick === '1' ? 'v1' : 'v2']++;
+                    pred.voters[user] = pick;
                     await reply(`🗳️ @${user} oy kullandı.`);
                 }
             }
         }
-        else if (lowMsg.startsWith('!sonuç') && activePrediction && activePrediction.channel === broadcasterId && isAuthorized) {
-            await reply(`📊 SONUÇ: Evet: ${activePrediction.v1} - Hayır: ${activePrediction.v2}`);
-            activePrediction = null;
+        else if (lowMsg.startsWith('!sonuç') && pred && isAuthorized) {
+            await reply(`📊 SONUÇ: ${pred.options[0]}: ${pred.v1} - ${pred.options[1]}: ${pred.v2}`);
+            delete channelPredictions[broadcasterId];
         }
         // PİYANGO
         else if (lowMsg.startsWith('!piyango')) {
             const sub = args[0]?.toLowerCase();
+            const p = channelLotteries[broadcasterId];
             if (sub === 'başla' && isAuthorized) {
-                activePiyango = { p: [], cost: parseInt(args[1]) || 500, pool: 0, channel: broadcasterId };
-                await reply(`🎰 PİYANGO BAŞLADI! Giriş: ${activePiyango.cost} 💰 | !piyango katıl`);
+                const cost = parseInt(args[1]) || 500;
+                channelLotteries[broadcasterId] = { p: [], cost, pool: 0 };
+                await reply(`🎰 PİYANGO BAŞLADI! Giriş: ${cost} 💰 | !piyango katıl`);
             }
-            else if (sub === 'katıl' && activePiyango && activePiyango.channel === broadcasterId) {
-                if (!activePiyango.p.includes(user)) {
-                    const d = (await userRef.once('value')).val() || { balance: 0 };
-                    if (d.balance >= activePiyango.cost) {
-                        await userRef.update({ balance: d.balance - activePiyango.cost });
-                        activePiyango.p.push(user); activePiyango.pool += activePiyango.cost;
-                        await reply(`🎟️ @${user} katıldı! Havuz: ${activePiyango.pool}`);
-                    } else await reply('Bakiye yetersiz.');
+            else if (sub === 'katıl' && p) {
+                if (!p.p.includes(user)) {
+                    const dSnap = await userRef.once('value');
+                    const d = dSnap.val() || { balance: 0 };
+                    if (d.balance >= p.cost) {
+                        await userRef.transaction(u => { if (u) u.balance -= p.cost; return u; });
+                        p.p.push(user); p.pool += p.cost;
+                        await reply(`🎟️ @${user} katıldı! Havuz: ${p.pool} 💰`);
+                    } else await reply(`@${user}, Bakiye yetersiz! (${p.cost} 💰 lazım)`);
                 }
             }
-            else if (sub === 'bitir' && activePiyango && activePiyango.channel === broadcasterId && isAuthorized) {
-                if (!activePiyango.p.length) { activePiyango = null; await reply('Katılım yok.'); }
-                else {
-                    const win = activePiyango.p[Math.floor(Math.random() * activePiyango.p.length)];
-                    await db.ref('users/' + win.toLowerCase()).transaction(u => { if (u) u.balance += activePiyango.pool; return u; });
-                    await reply(`🎉 PİYANGO KAZANANI: @${win} (+${activePiyango.pool} 💰)`);
-                    activePiyango = null;
+            else if (sub === 'bitir' && p && isAuthorized) {
+                if (!p.p.length) {
+                    delete channelLotteries[broadcasterId];
+                    await reply('❌ Katılım yok.');
+                } else {
+                    const winner = p.p[Math.floor(Math.random() * p.p.length)];
+                    const winAmt = p.pool;
+                    await db.ref('users/' + winner.toLowerCase()).transaction(u => {
+                        if (!u) u = { balance: 0 };
+                        u.balance = (u.balance || 0) + winAmt;
+                        return u;
+                    });
+                    await reply(`🎉 PİYANGO KAZANANI: @${winner} (+${winAmt.toLocaleString()} 💰)`);
+                    delete channelLotteries[broadcasterId];
                 }
             }
         }
     }
 
     else if (lowMsg === '!komutlar') {
-        const toggleable = ['slot', 'yazitura', 'kutu', 'duello', 'soygun', 'fal', 'ship', 'hava', 'zenginler', 'söz'];
+        const toggleable = ['slot', 'yazitura', 'kutu', 'duello', 'soygun', 'fal', 'ship', 'hava', 'zenginler', 'sÃ¶z'];
         const enabled = toggleable.filter(k => settings[k] !== false).map(k => "!" + k);
-        const fixed = ['!bakiye', '!günlük', '!sustur', '!efkar'];
-        await reply(`📋 Komutlar: ${[...enabled, ...fixed].join(', ')}`);
+        const fixed = ['!bakiye', '!gÃ¼nlÃ¼k', '!sustur', '!efkar'];
+        await reply(`ğŸ“‹ Komutlar: ${[...enabled, ...fixed].join(', ')}`);
     }
 });
 
 // ---------------------------------------------------------
-// 5. ADMIN PANEL & API (GELİŞMİŞ)
+// 5. ADMIN PANEL & API (GELÄ°ÅMÄ°Å)
 // ---------------------------------------------------------
 const ADMIN_KEY = process.env.ADMIN_KEY || "Aloske123!";
 
@@ -806,7 +883,7 @@ app.get('/admin', (req, res) => { res.sendFile(path.join(__dirname, 'admin.html'
 const authAdmin = (req, res, next) => {
     const key = req.headers['authorization'] || req.body.key;
     if (key === ADMIN_KEY) return next();
-    res.status(403).json({ success: false, error: 'Yetkisiz Erişim' });
+    res.status(403).json({ success: false, error: 'Yetkisiz EriÅŸim' });
 };
 
 // ... Eski API'ler ...
@@ -828,7 +905,7 @@ app.post('/admin-api/rig-gamble', authAdmin, (req, res) => {
     res.json({ success: true });
 });
 
-// CHAT AKSİYONLARI (API tabanlı moderasyon)
+// CHAT AKSÄ°YONLARI (API tabanlÄ± moderasyon)
 app.post('/admin-api/chat-action', authAdmin, async (req, res) => {
     const { action, channelId } = req.body;
 
@@ -846,14 +923,14 @@ app.post('/admin-api/chat-action', authAdmin, async (req, res) => {
     res.json(result);
 });
 
-// ADMIN TIMEOUT (Kanal ve kullanıcı belirterek susturma)
+// ADMIN TIMEOUT (Kanal ve kullanÄ±cÄ± belirterek susturma)
 app.post('/admin-api/timeout', authAdmin, async (req, res) => {
     const { channelId, username, duration } = req.body;
     const result = await timeoutUser(channelId, username, duration || 600);
     res.json(result);
 });
 
-// YENİ: KANAL LİSTESİ (POST oldu)
+// YENÄ°: KANAL LÄ°STESÄ° (POST oldu)
 app.post('/admin-api/channels', authAdmin, async (req, res) => {
     const snap = await db.ref('channels').once('value');
     const channels = snap.val() || {};
@@ -867,26 +944,26 @@ app.post('/admin-api/toggle-command', authAdmin, async (req, res) => {
     res.json({ success: true });
 });
 
-// KANAL SİL
+// KANAL SÄ°L
 app.post('/admin-api/delete-channel', authAdmin, async (req, res) => {
     await db.ref('channels/' + req.body.channelId).remove();
     res.json({ success: true });
 });
 
-// TÜM KULLANICILAR
+// TÃœM KULLANICILAR
 app.post('/admin-api/all-users', authAdmin, async (req, res) => {
     const snap = await db.ref('users').limitToFirst(100).once('value');
     res.json(snap.val() || {});
 });
 
-// KULLANICI GÜNCELLE
+// KULLANICI GÃœNCELLE
 app.post('/admin-api/update-user', authAdmin, async (req, res) => {
     const { user, balance } = req.body;
     await db.ref('users/' + user.toLowerCase()).update({ balance: parseInt(balance) });
     res.json({ success: true });
 });
 
-// KANAL DUYURUSU (Tek kanala mesaj gönder)
+// KANAL DUYURUSU (Tek kanala mesaj gÃ¶nder)
 app.post('/admin-api/send-message', authAdmin, async (req, res) => {
     const { channelId, message } = req.body;
     try {
@@ -897,6 +974,40 @@ app.post('/admin-api/send-message', authAdmin, async (req, res) => {
     }
 });
 
+// OVERLAY CONFIG API
+app.get('/api/overlay-config', (req, res) => {
+    res.json({
+        apiKey: process.env.FIREBASE_API_KEY,
+        databaseURL: process.env.FIREBASE_DB_URL,
+        projectId: process.env.FIREBASE_PROJECT_ID || "kickchatbot-oloske"
+    });
+});
+
+app.get('/overlay', (req, res) => { res.sendFile(path.join(__dirname, 'overlay.html')); });
+
 app.get('/', (req, res) => { res.sendFile(path.join(__dirname, 'shop.html')); });
+
+// ---------------------------------------------------------
+// 6. PASSIVE INCOME (10 DK Ä°ZLEME Ã–DÃœLÃœ)
+// ---------------------------------------------------------
+setInterval(async () => {
+    console.log("ğŸ’° Pasif bakiye daÄŸÄ±tÄ±mÄ± baÅŸlÄ±yor...");
+    const tenMinsAgo = Date.now() - (10 * 60 * 1000);
+    const usersSnap = await db.ref('users').once('value');
+    const allUsers = usersSnap.val() || {};
+
+    let rewardedCount = 0;
+    for (const [username, data] of Object.entries(allUsers)) {
+        if (data.last_seen && data.last_seen > tenMinsAgo) {
+            await db.ref('users/' + username).transaction(u => {
+                if (u) u.balance = (u.balance || 0) + 100;
+                return u;
+            });
+            rewardedCount++;
+        }
+    }
+    console.log(`âœ… ${rewardedCount} aktif kullanÄ±cÄ±ya 100 ğŸ’° daÄŸÄ±tÄ±ldÄ±.`);
+}, 10 * 60 * 1000); // 10 Dakikada bir
+
 const PORT = process.env.PORT || 3000;
-app.listen(PORT, () => console.log(`🚀 MASTER FINAL (MULTI-CHANNEL) AKTIF!`));
+app.listen(PORT, () => console.log(`ğŸš€ MASTER FINAL (MULTI-CHANNEL) AKTIF!`));

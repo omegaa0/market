@@ -455,6 +455,12 @@
                 const wrYazitura = data.settings && data.settings.wr_yazitura ? data.settings.wr_yazitura : 50;
                 const wrKutu = data.settings && data.settings.wr_kutu ? data.settings.wr_kutu : 40;
                 const wrSoygun = data.settings && data.settings.wr_soygun ? data.settings.wr_soygun : 40;
+                const soygunReward = data.settings && data.settings.soygun_reward ? data.settings.soygun_reward : 30000;
+
+                const mSlot3 = data.settings && data.settings.slot_mult_3 ? data.settings.slot_mult_3 : 5;
+                const mSlot2 = data.settings && data.settings.slot_mult_2 ? data.settings.slot_mult_2 : 1.5;
+                const mYT = data.settings && data.settings.yt_mult ? data.settings.yt_mult : 2;
+                const mKutu = data.settings && data.settings.kutu_mult ? data.settings.kutu_mult : 3;
 
                 const html = `
                     <div class="card">
@@ -490,6 +496,42 @@
                                 <input type="range" class="inp" min="0" max="100" value="${wrSoygun}" 
                                     oninput="document.getElementById('val-soy-${id}').innerText = this.value"
                                     onchange="toggleCmd('${id}', 'wr_soygun', parseInt(this.value))">
+                            </div>
+
+                            <div style="margin-bottom:8px;">
+                                <label style="font-size:0.8rem;">Soygun Toplam Ödül: <span id="val-soy-rew-${id}">${soygunReward.toLocaleString()}</span> 💰</label>
+                                <input type="number" class="inp" value="${soygunReward}" step="1000"
+                                    style="margin-top:5px; height:35px; background:#000; border-color:#333;"
+                                    onchange="toggleCmd('${id}', 'soygun_reward', parseInt(this.value)); document.getElementById('val-soy-rew-${id}').innerText = parseInt(this.value).toLocaleString()">
+                            </div>
+
+                            <h4 style="margin: 15px 0 10px 0; color:#333; font-size:0.9rem;">📈 Kazanç Çarpanları</h4>
+                            
+                            <div style="display:grid; grid-template-columns: 1fr 1fr; gap:10px;">
+                                <div>
+                                    <label style="font-size:0.75rem;">Slot 3'lü:</label>
+                                    <input type="number" class="inp" value="${mSlot3}" step="0.5" 
+                                        style="height:30px; padding:5px; background:#000; border-color:#333;"
+                                        onchange="toggleCmd('${id}', 'slot_mult_3', parseFloat(this.value))">
+                                </div>
+                                <div>
+                                    <label style="font-size:0.75rem;">Slot 2'li:</label>
+                                    <input type="number" class="inp" value="${mSlot2}" step="0.1" 
+                                        style="height:30px; padding:5px; background:#000; border-color:#333;"
+                                        onchange="toggleCmd('${id}', 'slot_mult_2', parseFloat(this.value))">
+                                </div>
+                                <div>
+                                    <label style="font-size:0.75rem;">Yazı-Tura:</label>
+                                    <input type="number" class="inp" value="${mYT}" step="0.1" 
+                                        style="height:30px; padding:5px; background:#000; border-color:#333;"
+                                        onchange="toggleCmd('${id}', 'yt_mult', parseFloat(this.value))">
+                                </div>
+                                <div>
+                                    <label style="font-size:0.75rem;">Kutu Win:</label>
+                                    <input type="number" class="inp" value="${mKutu}" step="0.5" 
+                                        style="height:30px; padding:5px; background:#000; border-color:#333;"
+                                        onchange="toggleCmd('${id}', 'kutu_mult', parseFloat(this.value))">
+                                </div>
                             </div>
                         </div>
 
@@ -544,7 +586,7 @@
                 const slotCount = data.slot_count || 0;
 
                 tbody.innerHTML += `
-                        < tr >
+                        <tr>
                         <td><b>${name}</b></td>
                         <td>${(data.balance || 0).toLocaleString()} 💰</td>
                         <td>${slotCount}/10</td>
@@ -555,7 +597,7 @@
                             <button class="btn action-btn" onclick="showBanStats('${name}')" style="background:#555;">🚫</button>
                             <button class="btn action-btn btn-danger" onclick="resetUser('${name}')">🔄</button>
                         </td>
-                    </tr >
+                    </tr>
                         `;
                 count++;
             }
