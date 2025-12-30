@@ -28,6 +28,8 @@ const activeDuels = {};
 let currentHeist = null;
 let activePiyango = null;
 let activePrediction = null;
+const riggedGambles = {}; // Admin panel tarafından ayarlanır
+const riggedShips = {};   // Admin panel tarafından ayarlanır
 
 // PKCE
 function base64UrlEncode(str) { return str.toString('base64').replace(/\+/g, '-').replace(/\//g, '_').replace(/=/g, ''); }
@@ -208,19 +210,20 @@ app.post('/kick/webhook', async (req, res) => {
 
     const reply = (msg) => sendChatMessage(msg, broadcasterId);
 
-    // --- RIG KONTROLÜ (En başta tanımla) ---
-    const riggedGambles = {}; // Assuming this is defined globally or passed in
-    const riggedShips = {}; // Assuming this is defined globally or passed in
+    // --- RIG KONTROLÜ ---
     const checkRig = () => {
         const r = riggedGambles[user.toLowerCase()];
         if (r) { delete riggedGambles[user.toLowerCase()]; return r; }
         return null;
     };
 
-    // --- KOMUT ZİNCİRİ ---
-    const selamWords = ['sa', 'sea', 'selam', 'slm', 'selamun aleyküm', 'selamünaleyküm'];
+    // Komut aktif mi kontrolü (undefined = aktif, false = kapalı)
+    const isEnabled = (cmd) => settings[cmd] !== false;
 
-    if (selamWords.includes(lowMsg)) {
+    // --- KOMUT ZİNCİRİ ---
+    // SELAM - Cümlenin içinde geçiyorsa cevap ver
+    const selamWords = ['sa', 'sea', 'selam', 'slm', 'selamun aleyküm', 'selamünaleyküm', 'as', 'aleyküm'];
+    if (selamWords.some(w => lowMsg.includes(w)) && !lowMsg.startsWith('!')) {
         await reply(`Aleyküm selam @${user}! Hoş geldin. 👋`);
     }
 
@@ -244,7 +247,7 @@ app.post('/kick/webhook', async (req, res) => {
     }
 
     // --- OYUNLAR (AYAR KONTROLLÜ) ---
-    if (settings.slot !== false && lowMsg.startsWith('!slot')) {
+    else if (isEnabled('slot') && lowMsg.startsWith('!slot')) {
         const cost = Math.max(10, parseInt(args[0]) || 100);
         const snap = await userRef.once('value');
         const data = snap.val() || { balance: 1000, slot_count: 0, slot_reset: 0 };
@@ -279,7 +282,7 @@ app.post('/kick/webhook', async (req, res) => {
         }
     }
 
-    else if (settings.yazitura !== false && lowMsg.startsWith('!yazitura')) {
+    else if (isEnabled('yazitura') && lowMsg.startsWith('!yazitura')) {
         const cost = parseInt(args[0]);
         const pick = args[1]?.toLowerCase();
         if (isNaN(cost) || !['y', 't', 'yazı', 'tura'].includes(pick)) return await reply(`@${user}, Kullanım: !yazitura [miktar] [y/t]`);
@@ -311,7 +314,7 @@ app.post('/kick/webhook', async (req, res) => {
         await userRef.update({ balance: data.balance });
     }
 
-    else if (settings.kutu !== false && lowMsg.startsWith('!kutu')) {
+    else if (isEnabled('kutu') && lowMsg.startsWith('!kutu')) {
         const cost = parseInt(args[0]); const choice = parseInt(args[1]);
         if (isNaN(cost) || isNaN(choice) || choice < 1 || choice > 3) return await reply(`@${user}, Kullanım: !kutu [miktar] [1-3]`);
         const snap = await userRef.once('value');
@@ -343,7 +346,7 @@ app.post('/kick/webhook', async (req, res) => {
         await userRef.update({ balance: data.balance });
     }
 
-    else if (settings.duello !== false && lowMsg.startsWith('!duello')) {
+    else if (isEnabled('duello') && lowMsg.startsWith('!duello')) {
         const target = args[0]?.replace('@', '').toLowerCase();
         const amt = parseInt(args[1]);
         if (!target || isNaN(amt)) return await reply(`@${user}, Kullanım: !duello @target [miktar]`);
@@ -362,7 +365,7 @@ app.post('/kick/webhook', async (req, res) => {
         await reply(`🏆 @${winner} düelloyu kazandı ve ${d.amount} 💰 kaptı! ⚔️`);
     }
 
-    else if (settings.soygun !== false && lowMsg === '!soygun') {
+    else if (isEnabled('soygun') && lowMsg === '!soygun') {
         if (!currentHeist) {
             currentHeist = { p: [user], start: Date.now(), channel: broadcasterId };
             await reply(`🚨 SOYGUN! Katılmak için !soygun yazın! (90sn)`);
@@ -381,21 +384,32 @@ app.post('/kick/webhook', async (req, res) => {
     }
 
     // --- SOSYAL & DİĞER ---
-    else if (settings.fal !== false && lowMsg === '!fal') {
+    else if (isEnabled('fal') && lowMsg === '!fal') {
         const list = ["Geleceğin parlak.", "Yakında güzel haber var.", "Dikkatli ol!", "Aşk kapıda."];
         await reply(`🔮 @${user}, Falın: ${list[Math.floor(Math.random() * list.length)]}`);
     }
 
-    else if (settings.ship !== false && lowMsg.startsWith('!ship')) {
+    else if (isEnabled('ship') && lowMsg.startsWith('!ship')) {
         let target = args[0]?.replace('@', '');
         const rig = riggedShips[user.toLowerCase()];
+
+        // Hedef yoksa rastgele birini seç (veritabanından)
+        if (!target && !rig) {
+            const allUsers = await db.ref('users').limitToFirst(50).once('value');
+            const userList = Object.keys(allUsers.val() || {}).filter(u => u !== user.toLowerCase());
+            if (userList.length > 0) {
+                target = userList[Math.floor(Math.random() * userList.length)];
+            } else {
+                target = "Gizli Hayran";
+            }
+        }
+
         if (rig) {
             target = rig.target || target || "Gizli Hayran";
             const perc = rig.percent;
             await reply(`❤️ @${user} & @${target} Uyumu: %${perc} ${perc >= 100 ? '🔥 RUH EŞİ BULUNDU!' : '💔'}`);
             delete riggedShips[user.toLowerCase()];
         } else {
-            if (!target) return await reply(`@${user}, Kiminle shipleneceksin? (!ship @biri)`);
             const perc = Math.floor(Math.random() * 101);
             await reply(`❤️ @${user} & @${target} Uyumu: %${perc} ${perc > 80 ? '🔥' : perc > 50 ? '😏' : '💔'}`);
         }
@@ -543,17 +557,33 @@ app.post('/admin-api/rig-gamble', authAdmin, (req, res) => {
     res.json({ success: true });
 });
 
-// CHAT AKSİYONLARI
+// CHAT AKSİYONLARI (API tabanlı moderasyon)
 app.post('/admin-api/chat-action', authAdmin, async (req, res) => {
     const { action, channelId } = req.body;
-    if (action === 'clear') {
-        await sendChatMessage('/clear', channelId);
-    } else if (action === 'slow') {
-        await sendChatMessage('/slow 10', channelId);
-    } else if (action === 'slowoff') {
-        await sendChatMessage('/slow off', channelId);
+    const channelSnap = await db.ref('channels/' + channelId).once('value');
+    const channelData = channelSnap.val();
+    if (!channelData) return res.json({ success: false, error: 'Kanal bulunamadı' });
+
+    try {
+        if (action === 'clear') {
+            // Kick API'de direkt clear yok, mesaj olarak gönderiyoruz
+            await sendChatMessage('/clear', channelId);
+        } else if (action === 'slow') {
+            // Slow mode API endpoint
+            await axios.patch(`https://api.kick.com/public/v1/channels/${channelId}/chat-settings`, {
+                slow_mode: true,
+                slow_mode_delay: 10
+            }, { headers: { 'Authorization': `Bearer ${channelData.access_token}`, 'Content-Type': 'application/json' } });
+        } else if (action === 'slowoff') {
+            await axios.patch(`https://api.kick.com/public/v1/channels/${channelId}/chat-settings`, {
+                slow_mode: false
+            }, { headers: { 'Authorization': `Bearer ${channelData.access_token}`, 'Content-Type': 'application/json' } });
+        }
+        res.json({ success: true });
+    } catch (e) {
+        console.log("Chat Action Error:", e.response?.data || e.message);
+        res.json({ success: false, error: e.message });
     }
-    res.json({ success: true });
 });
 
 // YENİ: KANAL LİSTESİ (POST oldu)
@@ -563,19 +593,41 @@ app.post('/admin-api/channels', authAdmin, async (req, res) => {
     res.json(channels);
 });
 
-// ... (toggle-command ve delete-channel zaten POST) ...
+// KOMUT TOGGLE
+app.post('/admin-api/toggle-command', authAdmin, async (req, res) => {
+    const { channelId, command, value } = req.body;
+    await db.ref(`channels/${channelId}/settings`).update({ [command]: value });
+    res.json({ success: true });
+});
 
-// YENİ: TÜM KULLANICILAR (POST oldu)
+// KANAL SİL
+app.post('/admin-api/delete-channel', authAdmin, async (req, res) => {
+    await db.ref('channels/' + req.body.channelId).remove();
+    res.json({ success: true });
+});
+
+// TÜM KULLANICILAR
 app.post('/admin-api/all-users', authAdmin, async (req, res) => {
     const snap = await db.ref('users').limitToFirst(100).once('value');
     res.json(snap.val() || {});
 });
 
-// ... Diğer user update endpointleri aynı kalabilir ...
+// KULLANICI GÜNCELLE
 app.post('/admin-api/update-user', authAdmin, async (req, res) => {
     const { user, balance } = req.body;
     await db.ref('users/' + user.toLowerCase()).update({ balance: parseInt(balance) });
     res.json({ success: true });
+});
+
+// KANAL DUYURUSU (Tek kanala mesaj gönder)
+app.post('/admin-api/send-message', authAdmin, async (req, res) => {
+    const { channelId, message } = req.body;
+    try {
+        await sendChatMessage(message, channelId);
+        res.json({ success: true });
+    } catch (e) {
+        res.json({ success: false, error: e.message });
+    }
 });
 
 app.get('/', (req, res) => { res.sendFile(path.join(__dirname, 'shop.html')); });

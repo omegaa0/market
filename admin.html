@@ -359,10 +359,14 @@
 
         <div id="global" class="section">
             <div class="card">
-                <h3>Global Bot Duyurusu</h3>
-                <p style="margin-bottom:10px; color:#888;">Bu mesaj bağlı olan TÜM kanalların chatine gönderilir.</p>
-                <textarea id="globalMsg" class="inp" style="height:100px; resize:none"></textarea>
-                <button class="btn" onclick="sendGlobal()">HERKESE GÖNDER</button>
+                <h3>📢 Kanal Duyurusu</h3>
+                <p style="margin-bottom:10px; color:#888;">Seçili kanala mesaj gönder.</p>
+                <select id="targetChannel" class="inp" style="margin-bottom:10px;">
+                    <option value="">Kanal Seçin...</option>
+                </select>
+                <textarea id="channelMsg" class="inp" style="height:100px; resize:none"
+                    placeholder="Mesajınızı yazın..."></textarea>
+                <button class="btn" onclick="sendToChannel()">MESAJ GÖNDER</button>
             </div>
         </div>
     </div>
@@ -411,7 +415,14 @@
                 return;
             }
 
+            // Kanal dropdown'unu doldur (Global sekmesi için)
+            const dropdown = document.getElementById('targetChannel');
+            dropdown.innerHTML = '<option value="">Kanal Seçin...</option>';
+
             for (const [id, data] of Object.entries(channels)) {
+                // Dropdown'a ekle
+                dropdown.innerHTML += `<option value="${id}">${data.username || id}</option>`;
+
                 let toggles = "";
                 COMMANDS.forEach(cmd => {
                     const isChecked = data.settings && data.settings[cmd] !== false ? "checked" : "";
@@ -508,8 +519,23 @@
             }
         }
 
-        async function sendGlobal() {
-            alert("Bu özellik şu an bakımda (Çoklu kanal desteği nedeniyle).");
+        async function sendToChannel() {
+            const channelId = document.getElementById('targetChannel').value;
+            const message = document.getElementById('channelMsg').value;
+            if (!channelId) return alert("Kanal seçmelisin!");
+            if (!message.trim()) return alert("Mesaj yazmalısın!");
+
+            const res = await fetch('/admin-api/send-message', {
+                method: 'POST', headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({ key: sessionKey, channelId: parseInt(channelId), message })
+            });
+            const data = await res.json();
+            if (data.success) {
+                alert("Mesaj gönderildi! ✅");
+                document.getElementById('channelMsg').value = '';
+            } else {
+                alert("Hata: " + (data.error || "Bilinmeyen"));
+            }
         }
 
         // TROLL ACTIONS
