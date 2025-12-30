@@ -221,10 +221,18 @@ app.post('/kick/webhook', async (req, res) => {
     const isEnabled = (cmd) => settings[cmd] !== false;
 
     // --- KOMUT ZİNCİRİ ---
-    // SELAM - Cümlenin içinde geçiyorsa cevap ver
-    const selamWords = ['sa', 'sea', 'selam', 'slm', 'selamun aleyküm', 'selamünaleyküm', 'as', 'aleyküm'];
-    if (selamWords.some(w => lowMsg.includes(w)) && !lowMsg.startsWith('!')) {
-        await reply(`Aleyküm selam @${user}! Hoş geldin. 👋`);
+    // SELAM - Sadece tam kelime olarak geçiyorsa cevap ver (ve cooldown)
+    const selamRegex = /\b(sa|sea|selam|slm|as|selamün aleyküm|selamünaleyküm)\b/i;
+    const selamCooldowns = global.selamCooldowns || (global.selamCooldowns = {});
+    const userCooldownKey = `${broadcasterId}_${user.toLowerCase()}`;
+    const now = Date.now();
+
+    if (selamRegex.test(lowMsg) && !lowMsg.startsWith('!') && !lowMsg.includes('aleyküm')) {
+        // Aynı kullanıcıya 60 saniye içinde tekrar cevap verme
+        if (!selamCooldowns[userCooldownKey] || now - selamCooldowns[userCooldownKey] > 60000) {
+            selamCooldowns[userCooldownKey] = now;
+            await reply(`Aleyküm selam @${user}! Hoş geldin. 👋`);
+        }
     }
 
     else if (lowMsg === '!bakiye') {
