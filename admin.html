@@ -449,15 +449,21 @@
                 const date = data.last_seen ? new Date(data.last_seen).toLocaleDateString('tr-TR') : '-';
                 list.innerHTML += `
                     <tr>
-                        <td>${username}</td>
+                        <td><b>${username}</b></td>
                         <td>${(data.balance || 0).toLocaleString()} 💰</td>
                         <td>${date}</td>
                         <td>
-                            <button class="btn" style="padding:4px 8px; font-size:0.7rem;" onclick="editUser('${username}', ${data.balance || 0})">Düzenle</button>
+                            <button class="btn" style="padding:4px 8px; font-size:0.75rem; background:#222;" onclick="editBalance('${username}', ${data.balance || 0})">💰</button>
+                            <button class="btn" style="padding:4px 8px; font-size:0.75rem; background:#555;" onclick="showBanStats('${username}')">🚫</button>
+                            <button class="btn btn-danger" style="padding:4px 8px; font-size:0.75rem;" onclick="resetUser('${username}')">🔄</button>
                         </td>
                     </tr>
                 `;
             });
+
+            if (Object.keys(users).length === 0) {
+                list.innerHTML = '<tr><td colspan="4" style="text-align:center; color:#666; padding:20px;">Kullanıcı bulunamadı.</td></tr>';
+            }
         }
 
         async function loadChannels() {
@@ -819,60 +825,7 @@
             loadChannels();
         }
 
-        async function loadUsers() {
-            const res = await fetch('/admin-api/all-users', {
-                method: 'POST',
-                headers: { 'Content-Type': 'application/json' },
-                body: JSON.stringify({ key: sessionKey })
-            });
-            allUsers = await res.json();
-            renderUsers(allUsers);
-        }
-
-        function renderUsers(users) {
-            const tbody = document.getElementById('user-table-body');
-            tbody.innerHTML = "";
-            let count = 0;
-
-            // Bakiyeye göre sırala
-            const sorted = Object.entries(users).sort((a, b) => (b[1].balance || 0) - (a[1].balance || 0));
-
-            for (const [name, data] of sorted) {
-                if (count > 100) break;
-                const createdDate = data.created_at ? new Date(data.created_at).toLocaleDateString('tr-TR') : '-';
-                const lastDaily = data.lastDaily ? new Date(data.lastDaily).toLocaleDateString('tr-TR') : '-';
-                const slotCount = data.slot_count || 0;
-
-                tbody.innerHTML += `
-                        <tr>
-                        <td><b>${name}</b></td>
-                        <td>${(data.balance || 0).toLocaleString()} 💰</td>
-                        <td>${slotCount}/10</td>
-                        <td>${createdDate}</td>
-                        <td>${lastDaily}</td>
-                        <td>
-                            <button class="btn action-btn" onclick="editBalance('${name}', ${data.balance || 0})">💰</button>
-                            <button class="btn action-btn" onclick="showBanStats('${name}')" style="background:#555;">🚫</button>
-                            <button class="btn action-btn btn-danger" onclick="resetUser('${name}')">🔄</button>
-                        </td>
-                    </tr>
-                        `;
-                count++;
-            }
-
-            if (count === 0) {
-                tbody.innerHTML = '<tr><td colspan="6" style="text-align:center; color:#666;">Kullanıcı bulunamadı</td></tr>';
-            }
-        }
-
-        function filterUsers() {
-            const query = document.getElementById('userSearch').value.toLowerCase();
-            const filtered = {};
-            for (const [name, data] of Object.entries(allUsers)) {
-                if (name.includes(query)) filtered[name] = data;
-            }
-            renderUsers(filtered);
-        }
+        // Redundant functions removed
 
         async function editBalance(name, current) {
             const newBal = prompt(`Yeni bakiye gir(${name}): `, current);
