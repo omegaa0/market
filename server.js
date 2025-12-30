@@ -3,23 +3,23 @@ const express = require('express');
 const bodyParser = require('body-parser');
 const axios = require('axios');
 const path = require('path');
-const admin = require('firebase-admin');
+const firebase = require('firebase/compat/app');
+require('firebase/compat/database');
 
 const app = express();
 app.use(express.static(__dirname));
 app.use(bodyParser.json());
 
-// 1. FIREBASE ADMIN INITIALIZATION (En Garanti Yöntem)
-if (!admin.apps.length) {
-    admin.initializeApp({
-        credential: admin.credential.cert({
-            // Not: Admin SDK için JSON dosyası gerekir ama biz Database URL ile devam edebiliriz
-            // Eğer hata verirse sadece Database URL ve API Key ile bağlanacağız.
-        }),
-        databaseURL: process.env.FIREBASE_DB_URL
-    });
+// 1. FIREBASE INITIALIZATION (Compat mode for Node.js)
+const firebaseConfig = {
+    apiKey: process.env.FIREBASE_API_KEY,
+    databaseURL: process.env.FIREBASE_DB_URL
+};
+
+if (!firebase.apps.length) {
+    firebase.initializeApp(firebaseConfig);
 }
-const db = admin.database();
+const db = firebase.database();
 
 // 2. KICK API CONFIG
 const KICK_API_BASE = "https://api.kick.com/v1";
@@ -34,7 +34,7 @@ async function refreshAccessToken() {
             scope: 'chat.message:write chat.message:read'
         });
         authToken = response.data.access_token;
-        console.log("🔑 [Kick API] Access Token yenilendi.");
+        console.log("🔑 [Kick API] Access Token yenileni.");
     } catch (error) {
         console.error("❌ [Kick API] Token alınamadı:", error.response?.data || error.message);
     }
@@ -51,35 +51,29 @@ async function sendChatMessage(content) {
                 'Content-Type': 'application/json'
             }
         });
+        console.log(`📤 [Official API] Mesaj: ${content}`);
     } catch (e) { console.error("Mesaj gönderilemedi:", e.message); }
-}
-
-// 3. YARDIMCI FONKSİYONLAR
-async function getUserData(u) {
-    const clean = u.toLowerCase().trim();
-    const snap = await db.ref('users/' + clean).once('value');
-    return snap.val() || { balance: 1000, lastDaily: 0 };
-}
-
-async function saveUserData(u, d) {
-    const clean = u.toLowerCase().trim();
-    return db.ref('users/' + clean).set(d);
 }
 
 // 4. WEBHOOK HANDLER
 app.post('/kick/webhook', async (req, res) => {
     const event = req.body;
-    console.log("📩 Webhook Event:", event.type);
-
     if (event.type === 'chat.message.sent') {
         const { content, sender } = event.data;
         const user = sender.username;
-        const message = content.trim().toLowerCase();
+        const message = content.trim();
+        const lowerMsg = message.toLowerCase();
 
-        if (message === '!selam') await sendChatMessage(`Aleyküm selam @${user}! 👋`);
-        if (message === '!bakiye') {
-            const data = await getUserData(user);
+        console.log(`📩 [Chat] ${user}: ${message}`);
+
+        if (lowerMsg.startsWith('!selam')) await sendChatMessage(`Aleyküm selam @${user}! 👋`);
+        if (lowerMsg.startsWith('!bakiye')) {
+            const snap = await db.ref('users/' + user.toLowerCase()).once('value');
+            const data = snap.val() || { balance: 1000 };
             await sendChatMessage(`@${user}, Bakiyeniz: ${data.balance.toLocaleString()} 💰`);
+        }
+        if (lowerMsg.startsWith('!market')) {
+            await sendChatMessage(`@${user}, Mağaza & Market panelin: https://aloskegangbot-market.onrender.com 🛒`);
         }
     }
     res.status(200).send('OK');
