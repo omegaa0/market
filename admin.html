@@ -632,7 +632,9 @@
                                     <input type="number" id="snd-cost-${id}" placeholder="Ücret" class="inp" style="margin:0; height:30px; width:70px; font-size:0.7rem;">
                                 </div>
                                 <div style="display:flex; gap:5px;">
-                                    <input type="text" id="snd-url-${id}" placeholder="MP3 URL" class="inp" style="margin:0; height:30px; font-size:0.7rem; flex:1;">
+                                    <input type="text" id="snd-url-${id}" placeholder="MP3 URL veya Dosya Yükle" class="inp" style="margin:0; height:30px; font-size:0.7rem; flex:1;">
+                                    <input type="file" id="snd-file-${id}" style="display:none;" onchange="uploadSoundFile('${id}')" accept="audio/*">
+                                    <button class="btn" style="width:30px; height:30px; padding:0; background:#333; border:1px solid #444;" onclick="document.getElementById('snd-file-${id}').click()">📂</button>
                                     <button class="btn" style="width:40px; height:30px; padding:0;" onclick="addSound('${id}')">EKLE</button>
                                 </div>
                             </div>
@@ -682,6 +684,31 @@
 
             await toggleCmd(channelId, 'custom_sounds', currentSounds);
             loadChannels();
+        }
+
+        async function uploadSoundFile(id) {
+            const fileInp = document.getElementById(`snd-file-${id}`);
+            if (!fileInp.files[0]) return;
+
+            const formData = new FormData();
+            formData.append('sound', fileInp.files[0]);
+            formData.append('key', sessionKey);
+
+            try {
+                const res = await fetch('/admin-api/upload-sound', {
+                    method: 'POST',
+                    body: formData
+                });
+                const data = await res.json();
+                if (data.success) {
+                    document.getElementById(`snd-url-${id}`).value = data.url;
+                    alert("Dosya yüklendi! Şimdi 'EKLE' butonuna basarak kaydedebilirsin.");
+                } else {
+                    alert("Hata: " + data.error);
+                }
+            } catch (e) {
+                alert("Yükleme sırasında hata oluştu.");
+            }
         }
 
         async function removeSound(channelId, name) {

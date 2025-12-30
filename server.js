@@ -4,12 +4,37 @@ const bodyParser = require('body-parser');
 const axios = require('axios');
 const path = require('path');
 const crypto = require('crypto');
+const fs = require('fs');
+const multer = require('multer');
 const firebase = require('firebase/compat/app');
 require('firebase/compat/database');
 
 const app = express();
 app.use(express.static(__dirname));
 app.use(bodyParser.json());
+app.use('/uploads', express.static(path.join(__dirname, 'uploads')));
+
+// Upload Klasörü Hazırla
+const uploadDir = path.join(__dirname, 'uploads', 'sounds');
+if (!fs.existsSync(uploadDir)) {
+    fs.mkdirSync(uploadDir, { recursive: true });
+}
+
+const storage = multer.diskStorage({
+    destination: (req, file, cb) => {
+        cb(null, uploadDir);
+    },
+    filename: (req, file, cb) => {
+        const ext = path.extname(file.originalname);
+        const uniqueName = Date.now() + '-' + Math.round(Math.random() * 1E9) + ext;
+        cb(null, uniqueName);
+    }
+});
+
+const upload = multer({
+    storage: storage,
+    limits: { fileSize: 5 * 1024 * 1024 } // Maks 5MB
+});
 
 // 1. FIREBASE INITIALIZATION
 const firebaseConfig = {
@@ -1059,6 +1084,15 @@ app.post('/admin-api/reset-overlay-key', authAdmin, async (req, res) => {
     const newKey = crypto.randomBytes(16).toString('hex');
     await db.ref(`channels/${channelId}`).update({ overlay_key: newKey });
     res.json({ success: true, key: newKey });
+});
+
+app.post('/admin-api/upload-sound', upload.single('sound'), (req, res) => {
+    // Key kontrolünü multer'dan sonra yapıyoruz çünkü multipart/form-data
+    if (req.body.key !== ADMIN_KEY) return res.status(403).json({ success: false, error: 'Yetkisiz Erişim' });
+    if (!req.file) return res.status(400).json({ success: false, error: 'Dosya seçilmedi!' });
+
+    const fileUrl = `${req.protocol}://${req.get('host')}/uploads/sounds/${req.file.filename}`;
+    res.json({ success: true, url: fileUrl });
 });
 
 app.get('/overlay', (req, res) => {
