@@ -139,11 +139,19 @@
                     }
 
                     console.log("🎯 Hedef Kanal:", targetBroadcasterId);
-                    const channelSettings = channels[targetBroadcasterId]?.settings || {};
-                    const ttsVol = (channelSettings.tts_volume !== undefined ? channelSettings.tts_volume : 100) / 100;
-                    const soundVol = (channelSettings.sound_volume !== undefined ? channelSettings.sound_volume : 80) / 100;
 
-                    // TTS Dinle (Sadece bu kanalınkilere bak)
+                    // Ses seviyelerini dinamik takip et
+                    let ttsVol = 1.0;
+                    let soundVol = 0.8;
+
+                    db.ref(`channels/${targetBroadcasterId}/settings`).on('value', (sSnap) => {
+                        const settings = sSnap.val() || {};
+                        ttsVol = (settings.tts_volume !== undefined ? settings.tts_volume : 100) / 100;
+                        soundVol = (settings.sound_volume !== undefined ? settings.sound_volume : 80) / 100;
+                        console.log("🔊 Ses Seviyeleri Güncellendi:", { ttsVol, soundVol });
+                    });
+
+                    // TTS Dinle
                     db.ref('stream_events/tts').orderByChild('timestamp').startAt(startTime).on('child_added', (snap) => {
                         const data = snap.val();
                         if (!data || data.played || String(data.broadcasterId) !== String(targetBroadcasterId)) return;
@@ -152,13 +160,13 @@
                         showNotification("TTS MESAJI", data.text, "🎙️");
                         const utterance = new SpeechSynthesisUtterance(data.text);
                         utterance.lang = 'tr-TR';
-                        utterance.volume = ttsVol;
+                        utterance.volume = ttsVol; // Güncel seviye
                         utterance.rate = 1.0;
                         utterance.pitch = 1.0;
                         window.speechSynthesis.speak(utterance);
                     });
 
-                    // Ses Dinle (Sadece bu kanalınkilere bak)
+                    // Ses Dinle
                     db.ref('stream_events/sound').orderByChild('timestamp').startAt(startTime).on('child_added', (snap) => {
                         const data = snap.val();
                         if (!data || data.played || String(data.broadcasterId) !== String(targetBroadcasterId)) return;
@@ -168,7 +176,7 @@
                         if (url) {
                             showNotification("SES EFEKTİ", data.soundId.toUpperCase() + " çalınıyor...", "🔊", 3000);
                             const audio = new Audio(url);
-                            audio.volume = soundVol;
+                            audio.volume = soundVol; // Güncel seviye
                             audio.play().catch(e => console.error("Ses çalma hatası:", e));
                         }
                     });
