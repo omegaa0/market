@@ -133,41 +133,52 @@ async function timeoutUser(broadcasterId, targetUsername, duration) {
     if (!channelData) return { success: false, error: 'Kanal bulunamadı' };
 
     try {
-        // Önce kullanıcı ID'sini bulmaya çalış (farklı yöntemler)
         let targetUserId = null;
 
-        // Yöntem 1: Direkt users endpoint
+        // Yöntem 1: Public channel endpoint (herkesin kanalı var)
         try {
-            const userRes = await axios.get(`https://api.kick.com/public/v1/users?username=${encodeURIComponent(targetUsername)}`, {
-                headers: { 'Authorization': `Bearer ${channelData.access_token}` }
-            });
-            if (userRes.data?.data?.[0]?.id) {
-                targetUserId = userRes.data.data[0].id;
+            const chRes = await axios.get(`https://kick.com/api/v2/channels/${encodeURIComponent(targetUsername)}`);
+            if (chRes.data?.user_id) {
+                targetUserId = chRes.data.user_id;
+            } else if (chRes.data?.user?.id) {
+                targetUserId = chRes.data.user.id;
             }
         } catch (e1) {
-            console.log("User search method 1 failed:", e1.message);
+            console.log("Method 1 (public channel):", e1.response?.status || e1.message);
         }
 
-        // Yöntem 2: Channels endpoint ile
+        // Yöntem 2: Public v1 channels endpoint
         if (!targetUserId) {
             try {
-                const chRes = await axios.get(`https://api.kick.com/public/v1/channels/${targetUsername}`, {
+                const chRes = await axios.get(`https://api.kick.com/public/v1/channels?slug=${encodeURIComponent(targetUsername)}`, {
                     headers: { 'Authorization': `Bearer ${channelData.access_token}` }
                 });
-                if (chRes.data?.data?.user_id) {
-                    targetUserId = chRes.data.data.user_id;
+                if (chRes.data?.data?.[0]?.user_id) {
+                    targetUserId = chRes.data.data[0].user_id;
                 }
             } catch (e2) {
-                console.log("User search method 2 failed:", e2.message);
+                console.log("Method 2 (v1 channels):", e2.response?.status || e2.message);
+            }
+        }
+
+        // Yöntem 3: Check username endpoint
+        if (!targetUserId) {
+            try {
+                const checkRes = await axios.get(`https://kick.com/api/v1/channels/check-username/${encodeURIComponent(targetUsername)}`);
+                if (checkRes.data?.user_id) {
+                    targetUserId = checkRes.data.user_id;
+                }
+            } catch (e3) {
+                console.log("Method 3 (check-username):", e3.response?.status || e3.message);
             }
         }
 
         if (!targetUserId) {
-            console.log(`Kullanıcı ID bulunamadı: ${targetUsername}`);
-            return { success: false, error: 'Kullanıcı ID bulunamadı' };
+            console.log(`❌ Tüm yöntemler başarısız: ${targetUsername}`);
+            return { success: false, error: 'Kullanıcı bulunamadı (Kick API)' };
         }
 
-        console.log(`Timeout: User ${targetUsername} -> ID ${targetUserId}`);
+        console.log(`✅ User ID bulundu: ${targetUsername} -> ${targetUserId}`);
 
         // Timeout uygula
         const banRes = await axios.post(`https://api.kick.com/public/v1/channels/${broadcasterId}/bans`, {
@@ -181,53 +192,55 @@ async function timeoutUser(broadcasterId, targetUsername, duration) {
             }
         });
 
-        console.log("Ban response:", banRes.data);
+        console.log("✅ Ban başarılı:", banRes.status);
         return { success: true };
     } catch (e) {
-        console.log("Timeout Error Full:", e.response?.status, e.response?.data || e.message);
+        console.log("❌ Timeout Error:", e.response?.status, e.response?.data || e.message);
         return { success: false, error: e.response?.data?.message || e.message };
     }
 }
 
-// Slow Mode API
+// Slow Mode API (Kick Public API v1)
 async function setSlowMode(broadcasterId, enabled, delay = 10) {
     const channelRef = await db.ref('channels/' + broadcasterId).once('value');
     const channelData = channelRef.val();
     if (!channelData) return { success: false, error: 'Kanal bulunamadı' };
 
     try {
-        await axios.patch(`https://api.kick.com/public/v1/channels/${broadcasterId}/chat-settings`, {
+        // Kick API v1 chat-settings endpoint
+        const res = await axios.put(`https://api.kick.com/public/v1/channels/${broadcasterId}/chat-settings`, {
             slow_mode: enabled,
-            slow_mode_delay: delay
+            slow_mode_interval: delay // saniye
         }, {
             headers: {
                 'Authorization': `Bearer ${channelData.access_token}`,
                 'Content-Type': 'application/json'
             }
         });
+        console.log("✅ SlowMode:", enabled ? "Açık" : "Kapalı", res.status);
         return { success: true };
     } catch (e) {
-        console.log("SlowMode Error:", e.response?.data || e.message);
-        return { success: false, error: e.message };
+        console.log("❌ SlowMode Error:", e.response?.status, e.response?.data || e.message);
+        return { success: false, error: e.response?.data?.message || e.message };
     }
 }
 
-// Clear Chat API  
+// Clear Chat API (Kick Public API v1)
 async function clearChat(broadcasterId) {
     const channelRef = await db.ref('channels/' + broadcasterId).once('value');
     const channelData = channelRef.val();
     if (!channelData) return { success: false, error: 'Kanal bulunamadı' };
 
     try {
-        await axios.delete(`https://api.kick.com/public/v1/channels/${broadcasterId}/chat`, {
+        // Kick API v1 chat clear endpoint
+        const res = await axios.post(`https://api.kick.com/public/v1/channels/${broadcasterId}/chat/clear`, {}, {
             headers: { 'Authorization': `Bearer ${channelData.access_token}` }
         });
+        console.log("✅ Chat temizlendi:", res.status);
         return { success: true };
     } catch (e) {
-        console.log("ClearChat Error:", e.response?.data || e.message);
-        // Fallback: Mesaj olarak gönder
-        await sendChatMessage('/clear', broadcasterId);
-        return { success: true, fallback: true };
+        console.log("❌ ClearChat Error:", e.response?.status, e.response?.data || e.message);
+        return { success: false, error: e.response?.data?.message || e.message };
     }
 }
 
@@ -336,7 +349,10 @@ app.post('/kick/webhook', async (req, res) => {
     }
 
     // --- OYUNLAR (AYAR KONTROLLÜ) ---
-    else if (isEnabled('slot') && lowMsg.startsWith('!slot')) {
+    // Kumar kazanç oranları (varsayılan: %30 kazanma şansı)
+    const winRate = settings.win_rate || 30; // 0-100 arası
+
+    if (isEnabled('slot') && lowMsg.startsWith('!slot')) {
         const cost = Math.max(10, parseInt(args[0]) || 100);
         const snap = await userRef.once('value');
         const data = snap.val() || { balance: 1000, slot_count: 0, slot_reset: 0 };
@@ -351,11 +367,37 @@ app.post('/kick/webhook', async (req, res) => {
         const sym = ["🍒", "🍋", "🍇", "🔔", "💎", "7️⃣", "🍉", "🍀"];
         let s, mult;
 
-        if (rig === 'win') { s = ["7️⃣", "7️⃣", "7️⃣"]; mult = 5; }
-        else if (rig === 'lose') { s = ["🍒", "🍋", "🍇"]; mult = 0; }
-        else {
-            s = [sym[Math.floor(Math.random() * 8)], sym[Math.floor(Math.random() * 8)], sym[Math.floor(Math.random() * 8)]];
-            mult = (s[0] === s[1] && s[1] === s[2]) ? 5 : (s[0] === s[1] || s[1] === s[2] || s[0] === s[2]) ? 1.5 : 0;
+        if (rig === 'win') {
+            s = ["7️⃣", "7️⃣", "7️⃣"]; mult = 5;
+        } else if (rig === 'lose') {
+            s = ["🍒", "🍋", "🍇"]; mult = 0;
+        } else {
+            // Kazanç oranına göre belirleme
+            const roll = Math.random() * 100;
+            if (roll < winRate) {
+                // Kazandır - 2'li veya 3'lü eşleşme
+                const jackpotChance = winRate / 10; // Jackpot şansı daha düşük
+                if (roll < jackpotChance) {
+                    // JACKPOT - 3'lü
+                    const winSym = sym[Math.floor(Math.random() * 8)];
+                    s = [winSym, winSym, winSym];
+                    mult = 5;
+                } else {
+                    // 2'li eşleşme
+                    const winSym = sym[Math.floor(Math.random() * 8)];
+                    const otherSym = sym[Math.floor(Math.random() * 8)];
+                    s = [winSym, winSym, otherSym];
+                    mult = 1.5;
+                }
+            } else {
+                // Kaybettir
+                s = [sym[Math.floor(Math.random() * 8)], sym[Math.floor(Math.random() * 8)], sym[Math.floor(Math.random() * 8)]];
+                // Eşleşme olmadığından emin ol
+                while (s[0] === s[1] || s[1] === s[2] || s[0] === s[2]) {
+                    s = [sym[Math.floor(Math.random() * 8)], sym[Math.floor(Math.random() * 8)], sym[Math.floor(Math.random() * 8)]];
+                }
+                mult = 0;
+            }
         }
 
         let prize = Math.floor(cost * mult);
@@ -387,8 +429,15 @@ app.post('/kick/webhook', async (req, res) => {
         if (rig === 'win') win = true;
         else if (rig === 'lose') win = false;
         else {
-            const res = Math.random() < 0.5 ? 'yazı' : 'tura';
-            win = (isYazi && res === 'yazı') || (!isYazi && res === 'tura');
+            // WinRate kontrolü
+            const roll = Math.random() * 100;
+            if (roll < winRate) {
+                // Kazanması lazım - Seçtiği gelir
+                win = true;
+            } else {
+                // Kaybetmesi lazım - Seçtiğinin tersi gelir
+                win = false;
+            }
         }
 
         const resDisplay = win ? (isYazi ? 'YAZI' : 'TURA') : (isYazi ? 'TURA' : 'YAZI');
@@ -413,11 +462,18 @@ app.post('/kick/webhook', async (req, res) => {
         data.balance -= cost;
         const rig = checkRig();
         let resultType;
+
         if (rig === 'win') resultType = 'odul';
         else if (rig === 'lose') resultType = 'bomba';
         else {
-            const boxes = ['odul', 'iade', 'bomba'];
-            resultType = boxes[Math.floor(Math.random() * boxes.length)];
+            // WinRate kontrolü (Kutu için: %WinRate ihtimalle ödül/iade, kalanı bomba)
+            const roll = Math.random() * 100;
+            if (roll < winRate) {
+                // Kazanma şansı içinde de %20 ihtimalle büyük ödül, %80 iade (kurtarma)
+                resultType = (Math.random() < 0.2) ? 'odul' : 'iade';
+            } else {
+                resultType = 'bomba';
+            }
         }
 
         if (resultType === 'odul') {
@@ -426,7 +482,7 @@ app.post('/kick/webhook', async (req, res) => {
             await reply(`📦 @${user} Kutu ${choice}: 🎉 BÜYÜK ÖDÜL! (+${prize})`);
         } else if (resultType === 'iade') {
             data.balance += cost;
-            await reply(`📦 @${user} Kutu ${choice}: 🔄 Parab İade Edildi (+${cost})`);
+            await reply(`📦 @${user} Kutu ${choice}: 🔄 Para İade Edildi (+${cost})`);
         } else { // Bomba
             const refund = Math.floor(cost * 0.1);
             data.balance += refund;
@@ -439,6 +495,14 @@ app.post('/kick/webhook', async (req, res) => {
         const target = args[0]?.replace('@', '').toLowerCase();
         const amt = parseInt(args[1]);
         if (!target || isNaN(amt)) return await reply(`@${user}, Kullanım: !duello @target [miktar]`);
+
+        const snap = await userRef.once('value');
+        const userData = snap.val() || { balance: 0 };
+        if (userData.balance < amt) return await reply('Bakiye yetersiz.');
+
+        const targetSnap = await db.ref('users/' + target).once('value');
+        if (!targetSnap.exists() || targetSnap.val().balance < amt) return await reply('Rakibin bakiyesi yetersiz.');
+
         activeDuels[target] = { challenger: user, amount: amt, expire: Date.now() + 60000, channel: broadcasterId };
         await reply(`⚔️ @${target}, @${user} sana ${amt} 💰 karşılığında meydan okudu! Kabul için: !kabul`);
     }
@@ -528,19 +592,19 @@ app.post('/kick/webhook', async (req, res) => {
                 if (code >= 1 && code <= 3) { cond = "Bulutlu"; emoji = "☁️"; }
                 else if (code >= 45 && code <= 48) { cond = "Sisli"; emoji = "🌫️"; }
                 else if (code >= 51 && code <= 67) { cond = "Yağmurlu"; emoji = "🌧️"; }
-                else if (code >= 71 && code <= 77) { cond = "Karlı"; emoji = "❄️"; }
+                else if (code >= 71 && code <= 86) { cond = "Karlı"; emoji = "❄️"; }
                 else if (code >= 95) { cond = "Fırtına"; emoji = "⛈️"; }
-                await reply(`🌍 ${name}: ${w.temperature}°C ${cond} ${emoji} | Rüzgar: ${w.windspeed} km/s`);
-            } else { await reply(`❌ Şehir yok: ${city}`); }
-        } catch (e) { console.log(e); }
+                await reply(`🌍 Hava Durumu (${name}): ${cond} ${emoji}, ${w.temperature}°C, Rüzgar: ${w.windspeed} km/s`);
+            } else await reply("Şehir bulunamadı.");
+        } catch { await reply("Hava durumu servisi şu an kullanılamıyor."); }
     }
 
     else if (settings.soz !== false && lowMsg === '!söz') {
-        const list = ["Mesafe iyidir, kimin nerede durduğunu hatırlatır.", "Zirveye tek başına çıkılır.", "Kurduğun hayali başkası yaşar.", "Giden gitmiştir."];
+        const list = ["Gülüşüne yağmur yağsa, sırılsıklam olurum.", "Seninle her şey güzel, sensiz her şey boş.", "Gözlerin gökyüzü, ben ise kayıp bir uçurtma.", "Hayat kısa, kuşlar uçuyor."];
         await reply(`✍️ @${user}: ${list[Math.floor(Math.random() * list.length)]}`);
     }
 
-    else if (settings.fal !== false && lowMsg === '!efkar') {
+    else if (isEnabled('fal') && lowMsg === '!efkar') {
         const p = Math.floor(Math.random() * 101);
         await reply(`🚬 @${user} Efkar Seviyesi: %${p} ${p > 70 ? '😭🚬' : '🍷'}`);
     }
@@ -557,6 +621,15 @@ app.post('/kick/webhook', async (req, res) => {
                 if (result.success) {
                     await userRef.transaction(u => { if (u) u.balance -= 10000; return u; });
                     await reply(`🔇 @${user}, @${target} kullanıcısını 10 dakika susturdu! (-10.000 💰)`);
+
+                    // BAN İSTATİSTİĞİ (Target kullanıcısının ban sayısını artır)
+                    const targetRef = db.ref(`users/${target}`);
+                    await targetRef.transaction(u => {
+                        if (!u) u = { balance: 0 };
+                        if (!u.bans) u.bans = {};
+                        u.bans[broadcasterId] = (u.bans[broadcasterId] || 0) + 1;
+                        return u;
+                    });
                 } else {
                     await reply(`❌ İşlem başarısız: ${result.error || 'Bilinmeyen hata'}`);
                 }
@@ -631,9 +704,8 @@ app.post('/kick/webhook', async (req, res) => {
     else if (lowMsg === '!komutlar') {
         const toggleable = ['slot', 'yazitura', 'kutu', 'duello', 'soygun', 'fal', 'ship', 'hava', 'zenginler', 'söz'];
         const enabled = toggleable.filter(k => settings[k] !== false).map(k => "!" + k);
-        const fixed = ['!bakiye', '!günlük', '!sustur', '!efkar', '!kabul'];
-        const admin = ['!tahmin', '!oyla', '!sonuç', '!piyango'];
-        await reply(`📋 Komutlar: ${[...enabled, ...fixed].join(', ')} | 👑 Admin: ${admin.join(', ')}`);
+        const fixed = ['!bakiye', '!günlük', '!sustur', '!efkar'];
+        await reply(`📋 Komutlar: ${[...enabled, ...fixed].join(', ')}`);
     }
 });
 

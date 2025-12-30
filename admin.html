@@ -374,6 +374,16 @@
         </div>
     </div>
 
+    <!-- BAN STATS MODAL -->
+    <div id="banModal"
+        style="display:none; position:fixed; top:0; left:0; width:100%; height:100%; background:rgba(0,0,0,0.8); z-index:1000; align-items:center; justify-content:center;">
+        <div class="card" style="width:400px; max-width:90%;">
+            <h3 style="margin-bottom:15px; color:var(--primary);">🚫 Ban Detayları</h3>
+            <div id="banModalContent" style="margin-bottom:20px; color:#ddd; font-size:0.9rem;"></div>
+            <button class="btn" onclick="document.getElementById('banModal').style.display='none'">KAPAT</button>
+        </div>
+    </div>
+
     <script>
         let sessionKey = "";
         let allUsers = {};
@@ -440,10 +450,21 @@
                     `;
                 });
 
+                // WinRate Slider
+                const winRate = data.settings && data.settings.win_rate ? data.settings.win_rate : 30;
+
                 const html = `
                     <div class="card">
                         <h3>${data.username} <span class="status-dot"></span></h3>
                         <p style="font-size:0.8rem; color:#666;">ID: ${id}</p>
+                        
+                        <div style="margin: 15px 0; padding:10px; background:#f0f0f0; border-radius:8px;">
+                            <label style="display:block; margin-bottom:5px; font-weight:600;">🎰 Kumar Kazanma Oranı: %<span id="wr-val-${id}">${winRate}</span></label>
+                            <input type="range" class="inp" min="0" max="100" value="${winRate}" 
+                                oninput="document.getElementById('wr-val-${id}').innerText = this.value"
+                                onchange="toggleCmd('${id}', 'win_rate', parseInt(this.value))">
+                        </div>
+
                         <div class="toggle-group">
                             ${toggles}
                         </div>
@@ -495,7 +516,7 @@
                 const slotCount = data.slot_count || 0;
 
                 tbody.innerHTML += `
-                    <tr>
+                        < tr >
                         <td><b>${name}</b></td>
                         <td>${(data.balance || 0).toLocaleString()} 💰</td>
                         <td>${slotCount}/10</td>
@@ -503,10 +524,11 @@
                         <td>${lastDaily}</td>
                         <td>
                             <button class="btn action-btn" onclick="editBalance('${name}', ${data.balance || 0})">💰</button>
+                            <button class="btn action-btn" onclick="showBanStats('${name}')" style="background:#555;">🚫</button>
                             <button class="btn action-btn btn-danger" onclick="resetUser('${name}')">🔄</button>
                         </td>
-                    </tr>
-                `;
+                    </tr >
+                        `;
                 count++;
             }
 
@@ -525,7 +547,7 @@
         }
 
         async function editBalance(name, current) {
-            const newBal = prompt(`Yeni bakiye gir (${name}):`, current);
+            const newBal = prompt(`Yeni bakiye gir(${name}): `, current);
             if (newBal !== null) {
                 await fetch('/admin-api/update-user', {
                     method: 'POST', headers: { 'Content-Type': 'application/json' },
@@ -536,8 +558,29 @@
             }
         }
 
+        function showBanStats(username) {
+            const user = allUsers[username];
+            const modal = document.getElementById('banModal');
+            const content = document.getElementById('banModalContent');
+
+            if (!user || !user.bans || Object.keys(user.bans).length === 0) {
+                content.innerHTML = "<p>Bu kullanıcı hiç banlanmamış. 😇</p>";
+            } else {
+                let html = "<ul style='list-style:none; padding:0;'>";
+                for (const [channelId, count] of Object.entries(user.bans)) {
+                    html += `<li style='margin-bottom:5px; padding:5px; background:#444; border-radius:4px;'>
+                        <b>Kanal:</b> ${channelId} <br>
+                        <b>Ban Sayısı:</b> ${count}
+                    </li>`;
+                }
+                html += "</ul>";
+                content.innerHTML = html;
+            }
+            modal.style.display = 'flex';
+        }
+
         async function resetUser(name) {
-            if (!confirm(`${name} kullanıcısını sıfırlamak istediğine emin misin? (Bakiye: 1000)`)) return;
+            if (!confirm(`${name} kullanıcısını sıfırlamak istediğine emin misin ? (Bakiye: 1000)`)) return;
             await fetch('/admin-api/update-user', {
                 method: 'POST', headers: { 'Content-Type': 'application/json' },
                 body: JSON.stringify({ key: sessionKey, user: name, balance: 1000 })
