@@ -354,9 +354,9 @@ app.post('/kick/webhook', async (req, res) => {
     // --- OTOMATİK KAYIT & AKTİFLİK TAKİBİ ---
     const userSnap = await userRef.once('value');
     if (!userSnap.exists()) {
-        await userRef.set({ balance: 1000, last_seen: Date.now(), created_at: Date.now() });
+        await userRef.set({ balance: 1000, last_seen: Date.now(), last_channel: broadcasterId, created_at: Date.now() });
     } else {
-        await userRef.update({ last_seen: Date.now() });
+        await userRef.update({ last_seen: Date.now(), last_channel: broadcasterId });
     }
 
     // KICK ID KAYDET (Susturma işlemleri için)
@@ -403,14 +403,15 @@ app.post('/kick/webhook', async (req, res) => {
         const snap = await userRef.once('value');
         const data = snap.val() || { balance: 1000, lastDaily: 0 };
         const now = Date.now();
+        const dailyRew = settings.daily_reward || 500;
         if (now - data.lastDaily < 86400000) {
             const diff = 86400000 - (now - data.lastDaily);
             const hours = Math.floor(diff / 3600000);
             return await reply(`@${user}, ⏳ Günlük ödül için ${hours} saat beklemelisin.`);
         }
-        data.balance = (data.balance || 0) + 500; data.lastDaily = now;
+        data.balance = (data.balance || 0) + dailyRew; data.lastDaily = now;
         await userRef.set(data);
-        await reply(`🎁 @${user}, +500 💰 eklendi! ✅`);
+        await reply(`🎁 @${user}, +${dailyRew.toLocaleString()} 💰 eklendi! ✅`);
     }
 
     // --- OYUNLAR (AYAR KONTROLLÜ) ---
@@ -437,9 +438,10 @@ app.post('/kick/webhook', async (req, res) => {
         data.slot_reset = parseInt(data.slot_reset) || 0;
 
         const now = Date.now();
+        const slotLimit = settings.slot_limit || 10;
 
         if (now > data.slot_reset) { data.slot_count = 0; data.slot_reset = now + 3600000; }
-        if (data.slot_count >= 5) return await reply(`@${user}, 🚨 Slot limitin doldu! (5/saat)`);
+        if (data.slot_count >= slotLimit) return await reply(`@${user}, 🚨 Slot limitin doldu! (${slotLimit}/saat)`);
         if (data.balance < cost) return await reply(`@${user}, Yetersiz bakiye!`);
 
         data.balance -= cost;
@@ -602,12 +604,13 @@ app.post('/kick/webhook', async (req, res) => {
             // Cooldown kontrolü: Saatte 2 kere
             const now = Date.now();
             const hourAgo = now - 3600000;
+            const soygunLimit = settings.soygun_limit || 3;
             heistHistory[broadcasterId] = (heistHistory[broadcasterId] || []).filter(ts => ts > hourAgo);
 
-            if (heistHistory[broadcasterId].length >= 2) {
+            if (heistHistory[broadcasterId].length >= soygunLimit) {
                 const nextAvailableTs = heistHistory[broadcasterId][0] + 3600000;
                 const nextAvailableMin = Math.ceil((nextAvailableTs - now) / 60000);
-                return await reply(`🚨 Bu kanal için soygun limiti doldu! (Saatte maks 2). Yeni soygun için ~${nextAvailableMin} dk bekleyin.`);
+                return await reply(`🚨 Bu kanal için soygun limiti doldu! (Saatte maks ${soygunLimit}). Yeni soygun için ~${nextAvailableMin} dk bekleyin.`);
             }
 
             channelHeists[broadcasterId] = { p: [user], start: now };
@@ -766,12 +769,13 @@ app.post('/kick/webhook', async (req, res) => {
         if (!text) return await reply(`@${user}, !tts [mesaj] şeklinde kullanmalısın!`);
         if (text.length > 100) return await reply(`@${user}, Mesaj çok uzun! (Maks 100 karakter)`);
 
+        const ttsCost = settings.tts_cost || 2500;
         const snap = await userRef.once('value');
-        if ((snap.val()?.balance || 0) < 2500) return await reply(`@${user}, TTS için 2.500 💰 lazım!`);
+        if ((snap.val()?.balance || 0) < ttsCost) return await reply(`@${user}, TTS için ${ttsCost.toLocaleString()} 💰 lazım!`);
 
-        await userRef.transaction(u => { if (u) u.balance -= 2500; return u; });
+        await userRef.transaction(u => { if (u) u.balance -= ttsCost; return u; });
         await db.ref('stream_events/tts').push({ text: `@${user} diyor ki: ${text}`, played: false, timestamp: Date.now() });
-        await reply(`🎙️ @${user}, Mesajın yayına gönderildi! (-2,500 💰)`);
+        await reply(`🎙️ @${user}, Mesajın yayına gönderildi! (-${ttsCost.toLocaleString()} 💰)`);
     }
 
     else if (lowMsg.startsWith('!ses')) {
@@ -779,12 +783,13 @@ app.post('/kick/webhook', async (req, res) => {
         const sounds = ["alkis", "gol", "korku", "gulme"];
         if (!soundId || !sounds.includes(soundId)) return await reply(`@${user}, Geçersiz ses! Mevcutlar: ${sounds.join(', ')}`);
 
+        const soundCost = settings.sound_cost || 1000;
         const snap = await userRef.once('value');
-        if ((snap.val()?.balance || 0) < 1000) return await reply(`@${user}, Ses efekti için 1.000 💰 lazım!`);
+        if ((snap.val()?.balance || 0) < soundCost) return await reply(`@${user}, Ses efekti için ${soundCost.toLocaleString()} 💰 lazım!`);
 
-        await userRef.transaction(u => { if (u) u.balance -= 1000; return u; });
+        await userRef.transaction(u => { if (u) u.balance -= soundCost; return u; });
         await db.ref('stream_events/sound').push({ soundId, played: false, timestamp: Date.now() });
-        await reply(`🎵 @${user}, ${soundId} sesi çalınıyor! (-1,000 💰)`);
+        await reply(`🎵 @${user}, ${soundId} sesi çalınıyor! (-${soundCost.toLocaleString()} 💰)`);
     }
 
     else if (lowMsg === '!sesler') {
@@ -795,14 +800,15 @@ app.post('/kick/webhook', async (req, res) => {
     else if (lowMsg.startsWith('!sustur')) {
         const target = args[0]?.replace('@', '').toLowerCase();
         if (target) {
+            const muteCost = settings.mute_cost || 10000;
             const snap = await userRef.once('value');
-            if ((snap.val()?.balance || 0) < 10000) {
-                await reply(`@${user}, 10.000 💰 bakiye lazım!`);
+            if ((snap.val()?.balance || 0) < muteCost) {
+                await reply(`@${user}, ${muteCost.toLocaleString()} 💰 bakiye lazım!`);
             } else {
                 const result = await timeoutUser(broadcasterId, target, 600);
                 if (result.success) {
-                    await userRef.transaction(u => { if (u) u.balance -= 10000; return u; });
-                    await reply(`🔇 @${user}, @${target} kullanıcısını 10 dakika susturdu! (-10.000 💰)`);
+                    await userRef.transaction(u => { if (u) u.balance -= muteCost; return u; });
+                    await reply(`🔇 @${user}, @${target} kullanıcısını 10 dakika susturdu! (-${muteCost.toLocaleString()} 💰)`);
 
                     // BAN Ä°STATÄ°STÄ°ÄÄ° (Target kullanÄ±cÄ±sÄ±nÄ±n ban sayÄ±sÄ±nÄ± artÄ±r)
                     const targetRef = db.ref(`users/${target}`);
@@ -1038,20 +1044,31 @@ app.get('/', (req, res) => { res.sendFile(path.join(__dirname, 'shop.html')); })
 setInterval(async () => {
     console.log("💰 Pasif bakiye dağıtımı başlıyor...");
     const tenMinsAgo = Date.now() - (10 * 60 * 1000);
-    const usersSnap = await db.ref('users').once('value');
+
+    const [usersSnap, channelsSnap] = await Promise.all([
+        db.ref('users').once('value'),
+        db.ref('channels').once('value')
+    ]);
+
     const allUsers = usersSnap.val() || {};
+    const allChannels = channelsSnap.val() || {};
 
     let rewardedCount = 0;
     for (const [username, data] of Object.entries(allUsers)) {
-        if (data.last_seen && data.last_seen > tenMinsAgo) {
+        if (data.last_seen && data.last_seen > tenMinsAgo && data.last_channel) {
+            const channelSettings = allChannels[data.last_channel]?.settings || {};
+            const rewardAmt = parseInt(channelSettings.passive_reward) || 100;
+
             await db.ref('users/' + username).transaction(u => {
-                if (u) u.balance = (u.balance || 0) + 100;
+                if (u) {
+                    u.balance = (u.balance || 0) + rewardAmt;
+                }
                 return u;
             });
             rewardedCount++;
         }
     }
-    console.log(`✅ ${rewardedCount} aktif kullanıcıya 100 💰 dağıtıldı.`);
+    console.log(`✅ ${rewardedCount} aktif kullanıcıya kanal ayarlarına göre ödülleri dağıtıldı.`);
 }, 10 * 60 * 1000); // 10 Dakikada bir
 
 const PORT = process.env.PORT || 3000;

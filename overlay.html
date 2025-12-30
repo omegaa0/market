@@ -9,25 +9,98 @@
     <style>
         body {
             background: transparent;
+            margin: 0;
+            padding: 0;
             overflow: hidden;
-            font-family: sans-serif;
+            font-family: 'Outfit', sans-serif;
         }
 
-        #status {
-            color: white;
+        #notification-box {
             position: absolute;
-            top: 0;
-            left: 0;
-            font-size: 10px;
-            opacity: 0.5;
+            bottom: 50px;
+            right: 50px;
+            width: 350px;
+            background: rgba(10, 10, 12, 0.9);
+            border: 2px solid #00ff88;
+            border-radius: 15px;
+            padding: 20px;
+            color: white;
+            box-shadow: 0 0 20px rgba(0, 255, 136, 0.3);
+            display: none;
+            animation: fadeInRight 0.5s ease-out;
+            z-index: 1000;
+        }
+
+        .alert-header {
+            display: flex;
+            align-items: center;
+            gap: 10px;
+            color: #00ff88;
+            font-weight: 800;
+            margin-bottom: 10px;
+            text-transform: uppercase;
+            font-size: 14px;
+        }
+
+        .alert-body {
+            font-size: 18px;
+            line-height: 1.4;
+            word-wrap: break-word;
+        }
+
+        @keyframes fadeInRight {
+            from {
+                opacity: 0;
+                transform: translateX(50px);
+            }
+
+            to {
+                opacity: 1;
+                transform: translateX(0);
+            }
+        }
+
+        @keyframes fadeOut {
+            from {
+                opacity: 1;
+            }
+
+            to {
+                opacity: 0;
+            }
         }
     </style>
 </head>
 
 <body>
-    <div id="status">Overlay Aktif</div>
+    <div id="notification-box">
+        <div class="alert-header">
+            <span id="alert-icon">🎙️</span>
+            <span id="alert-title">TTS MESAJI</span>
+        </div>
+        <div class="alert-body" id="alert-text">
+            Mesaj yükleniyor...
+        </div>
+    </div>
 
     <script>
+        let startTime = Date.now();
+
+        function showNotification(title, text, icon, duration = 5000) {
+            const box = document.getElementById('notification-box');
+            document.getElementById('alert-title').innerText = title;
+            document.getElementById('alert-text').innerText = text;
+            document.getElementById('alert-icon').innerText = icon;
+
+            box.style.display = 'block';
+            box.style.animation = 'fadeInRight 0.5s ease-out';
+
+            setTimeout(() => {
+                box.style.animation = 'fadeOut 0.5s ease-in forwards';
+                setTimeout(() => { box.style.display = 'none'; }, 500);
+            }, duration);
+        }
+
         // Sunucudan ayarları alacağız veya burayı manuel dolduracağız
         // Güvenlik için Firebase config'i server.js'den buraya enjekte edebilirsin
         // Şimdilik standart bir fetch ile sunucudan config'i alalım
@@ -39,28 +112,35 @@
                 const db = firebase.database();
                 console.log("✅ Firebase Bağlandı");
 
-                // TTS Dinle
-                db.ref('stream_events/tts').on('child_added', (snap) => {
+                // TTS Dinle (Sadece sayfayı açtıktan sonrakileri dinle)
+                db.ref('stream_events/tts').orderByChild('timestamp').startAt(startTime).on('child_added', (snap) => {
                     const data = snap.val();
                     if (!data || data.played) return;
 
+                    // Çift okunmayı önlemek için hemen işaretle
+                    db.ref('stream_events/tts/' + snap.key).update({ played: true });
+
                     console.log("🎙️ TTS Okunuyor:", data.text);
+
+                    // Görsel Bildirim
+                    showNotification("TTS MESAJI", data.text, "🎙️");
+
+                    // Sesli Okuma
                     const utterance = new SpeechSynthesisUtterance(data.text);
                     utterance.lang = 'tr-TR';
                     utterance.rate = 1.0;
                     window.speechSynthesis.speak(utterance);
-
-                    // Okundu olarak işaretle
-                    db.ref('stream_events/tts/' + snap.key).update({ played: true });
                 });
 
-                // Ses Dinle
-                db.ref('stream_events/sound').on('child_added', (snap) => {
+                // Ses Dinle (Sadece sayfayı açtıktan sonrakileri dinle)
+                db.ref('stream_events/sound').orderByChild('timestamp').startAt(startTime).on('child_added', (snap) => {
                     const data = snap.val();
                     if (!data || data.played) return;
 
+                    db.ref('stream_events/sound/' + snap.key).update({ played: true });
+
                     const sounds = {
-                        "alkis": "https://www.myinstants.com/media/sounds/applause_8.mp3",
+                        "alkis": "https://actions.google.com/sounds/v1/human_voices/human_applause.ogg",
                         "gol": "https://www.myinstants.com/media/sounds/gol-gol-gol.mp3",
                         "korku": "https://www.myinstants.com/media/sounds/scary-movie-laugh.mp3",
                         "gulme": "https://www.myinstants.com/media/sounds/laugh-clown.mp3"
@@ -69,11 +149,11 @@
                     const url = sounds[data.soundId.toLowerCase()];
                     if (url) {
                         console.log("🎵 Ses Çalınıyor:", data.soundId);
+                        showNotification("SES EFEKTİ", data.soundId.toUpperCase() + " çalınıyor...", "🔊", 3000);
                         const audio = new Audio(url);
-                        audio.play();
+                        audio.volume = 0.8;
+                        audio.play().catch(e => console.error("Ses çalma hatası:", e));
                     }
-
-                    db.ref('stream_events/sound/' + snap.key).update({ played: true });
                 });
             });
     </script>

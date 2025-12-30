@@ -456,6 +456,14 @@
                 const wrKutu = data.settings && data.settings.wr_kutu ? data.settings.wr_kutu : 40;
                 const wrSoygun = data.settings && data.settings.wr_soygun ? data.settings.wr_soygun : 40;
                 const soygunReward = data.settings && data.settings.soygun_reward ? data.settings.soygun_reward : 30000;
+                const slotLimit = data.settings && data.settings.slot_limit ? data.settings.slot_limit : 10;
+                const soygunLimit = data.settings && data.settings.soygun_limit ? data.settings.soygun_limit : 3;
+
+                const ttsCost = data.settings && data.settings.tts_cost ? data.settings.tts_cost : 2500;
+                const soundCost = data.settings && data.settings.sound_cost ? data.settings.sound_cost : 1000;
+                const muteCost = data.settings && data.settings.mute_cost ? data.settings.mute_cost : 10000;
+                const dailyRew = data.settings && data.settings.daily_reward ? data.settings.daily_reward : 500;
+                const passiveRew = data.settings && data.settings.passive_reward ? data.settings.passive_reward : 100;
 
                 const mSlot3 = data.settings && data.settings.slot_mult_3 ? data.settings.slot_mult_3 : 5;
                 const mSlot2 = data.settings && data.settings.slot_mult_2 ? data.settings.slot_mult_2 : 1.5;
@@ -503,6 +511,58 @@
                                 <input type="number" class="inp" value="${soygunReward}" step="1000"
                                     style="margin-top:5px; height:35px; background:#000; border-color:#333;"
                                     onchange="toggleCmd('${id}', 'soygun_reward', parseInt(this.value)); document.getElementById('val-soy-rew-${id}').innerText = parseInt(this.value).toLocaleString()">
+                            </div>
+
+                            <h4 style="margin: 15px 0 10px 0; color:#333; font-size:0.9rem;">🚫 Saatlik Limitler</h4>
+
+                            <div style="display:grid; grid-template-columns: 1fr 1fr; gap:10px;">
+                                <div>
+                                    <label style="font-size:0.75rem;">Slot Limiti:</label>
+                                    <input type="number" class="inp" value="${slotLimit}" min="1" max="100"
+                                        style="height:35px; background:#000; border-color:#333;"
+                                        onchange="toggleCmd('${id}', 'slot_limit', parseInt(this.value))">
+                                </div>
+                                <div>
+                                    <label style="font-size:0.75rem;">Soygun Limiti:</label>
+                                    <input type="number" class="inp" value="${soygunLimit}" min="1" max="24"
+                                        style="height:35px; background:#000; border-color:#333;"
+                                        onchange="toggleCmd('${id}', 'soygun_limit', parseInt(this.value))">
+                                </div>
+                            </div>
+
+                            <h4 style="margin: 15px 0 10px 0; color:#333; font-size:0.9rem;">💎 Etkileşim Ücretleri</h4>
+
+                            <div style="display:grid; grid-template-columns: 1fr 1fr; gap:10px;">
+                                <div>
+                                    <label style="font-size:0.75rem;">TTS Ücreti:</label>
+                                    <input type="number" class="inp" value="${ttsCost}" step="100"
+                                        style="height:35px; background:#000; border-color:#333;"
+                                        onchange="toggleCmd('${id}', 'tts_cost', parseInt(this.value))">
+                                </div>
+                                <div>
+                                    <label style="font-size:0.75rem;">Ses Ücreti:</label>
+                                    <input type="number" class="inp" value="${soundCost}" step="100"
+                                        style="height:35px; background:#000; border-color:#333;"
+                                        onchange="toggleCmd('${id}', 'sound_cost', parseInt(this.value))">
+                                </div>
+                                <div>
+                                    <label style="font-size:0.75rem;">Sustur Ücreti:</label>
+                                    <input type="number" class="inp" value="${muteCost}" step="500"
+                                        style="height:35px; background:#000; border-color:#333;"
+                                        onchange="toggleCmd('${id}', 'mute_cost', parseInt(this.value))">
+                                </div>
+                                <div>
+                                    <label style="font-size:0.75rem;">Günlük Ödül:</label>
+                                    <input type="number" class="inp" value="${dailyRew}" step="100"
+                                        style="height:35px; background:#000; border-color:#333;"
+                                        onchange="toggleCmd('${id}', 'daily_reward', parseInt(this.value))">
+                                </div>
+                                <div style="grid-column: span 2;">
+                                    <label style="font-size:0.75rem;">Pasif Gelir (10dk):</label>
+                                    <input type="number" class="inp" value="${passiveRew}" step="10"
+                                        style="height:35px; background:#000; border-color:#333;"
+                                        onchange="toggleCmd('${id}', 'passive_reward', parseInt(this.value))">
+                                </div>
                             </div>
 
                             <h4 style="margin: 15px 0 10px 0; color:#333; font-size:0.9rem;">📈 Kazanç Çarpanları</h4>
