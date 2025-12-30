@@ -4,7 +4,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>AloskeGangBOT | Master Panel</title>
+    <title>AloskeGangBOT | Admin Panel</title>
     <link href="https://fonts.googleapis.com/css2?family=Outfit:wght@300;400;600;800&display=swap" rel="stylesheet">
     <style>
         :root {
@@ -281,7 +281,7 @@
     <!-- MAIN PANEL -->
     <div class="container" id="admin-panel">
         <header>
-            <h1>AloskeGang<span style="color:var(--primary)">MANAGER</span></h1>
+            <h1>AloskeGang<span style="color:var(--primary)">BOT</span></h1>
             <button class="btn btn-danger" style="width: auto;" onclick="location.reload()">ÇIKIŞ</button>
         </header>
 
@@ -302,22 +302,25 @@
 
         <!-- USERS MANAGEMENT -->
         <div id="users" class="section">
-            <div style="display:flex; gap:10px; margin-bottom:20px;">
+            <div style="display:flex; gap:10px; margin-bottom:20px; align-items:center;">
                 <input type="text" id="userSearch" class="inp" placeholder="Kullanıcı Ara..."
                     style="margin:0; width:300px">
                 <button class="btn" style="width:auto" onclick="filterUsers()">ARA</button>
+                <button class="btn" style="width:auto; background:#333; margin-left:auto;" onclick="loadUsers()">🔄
+                    YENİLE</button>
             </div>
             <table>
                 <thead>
                     <tr>
-                        <th>Kullanıcı Adı</th>
+                        <th>Kullanıcı</th>
                         <th>Bakiye</th>
-                        <th>Son İşlem</th>
-                        <th>Yönet</th>
+                        <th>Slot Sayısı</th>
+                        <th>Kayıt Tarihi</th>
+                        <th>Son Günlük</th>
+                        <th>İşlemler</th>
                     </tr>
                 </thead>
                 <tbody id="user-table-body">
-                    <!-- Kullanıcılar JS ile gelecek -->
                 </tbody>
             </table>
         </div>
@@ -481,20 +484,34 @@
             const tbody = document.getElementById('user-table-body');
             tbody.innerHTML = "";
             let count = 0;
-            for (const [name, data] of Object.entries(users)) {
-                if (count > 100) break; // Limit
-                const date = data.created_at ? new Date(data.created_at).toLocaleDateString() : '-';
+
+            // Bakiyeye göre sırala
+            const sorted = Object.entries(users).sort((a, b) => (b[1].balance || 0) - (a[1].balance || 0));
+
+            for (const [name, data] of sorted) {
+                if (count > 100) break;
+                const createdDate = data.created_at ? new Date(data.created_at).toLocaleDateString('tr-TR') : '-';
+                const lastDaily = data.lastDaily ? new Date(data.lastDaily).toLocaleDateString('tr-TR') : '-';
+                const slotCount = data.slot_count || 0;
+
                 tbody.innerHTML += `
                     <tr>
                         <td><b>${name}</b></td>
                         <td>${(data.balance || 0).toLocaleString()} 💰</td>
-                        <td>${date}</td>
+                        <td>${slotCount}/10</td>
+                        <td>${createdDate}</td>
+                        <td>${lastDaily}</td>
                         <td>
-                            <button class="btn action-btn" onclick="editBalance('${name}', ${data.balance})">Düzenle</button>
+                            <button class="btn action-btn" onclick="editBalance('${name}', ${data.balance || 0})">💰</button>
+                            <button class="btn action-btn btn-danger" onclick="resetUser('${name}')">🔄</button>
                         </td>
                     </tr>
                 `;
                 count++;
+            }
+
+            if (count === 0) {
+                tbody.innerHTML = '<tr><td colspan="6" style="text-align:center; color:#666;">Kullanıcı bulunamadı</td></tr>';
             }
         }
 
@@ -517,6 +534,16 @@
                 alert("Güncellendi!");
                 loadUsers();
             }
+        }
+
+        async function resetUser(name) {
+            if (!confirm(`${name} kullanıcısını sıfırlamak istediğine emin misin? (Bakiye: 1000)`)) return;
+            await fetch('/admin-api/update-user', {
+                method: 'POST', headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({ key: sessionKey, user: name, balance: 1000 })
+            });
+            alert("Kullanıcı sıfırlandı!");
+            loadUsers();
         }
 
         async function sendToChannel() {

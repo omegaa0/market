@@ -126,27 +126,108 @@ async function refreshChannelToken(broadcasterId) {
     } catch (e) { console.log("Refresh token error", e.message); }
 }
 
-// KICK API TIMEOUT FONKSİYONU (Webhook dışında tanımlandı)
-async function timeoutUser(broadcasterId, username, duration) {
+// KICK API MODERATION FONKSİYONLARI
+async function timeoutUser(broadcasterId, targetUsername, duration) {
     const channelRef = await db.ref('channels/' + broadcasterId).once('value');
-    const data = channelRef.val();
-    if (!data) return false;
+    const channelData = channelRef.val();
+    if (!channelData) return { success: false, error: 'Kanal bulunamadı' };
+
     try {
-        const uRes = await axios.get(`https://api.kick.com/public/v1/users/${username}`, {
-            headers: { 'Authorization': `Bearer ${data.access_token}` }
-        });
-        const userId = uRes.data?.user_id;
-        if (!userId) return false;
-        await axios.post(`https://api.kick.com/public/v1/channels/${broadcasterId}/bans`, {
-            banned_user_id: parseInt(userId),
+        // Önce kullanıcı ID'sini bulmaya çalış (farklı yöntemler)
+        let targetUserId = null;
+
+        // Yöntem 1: Direkt users endpoint
+        try {
+            const userRes = await axios.get(`https://api.kick.com/public/v1/users?username=${encodeURIComponent(targetUsername)}`, {
+                headers: { 'Authorization': `Bearer ${channelData.access_token}` }
+            });
+            if (userRes.data?.data?.[0]?.id) {
+                targetUserId = userRes.data.data[0].id;
+            }
+        } catch (e1) {
+            console.log("User search method 1 failed:", e1.message);
+        }
+
+        // Yöntem 2: Channels endpoint ile
+        if (!targetUserId) {
+            try {
+                const chRes = await axios.get(`https://api.kick.com/public/v1/channels/${targetUsername}`, {
+                    headers: { 'Authorization': `Bearer ${channelData.access_token}` }
+                });
+                if (chRes.data?.data?.user_id) {
+                    targetUserId = chRes.data.data.user_id;
+                }
+            } catch (e2) {
+                console.log("User search method 2 failed:", e2.message);
+            }
+        }
+
+        if (!targetUserId) {
+            console.log(`Kullanıcı ID bulunamadı: ${targetUsername}`);
+            return { success: false, error: 'Kullanıcı ID bulunamadı' };
+        }
+
+        console.log(`Timeout: User ${targetUsername} -> ID ${targetUserId}`);
+
+        // Timeout uygula
+        const banRes = await axios.post(`https://api.kick.com/public/v1/channels/${broadcasterId}/bans`, {
+            banned_user_id: targetUserId,
             duration: duration,
-            reason: "Bot !sustur komutu",
-            permanent: false
-        }, { headers: { 'Authorization': `Bearer ${data.access_token}`, 'Content-Type': 'application/json' } });
-        return true;
+            reason: "Bot tarafından susturuldu"
+        }, {
+            headers: {
+                'Authorization': `Bearer ${channelData.access_token}`,
+                'Content-Type': 'application/json'
+            }
+        });
+
+        console.log("Ban response:", banRes.data);
+        return { success: true };
     } catch (e) {
-        console.log("Timeout Error:", e.response?.data || e.message);
-        return false;
+        console.log("Timeout Error Full:", e.response?.status, e.response?.data || e.message);
+        return { success: false, error: e.response?.data?.message || e.message };
+    }
+}
+
+// Slow Mode API
+async function setSlowMode(broadcasterId, enabled, delay = 10) {
+    const channelRef = await db.ref('channels/' + broadcasterId).once('value');
+    const channelData = channelRef.val();
+    if (!channelData) return { success: false, error: 'Kanal bulunamadı' };
+
+    try {
+        await axios.patch(`https://api.kick.com/public/v1/channels/${broadcasterId}/chat-settings`, {
+            slow_mode: enabled,
+            slow_mode_delay: delay
+        }, {
+            headers: {
+                'Authorization': `Bearer ${channelData.access_token}`,
+                'Content-Type': 'application/json'
+            }
+        });
+        return { success: true };
+    } catch (e) {
+        console.log("SlowMode Error:", e.response?.data || e.message);
+        return { success: false, error: e.message };
+    }
+}
+
+// Clear Chat API  
+async function clearChat(broadcasterId) {
+    const channelRef = await db.ref('channels/' + broadcasterId).once('value');
+    const channelData = channelRef.val();
+    if (!channelData) return { success: false, error: 'Kanal bulunamadı' };
+
+    try {
+        await axios.delete(`https://api.kick.com/public/v1/channels/${broadcasterId}/chat`, {
+            headers: { 'Authorization': `Bearer ${channelData.access_token}` }
+        });
+        return { success: true };
+    } catch (e) {
+        console.log("ClearChat Error:", e.response?.data || e.message);
+        // Fallback: Mesaj olarak gönder
+        await sendChatMessage('/clear', broadcasterId);
+        return { success: true, fallback: true };
     }
 }
 
@@ -469,21 +550,29 @@ app.post('/kick/webhook', async (req, res) => {
         const target = args[0]?.replace('@', '').toLowerCase();
         if (target) {
             const snap = await userRef.once('value');
-            if ((snap.val()?.balance || 0) < 10000) await reply(`@${user}, 10.000 💰 bakiye lazım!`);
-            else {
-                const success = await timeoutUser(broadcasterId, target, 600);
-                if (success) {
+            if ((snap.val()?.balance || 0) < 10000) {
+                await reply(`@${user}, 10.000 💰 bakiye lazım!`);
+            } else {
+                const result = await timeoutUser(broadcasterId, target, 600);
+                if (result.success) {
                     await userRef.transaction(u => { if (u) u.balance -= 10000; return u; });
                     await reply(`🔇 @${user}, @${target} kullanıcısını 10 dakika susturdu! (-10.000 💰)`);
-                } else await reply(`❌ İşlem başarısız! (Kullanıcı bulunamadı veya yetki yok)`);
+                } else {
+                    await reply(`❌ İşlem başarısız: ${result.error || 'Bilinmeyen hata'}`);
+                }
             }
         }
     }
 
     else if (lowMsg.startsWith('!tahmin') || lowMsg.startsWith('!oyla') || lowMsg.startsWith('!sonuç') || lowMsg.startsWith('!piyango')) {
-        if (lowMsg.startsWith('!tahmin') && isAuthorized) {
+        // TAHMİN
+        if (lowMsg === '!tahmin iptal' && isAuthorized && activePrediction && activePrediction.channel === broadcasterId) {
+            activePrediction = null;
+            await reply(`❌ Tahmin iptal edildi.`);
+        }
+        else if (lowMsg.startsWith('!tahmin') && args[0] !== 'iptal' && isAuthorized) {
             activePrediction = { q: args.join(' '), v1: 0, v2: 0, voters: {}, channel: broadcasterId };
-            await reply(`📊 TAHMİN: ${args.join(' ')} | !oyla 1 veya !oyla 2`);
+            await reply(`📊 TAHMİN: ${args.join(' ')} | !oyla 1 veya !oyla 2 | İptal: !tahmin iptal`);
         }
         else if (lowMsg.startsWith('!oyla') && activePrediction && activePrediction.channel === broadcasterId) {
             if (!activePrediction.voters[user]) {
@@ -499,11 +588,23 @@ app.post('/kick/webhook', async (req, res) => {
             await reply(`📊 SONUÇ: Evet: ${activePrediction.v1} - Hayır: ${activePrediction.v2}`);
             activePrediction = null;
         }
+        // PİYANGO
         else if (lowMsg.startsWith('!piyango')) {
             const sub = args[0];
-            if (sub === 'başla' && isAuthorized) {
+            if (sub === 'iptal' && isAuthorized && activePiyango && activePiyango.channel === broadcasterId) {
+                // Katılımcılara paralarını iade et
+                for (const p of activePiyango.p) {
+                    await db.ref('users/' + p.toLowerCase()).transaction(u => {
+                        if (u) u.balance = (u.balance || 0) + activePiyango.cost;
+                        return u;
+                    });
+                }
+                await reply(`❌ Piyango iptal edildi! ${activePiyango.p.length} kişiye ${activePiyango.cost} 💰 iade edildi.`);
+                activePiyango = null;
+            }
+            else if (sub === 'başla' && isAuthorized) {
                 activePiyango = { p: [], cost: parseInt(args[1]) || 500, pool: 0, channel: broadcasterId };
-                await reply(`🎰 PİYANGO! Giriş: ${activePiyango.cost} 💰 | !piyango katıl`);
+                await reply(`🎰 PİYANGO! Giriş: ${activePiyango.cost} 💰 | !piyango katıl | İptal: !piyango iptal`);
             }
             else if (sub === 'katıl' && activePiyango && activePiyango.channel === broadcasterId) {
                 if (!activePiyango.p.includes(user)) {
@@ -528,8 +629,11 @@ app.post('/kick/webhook', async (req, res) => {
     }
 
     else if (lowMsg === '!komutlar') {
-        const available = Object.keys(settings).filter(k => settings[k] === true).map(k => "!" + k).join(', ');
-        await reply(`Aktif Komutlar: ${available}, !bakiye, !günlük, (sa/as)`);
+        const toggleable = ['slot', 'yazitura', 'kutu', 'duello', 'soygun', 'fal', 'ship', 'hava', 'zenginler', 'söz'];
+        const enabled = toggleable.filter(k => settings[k] !== false).map(k => "!" + k);
+        const fixed = ['!bakiye', '!günlük', '!sustur', '!efkar', '!kabul'];
+        const admin = ['!tahmin', '!oyla', '!sonuç', '!piyango'];
+        await reply(`📋 Komutlar: ${[...enabled, ...fixed].join(', ')} | 👑 Admin: ${admin.join(', ')}`);
     }
 });
 
@@ -568,30 +672,26 @@ app.post('/admin-api/rig-gamble', authAdmin, (req, res) => {
 // CHAT AKSİYONLARI (API tabanlı moderasyon)
 app.post('/admin-api/chat-action', authAdmin, async (req, res) => {
     const { action, channelId } = req.body;
-    const channelSnap = await db.ref('channels/' + channelId).once('value');
-    const channelData = channelSnap.val();
-    if (!channelData) return res.json({ success: false, error: 'Kanal bulunamadı' });
 
-    try {
-        if (action === 'clear') {
-            // Kick API'de direkt clear yok, mesaj olarak gönderiyoruz
-            await sendChatMessage('/clear', channelId);
-        } else if (action === 'slow') {
-            // Slow mode API endpoint
-            await axios.patch(`https://api.kick.com/public/v1/channels/${channelId}/chat-settings`, {
-                slow_mode: true,
-                slow_mode_delay: 10
-            }, { headers: { 'Authorization': `Bearer ${channelData.access_token}`, 'Content-Type': 'application/json' } });
-        } else if (action === 'slowoff') {
-            await axios.patch(`https://api.kick.com/public/v1/channels/${channelId}/chat-settings`, {
-                slow_mode: false
-            }, { headers: { 'Authorization': `Bearer ${channelData.access_token}`, 'Content-Type': 'application/json' } });
-        }
-        res.json({ success: true });
-    } catch (e) {
-        console.log("Chat Action Error:", e.response?.data || e.message);
-        res.json({ success: false, error: e.message });
+    let result;
+    if (action === 'clear') {
+        result = await clearChat(channelId);
+    } else if (action === 'slow') {
+        result = await setSlowMode(channelId, true, 10);
+    } else if (action === 'slowoff') {
+        result = await setSlowMode(channelId, false);
+    } else {
+        return res.json({ success: false, error: 'Bilinmeyen aksiyon' });
     }
+
+    res.json(result);
+});
+
+// ADMIN TIMEOUT (Kanal ve kullanıcı belirterek susturma)
+app.post('/admin-api/timeout', authAdmin, async (req, res) => {
+    const { channelId, username, duration } = req.body;
+    const result = await timeoutUser(channelId, username, duration || 600);
+    res.json(result);
 });
 
 // YENİ: KANAL LİSTESİ (POST oldu)
