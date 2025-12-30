@@ -1,0 +1,328 @@
+<!DOCTYPE html>
+<html lang="tr">
+
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>AloskeGangBOT | Admin Panel</title>
+    <link href="https://fonts.googleapis.com/css2?family=Outfit:wght@300;400;600;800&display=swap" rel="stylesheet">
+    <style>
+        :root {
+            --bg: #0a0a0c;
+            --card: #151518;
+            --primary: #00ff88;
+            --secondary: #00e1ff;
+            --text: #ffffff;
+            --error: #ff4a4a;
+        }
+
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+            font-family: 'Outfit', sans-serif;
+        }
+
+        body {
+            background: var(--bg);
+            color: var(--text);
+            overflow-x: hidden;
+        }
+
+        /* Login Screen */
+        #login-overlay {
+            position: fixed;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            background: rgba(0, 0, 0, 0.9);
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            z-index: 1000;
+            transition: 0.5s;
+        }
+
+        .login-box {
+            background: var(--card);
+            padding: 40px;
+            border-radius: 20px;
+            border: 1px solid rgba(255, 255, 255, 0.1);
+            width: 350px;
+            text-align: center;
+        }
+
+        .login-box h2 {
+            margin-bottom: 20px;
+            color: var(--primary);
+        }
+
+        input {
+            width: 100%;
+            padding: 12px;
+            margin-bottom: 20px;
+            background: #000;
+            border: 1px solid #333;
+            border-radius: 8px;
+            color: #fff;
+            text-align: center;
+        }
+
+        button {
+            width: 100%;
+            padding: 12px;
+            background: linear-gradient(45deg, var(--primary), var(--secondary));
+            border: none;
+            border-radius: 8px;
+            color: #000;
+            font-weight: 800;
+            cursor: pointer;
+            transition: 0.3s;
+        }
+
+        button:hover {
+            transform: scale(1.05);
+            filter: brightness(1.2);
+        }
+
+        /* Dashboard */
+        .container {
+            max-width: 1200px;
+            margin: 40px auto;
+            padding: 20px;
+            display: none;
+        }
+
+        header {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            margin-bottom: 40px;
+        }
+
+        .stats {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
+            gap: 20px;
+            margin-bottom: 40px;
+        }
+
+        .stat-card {
+            background: var(--card);
+            padding: 25px;
+            border-radius: 15px;
+            border-bottom: 3px solid var(--primary);
+        }
+
+        .stat-card h3 {
+            font-size: 0.8rem;
+            color: #888;
+            text-transform: uppercase;
+            margin-bottom: 10px;
+        }
+
+        .stat-card p {
+            font-size: 1.8rem;
+            font-weight: 800;
+        }
+
+        .main-grid {
+            display: grid;
+            grid-template-columns: 1fr 1fr;
+            gap: 30px;
+        }
+
+        .panel {
+            background: var(--card);
+            padding: 30px;
+            border-radius: 20px;
+            height: fit-content;
+        }
+
+        .panel h2 {
+            margin-bottom: 20px;
+            font-size: 1.4rem;
+            color: var(--secondary);
+            display: flex;
+            align-items: center;
+            gap: 10px;
+        }
+
+        .chat-form textarea {
+            width: 100%;
+            height: 100px;
+            background: #000;
+            border: 1px solid #333;
+            border-radius: 10px;
+            padding: 15px;
+            color: #fff;
+            resize: none;
+            margin-bottom: 15px;
+        }
+
+        .user-search {
+            display: flex;
+            gap: 10px;
+            margin-bottom: 20px;
+        }
+
+        .user-result {
+            background: rgba(0, 0, 0, 0.3);
+            padding: 20px;
+            border-radius: 10px;
+        }
+
+        .badge {
+            display: inline-block;
+            padding: 4px 10px;
+            border-radius: 5px;
+            font-size: 0.7rem;
+            font-weight: 800;
+            margin-left: 10px;
+        }
+
+        .badge-verified {
+            background: var(--primary);
+            color: #000;
+        }
+
+        #error-log {
+            color: var(--error);
+            margin-top: 10px;
+            font-size: 0.9rem;
+        }
+    </style>
+</head>
+
+<body>
+
+    <!-- GÜVENLİK GİRİŞİ -->
+    <div id="login-overlay">
+        <div class="login-box">
+            <h2>🔐 GÜVENLİ GİRİŞ</h2>
+            <input type="password" id="adminKey" placeholder="Admin Anahtarı">
+            <button onclick="login()">PANELE GİR</button>
+            <p id="error-log"></p>
+        </div>
+    </div>
+
+    <!-- ANA DASHBOARD -->
+    <div class="container" id="admin-panel">
+        <header>
+            <h1>AloskeGang<span style="color:var(--primary)">ADMIN</span></h1>
+            <button style="width:auto; padding: 8px 20px" onclick="location.reload()">ÇIKIŞ YAP</button>
+        </header>
+
+        <div class="stats">
+            <div class="stat-card">
+                <h3>Bot Durumu</h3>
+                <p>Aktif ✅</p>
+            </div>
+            <div class="stat-card">
+                <h3>Bağlı Kanal</h3>
+                <p id="broadcasterName">Yükleniyor...</p>
+            </div>
+            <div class="stat-card">
+                <h3>Toplam Kullanıcı</h3>
+                <p id="totalUsers">0</p>
+            </div>
+        </div>
+
+        <div class="main-grid">
+            <!-- HIZLI MESAJ GÖNDER -->
+            <div class="panel">
+                <h2>💬 Hızlı Duyuru</h2>
+                <div class="chat-form">
+                    <textarea id="chatMsg" placeholder="Botun adıyla mesaj yaz..."></textarea>
+                    <button onclick="sendAsBot()">CHATE GÖNDER</button>
+                </div>
+            </div>
+
+            <!-- KULLANICI YÖNETİMİ -->
+            <div class="panel">
+                <h2>👤 Kullanıcı Yönetimi</h2>
+                <div class="user-search">
+                    <input type="text" id="targetUser" placeholder="Kullanıcı Adı" style="margin:0">
+                    <button style="width:auto" onclick="searchUser()">ARA</button>
+                </div>
+                <div id="user-info" class="user-result" style="display:none">
+                    <p style="margin-bottom:10px">Kullanıcı: <b id="uName"></b></p>
+                    <p style="margin-bottom:15px">Bakiye:</p>
+                    <input type="number" id="uBalance" style="font-size:1.2rem; font-weight:800; margin-bottom:15px">
+                    <button onclick="updateBalance()">BAKİYE GÜNCELLE</button>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <script>
+        let sessionKey = "";
+
+        async function login() {
+            const key = document.getElementById('adminKey').value;
+            const res = await fetch('/admin-api/check', {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({ key })
+            });
+            const data = await res.json();
+            if (data.success) {
+                sessionKey = key;
+                document.getElementById('login-overlay').style.display = 'none';
+                document.getElementById('admin-panel').style.display = 'block';
+                loadStats();
+            } else {
+                document.getElementById('error-log').innerText = "Hatalı Anahtar!";
+            }
+        }
+
+        async function loadStats() {
+            const res = await fetch('/admin-api/stats', {
+                headers: { 'Authorization': sessionKey }
+            });
+            const data = await res.json();
+            document.getElementById('broadcasterName').innerText = data.broadcaster || "N/A";
+            document.getElementById('totalUsers').innerText = data.userCount || 0;
+        }
+
+        async function sendAsBot() {
+            const msg = document.getElementById('chatMsg').value;
+            await fetch('/admin-api/send', {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json', 'Authorization': sessionKey },
+                body: JSON.stringify({ msg })
+            });
+            alert("Gönderildi!");
+            document.getElementById('chatMsg').value = "";
+        }
+
+        async function searchUser() {
+            const user = document.getElementById('targetUser').value;
+            const res = await fetch(`/admin-api/user/${user}`, {
+                headers: { 'Authorization': sessionKey }
+            });
+            const data = await res.json();
+            if (data.found) {
+                document.getElementById('user-info').style.display = 'block';
+                document.getElementById('uName').innerText = user;
+                document.getElementById('uBalance').value = data.balance;
+            } else {
+                alert("Kullanıcı bulunamadı!");
+            }
+        }
+
+        async function updateBalance() {
+            const user = document.getElementById('uName').innerText;
+            const balance = document.getElementById('uBalance').value;
+            await fetch('/admin-api/update-user', {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json', 'Authorization': sessionKey },
+                body: JSON.stringify({ user, balance })
+            });
+            alert("Bakiye Güncellendi!");
+        }
+    </script>
+</body>
+
+</html>
