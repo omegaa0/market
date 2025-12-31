@@ -263,7 +263,7 @@
                     this.targetY = Math.random() * (h * 0.4) + 50;
                     this.speed = Math.random() * 8 + 10;
                     this.color = colors[Math.floor(Math.random() * colors.length)];
-                    playSound('launch');
+                    // playSound('launch');
                 }
                 update() {
                     this.y -= this.speed;
@@ -274,7 +274,7 @@
                     return false;
                 }
                 explode() {
-                    playSound('explode');
+                    // playSound('explode');
                     for (let i = 0; i < 80; i++) {
                         particles.push(new Particle(this.x, this.y, this.color));
                     }
