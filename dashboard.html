@@ -428,20 +428,28 @@
 
                     // Settings mapping
                     const s = data.settings || {};
-                    document.getElementById('daily_reward').value = s.daily_reward || 500;
-                    document.getElementById('passive_reward').value = s.passive_reward || 100;
+                    const getVal = (v, def) => (v !== undefined ? v : def);
 
-                    ['wr_slot', 'wr_yazitura', 'wr_kutu', 'wr_soygun', 'tts_volume', 'sound_volume'].forEach(key => {
+                    document.getElementById('daily_reward').value = getVal(s.daily_reward, 500);
+                    document.getElementById('passive_reward').value = getVal(s.passive_reward, 100);
+
+                    const labelMap = {
+                        wr_slot: 'v-slot', wr_yazitura: 'v-yt', wr_kutu: 'v-kutu',
+                        wr_soygun: 'v-soy', tts_volume: 'v-tts', sound_volume: 'v-snd'
+                    };
+
+                    Object.keys(labelMap).forEach(key => {
                         let val = s[key];
                         if (val === undefined) {
                             if (key === 'tts_volume') val = 100;
                             else if (key === 'sound_volume') val = 80;
-                            else val = 40;
+                            else val = key.includes('wr_slot') ? 30 : 40;
                         }
-                        if (document.getElementById(key)) {
-                            document.getElementById(key).value = val;
-                            const labelId = 'v-' + key.split('_')[0];
-                            if (document.getElementById(labelId)) document.getElementById(labelId).innerText = val;
+                        const el = document.getElementById(key);
+                        if (el) {
+                            el.value = val;
+                            const labelEl = document.getElementById(labelMap[key]);
+                            if (labelEl) labelEl.innerText = val;
                         }
                     });
 
@@ -489,10 +497,10 @@
                             <b style="color:var(--primary)">!ses ${name}</b>
                             <button onclick="removeSound('${name}')" style="background:none; border:none; color:var(--danger); cursor:pointer;">✖</button>
                         </div>
-                        <div style="display:grid; grid-template-columns: 1fr 1fr 1fr; gap:10px;">
-                            <div><label style="font-size:0.7rem; color:var(--muted)">Ücret</label><input type="number" value="${data.cost}" class="inp" style="height:30px; font-size:0.8rem;" onchange="editSound('${name}','cost',this.value)"></div>
-                            <div><label style="font-size:0.7rem; color:var(--muted)">Ses %</label><input type="number" value="${data.volume || 100}" class="inp" style="height:30px; font-size:0.8rem;" onchange="editSound('${name}','volume',this.value)"></div>
-                            <div><label style="font-size:0.7rem; color:var(--muted)">Süre (sn)</label><input type="number" value="${data.duration || 0}" class="inp" style="height:30px; font-size:0.8rem;" onchange="editSound('${name}','duration',this.value)"></div>
+                        <div style="grid-column: span 3; display: flex; gap: 10px;">
+                            <div style="flex:1"><label style="font-size:0.7rem; color:var(--muted)">Ücret</label><input type="number" value="${data.cost}" class="inp" style="height:30px; font-size:0.8rem;" onchange="editSound('${name}','cost',this.value)"></div>
+                            <div style="flex:1"><label style="font-size:0.7rem; color:var(--muted)">Ses %</label><input type="number" value="${data.volume !== undefined ? data.volume : 100}" class="inp" style="height:30px; font-size:0.8rem;" onchange="editSound('${name}','volume',this.value)"></div>
+                            <div style="flex:1"><label style="font-size:0.7rem; color:var(--muted)">Süre (sn)</label><input type="number" value="${data.duration !== undefined ? data.duration : 0}" class="inp" style="height:30px; font-size:0.8rem;" onchange="editSound('${name}','duration',this.value)"></div>
                         </div>
                     </div>`;
                 });

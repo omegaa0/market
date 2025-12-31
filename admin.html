@@ -144,6 +144,30 @@
             font-weight: 600;
         }
 
+        .toast {
+            position: fixed;
+            top: 20px;
+            right: 20px;
+            background: var(--secondary);
+            color: #000;
+            padding: 10px 20px;
+            border-radius: 8px;
+            font-weight: bold;
+            z-index: 9999;
+            display: none;
+            animation: slideIn 0.3s ease-out;
+        }
+
+        @keyframes slideIn {
+            from {
+                transform: translateX(100%);
+            }
+
+            to {
+                transform: translateX(0);
+            }
+        }
+
         /* Content Sections */
         .section {
             display: none;
@@ -431,6 +455,7 @@
 </head>
 
 <body>
+    <div id="toast" class="toast">Kaydedildi! ✅</div>
 
     <!-- AUTH -->
     <div id="login-overlay">
@@ -639,6 +664,7 @@
                 });
 
                 const s = data.settings || {};
+                const getVal = (v, def) => (v !== undefined ? v : def);
                 const overlayUrl = `${window.location.origin}/overlay?key=${data.overlay_key || 'YOK'}`;
 
                 const html = `
@@ -667,45 +693,45 @@
                                     <button class="btn btn-small" style="background:#333; flex:1;" onclick="reloadOverlay('${id}')">🔄 YENİLE</button>
                                 </div>
                             </div>
-                            <div class="form-row">
+                             <div class="form-row">
                                 <div style="flex:1">
                                     <label class="range-label">Günlük Ödül</label>
-                                    <input type="number" value="${s.daily_reward || 500}" class="inp" style="height:35px; margin:0;" onchange="toggleCmd('${id}','daily_reward',parseInt(this.value))">
+                                    <input type="number" value="${getVal(s.daily_reward, 500)}" class="inp" style="height:35px; margin:0;" onchange="toggleCmd('${id}','daily_reward',parseInt(this.value))">
                                 </div>
                                 <div style="flex:1">
                                     <label class="range-label">Pasif (10dk)</label>
-                                    <input type="number" value="${s.passive_reward || 100}" class="inp" style="height:35px; margin:0;" onchange="toggleCmd('${id}','passive_reward',parseInt(this.value))">
+                                    <input type="number" value="${getVal(s.passive_reward, 100)}" class="inp" style="height:35px; margin:0;" onchange="toggleCmd('${id}','passive_reward',parseInt(this.value))">
                                 </div>
                             </div>
                             <button class="btn btn-small" onclick="distributeBalancePrompt('${id}')">💰 KANALDAKİ HERKESE PARA DAĞIT</button>
                         </div>
 
                         <!-- KANAL: OYUNLAR -->
-                        <div id="sub-oyunlar-${id}" class="sub-section">
+                         <div id="sub-oyunlar-${id}" class="sub-section">
                             <div class="range-container">
-                                <label class="range-label">Slot Kazanma: <span>%<span id="v-sl-${id}">${s.wr_slot || 30}</span></span></label>
-                                <input type="range" min="0" max="100" value="${s.wr_slot || 30}" oninput="document.getElementById('v-sl-${id}').innerText=this.value" onchange="toggleCmd('${id}','wr_slot',parseInt(this.value))">
+                                <label class="range-label">Slot Kazanma: <span>%<span id="v-sl-${id}">${getVal(s.wr_slot, 30)}</span></span></label>
+                                <input type="range" min="0" max="100" value="${getVal(s.wr_slot, 30)}" oninput="document.getElementById('v-sl-${id}').innerText=this.value" onchange="toggleCmd('${id}','wr_slot',parseInt(this.value))">
                             </div>
                             <div class="range-container">
-                                <label class="range-label">YazıTura Kazanma: <span>%<span id="v-yt-${id}">${s.wr_yazitura || 50}</span></span></label>
-                                <input type="range" min="0" max="100" value="${s.wr_yazitura || 50}" oninput="document.getElementById('v-yt-${id}').innerText=this.value" onchange="toggleCmd('${id}','wr_yazitura',parseInt(this.value))">
+                                <label class="range-label">YazıTura Kazanma: <span>%<span id="v-yt-${id}">${getVal(s.wr_yazitura, 50)}</span></span></label>
+                                <input type="range" min="0" max="100" value="${getVal(s.wr_yazitura, 50)}" oninput="document.getElementById('v-yt-${id}').innerText=this.value" onchange="toggleCmd('${id}','wr_yazitura',parseInt(this.value))">
                             </div>
                             <div class="range-container">
-                                <label class="range-label">Kutu Kazanma: <span>%<span id="v-kt-${id}">${s.wr_kutu || 40}</span></span></label>
-                                <input type="range" min="0" max="100" value="${s.wr_kutu || 40}" oninput="document.getElementById('v-kt-${id}').innerText=this.value" onchange="toggleCmd('${id}','wr_kutu',parseInt(this.value))">
+                                <label class="range-label">Kutu Kazanma: <span>%<span id="v-kt-${id}">${getVal(s.wr_kutu, 40)}</span></span></label>
+                                <input type="range" min="0" max="100" value="${getVal(s.wr_kutu, 40)}" oninput="document.getElementById('v-kt-${id}').innerText=this.value" onchange="toggleCmd('${id}','wr_kutu',parseInt(this.value))">
                             </div>
                             <div class="range-container">
-                                <label class="range-label">Soygun Kazanma: <span>%<span id="v-sy-${id}">${s.wr_soygun || 40}</span></span></label>
-                                <input type="range" min="0" max="100" value="${s.wr_soygun || 40}" oninput="document.getElementById('v-sy-${id}').innerText=this.value" onchange="toggleCmd('${id}','wr_soygun',parseInt(this.value))">
+                                <label class="range-label">Soygun Kazanma: <span>%<span id="v-sy-${id}">${getVal(s.wr_soygun, 40)}</span></span></label>
+                                <input type="range" min="0" max="100" value="${getVal(s.wr_soygun, 40)}" oninput="document.getElementById('v-sy-${id}').innerText=this.value" onchange="toggleCmd('${id}','wr_soygun',parseInt(this.value))">
                             </div>
                             <div class="form-row">
                                 <div style="flex:1">
                                     <label class="range-label">Soygun Ödül</label>
-                                    <input type="number" value="${s.soygun_reward || 30000}" class="inp" style="height:35px; margin:0;" onchange="toggleCmd('${id}','soygun_reward',parseInt(this.value))">
+                                    <input type="number" value="${getVal(s.soygun_reward, 30000)}" class="inp" style="height:35px; margin:0;" onchange="toggleCmd('${id}','soygun_reward',parseInt(this.value))">
                                 </div>
                                 <div style="flex:1">
                                     <label class="range-label">Soygun Sınır/Sa</label>
-                                    <input type="number" value="${s.soygun_limit || 3}" class="inp" style="height:35px; margin:0;" onchange="toggleCmd('${id}','soygun_limit',parseInt(this.value))">
+                                    <input type="number" value="${getVal(s.soygun_limit, 3)}" class="inp" style="height:35px; margin:0;" onchange="toggleCmd('${id}','soygun_limit',parseInt(this.value))">
                                 </div>
                             </div>
                         </div>
@@ -714,12 +740,12 @@
                         <div id="sub-sesler-${id}" class="sub-section">
                              <div class="form-row">
                                 <div style="flex:1">
-                                    <label class="range-label">TTS Vol: <span>%<span id="v-tts-${id}">${s.tts_volume || 100}</span></span></label>
-                                    <input type="range" min="0" max="100" value="${s.tts_volume || 100}" oninput="document.getElementById('v-tts-${id}').innerText=this.value" onchange="toggleCmd('${id}','tts_volume',parseInt(this.value))">
+                                    <label class="range-label">TTS Vol: <span>%<span id="v-tts-${id}">${getVal(s.tts_volume, 100)}</span></span></label>
+                                    <input type="range" min="0" max="100" value="${getVal(s.tts_volume, 100)}" oninput="document.getElementById('v-tts-${id}').innerText=this.value" onchange="toggleCmd('${id}','tts_volume',parseInt(this.value))">
                                 </div>
                                 <div style="flex:1">
-                                    <label class="range-label">Ses Vol: <span>%<span id="v-snd-${id}">${s.sound_volume || 80}</span></span></label>
-                                    <input type="range" min="0" max="100" value="${s.sound_volume || 80}" oninput="document.getElementById('v-snd-${id}').innerText=this.value" onchange="toggleCmd('${id}','sound_volume',parseInt(this.value))">
+                                    <label class="range-label">Ses Vol: <span>%<span id="v-snd-${id}">${getVal(s.sound_volume, 80)}</span></span></label>
+                                    <input type="range" min="0" max="100" value="${getVal(s.sound_volume, 80)}" oninput="document.getElementById('v-snd-${id}').innerText=this.value" onchange="toggleCmd('${id}','sound_volume',parseInt(this.value))">
                                 </div>
                             </div>
                             <div style="background:#000; padding:10px; border-radius:10px; border:1px solid #333;">
@@ -913,7 +939,13 @@
         }
 
         async function toggleCmd(channelId, cmd, val) {
-            await fetch('/admin-api/toggle-command', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ key: sessionKey, channelId, command: cmd, value: val }) });
+            const res = await fetch('/admin-api/toggle-command', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ key: sessionKey, channelId, command: cmd, value: val }) });
+            const d = await res.json();
+            if (d.success) {
+                const t = document.getElementById('toast');
+                t.style.display = 'block';
+                setTimeout(() => t.style.display = 'none', 2000);
+            }
         }
 
         async function deleteChannel(id) {
