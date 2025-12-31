@@ -159,6 +159,12 @@ async function loadChannelMarket(channelId) {
         const data = await res.json();
         if (data.user && data.user.profile_pic) {
             document.getElementById('chan-pfp').src = data.user.profile_pic;
+
+            // Floating PFP Setup
+            const floatImg = document.getElementById('floating-pfp');
+            floatImg.src = data.user.profile_pic;
+            floatImg.style.display = 'block';
+            startFloatingPFP();
         }
     } catch (e) { console.log("Broadcaster PFP error", e); }
 
@@ -227,6 +233,25 @@ function stopAllPreviews() {
         clearTimeout(currentPreviewTimeout);
         currentPreviewTimeout = null;
     }
+}
+
+let floatInterval = null;
+function startFloatingPFP() {
+    if (floatInterval) return;
+    const img = document.getElementById('floating-pfp');
+
+    const move = () => {
+        const maxX = window.innerWidth - 60;
+        const maxY = window.innerHeight - 60;
+        const randX = Math.floor(Math.random() * maxX);
+        const randY = Math.floor(Math.random() * maxY);
+
+        img.style.left = randX + 'px';
+        img.style.top = randY + 'px';
+    };
+
+    move(); // Initial move
+    floatInterval = setInterval(move, 4000); // Move every 4 seconds (matching CSS transition)
 }
 
 async function executePurchase(type, trigger, price) {
