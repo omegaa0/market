@@ -1302,6 +1302,18 @@ app.post('/admin-api/reset-overlay-key', authAdmin, async (req, res) => {
     res.json({ success: true });
 });
 
+app.post('/admin-api/test-fireworks', authAdmin, async (req, res) => {
+    const { channelId } = req.body;
+    await db.ref(`channels/${channelId}/stream_events/fireworks`).push({ timestamp: Date.now(), played: false });
+    res.json({ success: true });
+});
+
+app.post('/admin-api/reload-overlay', authAdmin, async (req, res) => {
+    const { channelId } = req.body;
+    await db.ref(`channels/${channelId}/commands`).update({ reload: true });
+    res.json({ success: true });
+});
+
 app.post('/dashboard-api/data', authDashboard, async (req, res) => {
     const { channelId } = req.body;
     const snap = await db.ref('channels/' + channelId).once('value');
@@ -1324,6 +1336,18 @@ app.post('/dashboard-api/add-sound', authDashboard, async (req, res) => {
 app.post('/dashboard-api/remove-sound', authDashboard, async (req, res) => {
     const { channelId, name } = req.body;
     await db.ref(`channels/${channelId}/settings/custom_sounds/${name}`).remove();
+    res.json({ success: true });
+});
+
+app.post('/dashboard-api/test-fireworks', authDashboard, async (req, res) => {
+    const { channelId } = req.body;
+    await db.ref(`channels/${channelId}/stream_events/fireworks`).push({ timestamp: Date.now(), played: false });
+    res.json({ success: true });
+});
+
+app.post('/dashboard-api/reload-overlay', authDashboard, async (req, res) => {
+    const { channelId } = req.body;
+    await db.ref(`channels/${channelId}/commands`).update({ reload: true });
     res.json({ success: true });
 });
 

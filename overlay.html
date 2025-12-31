@@ -191,6 +191,15 @@
                             db.ref('channels/' + targetBroadcasterId + '/stream_events/fireworks/' + snap.key).update({ played: true });
                             startFireworks();
                         });
+
+                    // UZAKTAN YENİLEME DİNLE (Remote Reload)
+                    db.ref('channels/' + targetBroadcasterId + '/commands/reload').on('value', function (snap) {
+                        if (snap.val() === true) {
+                            db.ref('channels/' + targetBroadcasterId + '/commands/reload').set(false);
+                            console.log("🔄 Uzaktan yenileme sinyali alındı, sayfa yenileniyor...");
+                            location.reload();
+                        }
+                    });
                 });
             });
 

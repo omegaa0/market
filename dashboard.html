@@ -306,160 +306,166 @@
                         <input type="number" id="passive_reward" class="inp"
                             onchange="updateSetting('passive_reward', this.value)">
                     </div>
-                </div>
-            </div>
-
-            <!-- OYUNLAR -->
-            <div id="oyunlar" class="section">
-                <h3 style="margin-bottom: 15px; color: var(--secondary);">🎰 Kazanma Oranları</h3>
-                <div class="range-box">
-                    <label>Slot Kazanma Şansı: %<span id="v-slot">0</span></label>
-                    <input type="range" id="wr_slot" min="0" max="100"
-                        oninput="document.getElementById('v-slot').innerText=this.value"
-                        onchange="updateSetting('wr_slot', this.value)">
-                </div>
-                <div class="range-box">
-                    <label>Yazı Tura Şansı: %<span id="v-yt">0</span></label>
-                    <input type="range" id="wr_yazitura" min="0" max="100"
-                        oninput="document.getElementById('v-yt').innerText=this.value"
-                        onchange="updateSetting('wr_yazitura', this.value)">
-                </div>
-                <div class="range-box">
-                    <label>Kutu Şansı: %<span id="v-kutu">0</span></label>
-                    <input type="range" id="wr_kutu" min="0" max="100"
-                        oninput="document.getElementById('v-kutu').innerText=this.value"
-                        onchange="updateSetting('wr_kutu', this.value)">
-                </div>
-                <div class="range-box">
-                    <label>Soygun Şansı: %<span id="v-soy">0</span></label>
-                    <input type="range" id="wr_soygun" min="0" max="100"
-                        oninput="document.getElementById('v-soy').innerText=this.value"
-                        onchange="updateSetting('wr_soygun', this.value)">
-                </div>
-                <!-- Yeni: TTS ve Ana Ses Seviyeleri -->
-                <h3 style="margin: 20px 0 15px; color: var(--secondary);">🔊 Genel Ses Ayarları</h3>
-                <div class="range-box">
-                    <label>TTS (Konuşma) Sesi: %<span id="v-tts">100</span></label>
-                    <input type="range" id="tts_volume" min="0" max="100"
-                        oninput="document.getElementById('v-tts').innerText=this.value"
-                        onchange="updateSetting('tts_volume', this.value)">
-                </div>
-                <div class="range-box">
-                    <label>Efekt (Ses) Sesi: %<span id="v-snd">80</span></label>
-                    <input type="range" id="sound_volume" min="0" max="100"
-                        oninput="document.getElementById('v-snd').innerText=this.value"
-                        onchange="updateSetting('sound_volume', this.value)">
-                </div>
-            </div>
-
-            <!-- SESLER -->
-            <div id="sesler" class="section">
-                <h3 style="margin-bottom: 15px; color: var(--secondary);">🔊 Ses Efektleri</h3>
-                <div
-                    style="background: #000; padding: 20px; border-radius: 15px; border: 1px solid #222; margin-bottom: 20px;">
-                    <div style="display: flex; gap: 10px; margin-bottom: 10px;">
-                        <input type="text" id="snd-name" placeholder="Komut (örn: gol)" class="inp" style="margin:0;">
-                        <input type="number" id="snd-cost" placeholder="Ücret" class="inp"
-                            style="margin:0; width: 100px;">
+                    <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 15px;">
+                        <button class="btn" onclick="testFireworks()"
+                            style="background: #ff0055; color: #fff; font-size: 0.8rem;">🎆 FİŞEK TEST</button>
+                        <button class="btn" onclick="reloadOverlay()"
+                            style="background: #222; color: #fff; font-size: 0.8rem;">🔄 OVERLAY YENİLE</button>
                     </div>
-                    <div style="display: flex; gap: 10px; align-items: center; margin-bottom: 10px;">
-                        <input type="text" id="snd-url" placeholder="Ses Linki veya Dosya" class="inp"
-                            style="margin:0; text-align: left; padding-left: 15px;">
-                        <input type="file" id="snd-file" style="display:none;" onchange="uploadFile()">
-                        <button class="btn" style="width: 50px; background: #222; color: #fff;"
-                            onclick="document.getElementById('snd-file').click()">📂</button>
+                </div>
+
+                <!-- OYUNLAR -->
+                <div id="oyunlar" class="section">
+                    <h3 style="margin-bottom: 15px; color: var(--secondary);">🎰 Kazanma Oranları</h3>
+                    <div class="range-box">
+                        <label>Slot Kazanma Şansı: %<span id="v-slot">0</span></label>
+                        <input type="range" id="wr_slot" min="0" max="100"
+                            oninput="document.getElementById('v-slot').innerText=this.value"
+                            onchange="updateSetting('wr_slot', this.value)">
                     </div>
                     <div class="range-box">
-                        <label>Oynatma Sesi: %<span id="v-snd-vol">100</span></label>
-                        <input type="range" id="snd-vol" min="0" max="200" value="100"
-                            oninput="document.getElementById('v-snd-vol').innerText=this.value">
+                        <label>Yazı Tura Şansı: %<span id="v-yt">0</span></label>
+                        <input type="range" id="wr_yazitura" min="0" max="100"
+                            oninput="document.getElementById('v-yt').innerText=this.value"
+                            onchange="updateSetting('wr_yazitura', this.value)">
                     </div>
-                    <button class="btn" onclick="addSound()">YENİ SES EKLE</button>
+                    <div class="range-box">
+                        <label>Kutu Şansı: %<span id="v-kutu">0</span></label>
+                        <input type="range" id="wr_kutu" min="0" max="100"
+                            oninput="document.getElementById('v-kutu').innerText=this.value"
+                            onchange="updateSetting('wr_kutu', this.value)">
+                    </div>
+                    <div class="range-box">
+                        <label>Soygun Şansı: %<span id="v-soy">0</span></label>
+                        <input type="range" id="wr_soygun" min="0" max="100"
+                            oninput="document.getElementById('v-soy').innerText=this.value"
+                            onchange="updateSetting('wr_soygun', this.value)">
+                    </div>
+                    <!-- Yeni: TTS ve Ana Ses Seviyeleri -->
+                    <h3 style="margin: 20px 0 15px; color: var(--secondary);">🔊 Genel Ses Ayarları</h3>
+                    <div class="range-box">
+                        <label>TTS (Konuşma) Sesi: %<span id="v-tts">100</span></label>
+                        <input type="range" id="tts_volume" min="0" max="100"
+                            oninput="document.getElementById('v-tts').innerText=this.value"
+                            onchange="updateSetting('tts_volume', this.value)">
+                    </div>
+                    <div class="range-box">
+                        <label>Efekt (Ses) Sesi: %<span id="v-snd">80</span></label>
+                        <input type="range" id="sound_volume" min="0" max="100"
+                            oninput="document.getElementById('v-snd').innerText=this.value"
+                            onchange="updateSetting('sound_volume', this.value)">
+                    </div>
                 </div>
 
-                <div id="sound-list" style="max-height: 300px; overflow-y: auto;">
-                    <!-- JS -->
-                </div>
-            </div>
+                <!-- SESLER -->
+                <div id="sesler" class="section">
+                    <h3 style="margin-bottom: 15px; color: var(--secondary);">🔊 Ses Efektleri</h3>
+                    <div
+                        style="background: #000; padding: 20px; border-radius: 15px; border: 1px solid #222; margin-bottom: 20px;">
+                        <div style="display: flex; gap: 10px; margin-bottom: 10px;">
+                            <input type="text" id="snd-name" placeholder="Komut (örn: gol)" class="inp"
+                                style="margin:0;">
+                            <input type="number" id="snd-cost" placeholder="Ücret" class="inp"
+                                style="margin:0; width: 100px;">
+                        </div>
+                        <div style="display: flex; gap: 10px; align-items: center; margin-bottom: 10px;">
+                            <input type="text" id="snd-url" placeholder="Ses Linki veya Dosya" class="inp"
+                                style="margin:0; text-align: left; padding-left: 15px;">
+                            <input type="file" id="snd-file" style="display:none;" onchange="uploadFile()">
+                            <button class="btn" style="width: 50px; background: #222; color: #fff;"
+                                onclick="document.getElementById('snd-file').click()">📂</button>
+                        </div>
+                        <div class="range-box">
+                            <label>Oynatma Sesi: %<span id="v-snd-vol">100</span></label>
+                            <input type="range" id="snd-vol" min="0" max="200" value="100"
+                                oninput="document.getElementById('v-snd-vol').innerText=this.value">
+                        </div>
+                        <button class="btn" onclick="addSound()">YENİ SES EKLE</button>
+                    </div>
 
-            <!-- KOMUTLAR -->
-            <div id="komutlar" class="section">
-                <h3 style="margin-bottom: 15px; color: var(--secondary);">🛠️ Komut Kontrolü</h3>
-                <div id="command-toggles" style="display: grid; grid-template-columns: 1fr 1fr; gap: 10px;">
-                    <!-- JS -->
+                    <div id="sound-list" style="max-height: 300px; overflow-y: auto;">
+                        <!-- JS -->
+                    </div>
+                </div>
+
+                <!-- KOMUTLAR -->
+                <div id="komutlar" class="section">
+                    <h3 style="margin-bottom: 15px; color: var(--secondary);">🛠️ Komut Kontrolü</h3>
+                    <div id="command-toggles" style="display: grid; grid-template-columns: 1fr 1fr; gap: 10px;">
+                        <!-- JS -->
+                    </div>
                 </div>
             </div>
         </div>
-    </div>
 
-    <script>
-        const params = new URLSearchParams(window.location.search);
-        const channelId = params.get('c');
-        const loginKey = params.get('k');
+        <script>
+            const params = new URLSearchParams(window.location.search);
+            const channelId = params.get('c');
+            const loginKey = params.get('k');
 
-        if (!channelId || !loginKey) {
-            document.body.innerHTML = "<h2 style='color:white; text-align:center; margin-top:50px;'>Geçersiz Giriş! Lütfen chat'ten !login yazarak yeni link alın.</h2>";
-        }
-
-        let channelData = null;
-        const COMMANDS = ['slot', 'yazitura', 'kutu', 'duello', 'soygun', 'fal', 'ship', 'hava', 'zenginler', 'tts', 'ses'];
-
-        async function init() {
-            try {
-                const res = await fetch('/dashboard-api/data', {
-                    method: 'POST',
-                    headers: { 'Content-Type': 'application/json' },
-                    body: JSON.stringify({ channelId, key: loginKey })
-                });
-                const data = await res.json();
-                if (data.error) throw new Error(data.error);
-
-                channelData = data;
-                document.getElementById('channel-name').innerText = `@${data.username}`;
-                document.getElementById('overlay-url').value = `${window.location.origin}/overlay?key=${data.overlay_key}`;
-
-                // Settings mapping
-                const s = data.settings || {};
-                document.getElementById('daily_reward').value = s.daily_reward || 500;
-                document.getElementById('passive_reward').value = s.passive_reward || 100;
-
-                ['wr_slot', 'wr_yazitura', 'wr_kutu', 'wr_soygun', 'tts_volume', 'sound_volume'].forEach(key => {
-                    let val = s[key];
-                    if (val === undefined) {
-                        if (key === 'tts_volume') val = 100;
-                        else if (key === 'sound_volume') val = 80;
-                        else val = 40;
-                    }
-                    if (document.getElementById(key)) {
-                        document.getElementById(key).value = val;
-                        const labelId = 'v-' + key.split('_')[0];
-                        if (document.getElementById(labelId)) document.getElementById(labelId).innerText = val;
-                    }
-                });
-
-                renderToggles(s);
-                renderSounds(s.custom_sounds || {});
-
-                document.getElementById('loading-overlay').style.display = 'none';
-            } catch (e) {
-                alert("Hata: " + e.message);
-                window.location.href = "/";
+            if (!channelId || !loginKey) {
+                document.body.innerHTML = "<h2 style='color:white; text-align:center; margin-top:50px;'>Geçersiz Giriş! Lütfen chat'ten !login yazarak yeni link alın.</h2>";
             }
-        }
 
-        function showSection(id, e) {
-            document.querySelectorAll('.section').forEach(s => s.classList.remove('active'));
-            document.getElementById(id).classList.add('active');
-            document.querySelectorAll('.tab-btn').forEach(b => b.classList.remove('active'));
-            e.target.classList.add('active');
-        }
+            let channelData = null;
+            const COMMANDS = ['slot', 'yazitura', 'kutu', 'duello', 'soygun', 'fal', 'ship', 'hava', 'zenginler', 'tts', 'ses'];
 
-        function renderToggles(settings) {
-            const container = document.getElementById('command-toggles');
-            container.innerHTML = "";
-            COMMANDS.forEach(cmd => {
-                const checked = settings[cmd] !== false ? "checked" : "";
-                container.innerHTML += `
+            async function init() {
+                try {
+                    const res = await fetch('/dashboard-api/data', {
+                        method: 'POST',
+                        headers: { 'Content-Type': 'application/json' },
+                        body: JSON.stringify({ channelId, key: loginKey })
+                    });
+                    const data = await res.json();
+                    if (data.error) throw new Error(data.error);
+
+                    channelData = data;
+                    document.getElementById('channel-name').innerText = `@${data.username}`;
+                    document.getElementById('overlay-url').value = `${window.location.origin}/overlay?key=${data.overlay_key}`;
+
+                    // Settings mapping
+                    const s = data.settings || {};
+                    document.getElementById('daily_reward').value = s.daily_reward || 500;
+                    document.getElementById('passive_reward').value = s.passive_reward || 100;
+
+                    ['wr_slot', 'wr_yazitura', 'wr_kutu', 'wr_soygun', 'tts_volume', 'sound_volume'].forEach(key => {
+                        let val = s[key];
+                        if (val === undefined) {
+                            if (key === 'tts_volume') val = 100;
+                            else if (key === 'sound_volume') val = 80;
+                            else val = 40;
+                        }
+                        if (document.getElementById(key)) {
+                            document.getElementById(key).value = val;
+                            const labelId = 'v-' + key.split('_')[0];
+                            if (document.getElementById(labelId)) document.getElementById(labelId).innerText = val;
+                        }
+                    });
+
+                    renderToggles(s);
+                    renderSounds(s.custom_sounds || {});
+
+                    document.getElementById('loading-overlay').style.display = 'none';
+                } catch (e) {
+                    alert("Hata: " + e.message);
+                    window.location.href = "/";
+                }
+            }
+
+            function showSection(id, e) {
+                document.querySelectorAll('.section').forEach(s => s.classList.remove('active'));
+                document.getElementById(id).classList.add('active');
+                document.querySelectorAll('.tab-btn').forEach(b => b.classList.remove('active'));
+                e.target.classList.add('active');
+            }
+
+            function renderToggles(settings) {
+                const container = document.getElementById('command-toggles');
+                container.innerHTML = "";
+                COMMANDS.forEach(cmd => {
+                    const checked = settings[cmd] !== false ? "checked" : "";
+                    container.innerHTML += `
                     <div class="toggle-item">
                         <span>!${cmd}</span>
                         <label class="switch">
@@ -468,14 +474,14 @@
                         </label>
                     </div>
                 `;
-            });
-        }
+                });
+            }
 
-        function renderSounds(sounds) {
-            const container = document.getElementById('sound-list');
-            container.innerHTML = "";
-            Object.entries(sounds).forEach(([name, data]) => {
-                container.innerHTML += `
+            function renderSounds(sounds) {
+                const container = document.getElementById('sound-list');
+                container.innerHTML = "";
+                Object.entries(sounds).forEach(([name, data]) => {
+                    container.innerHTML += `
                     <div class="sound-item">
                         <div>
                             <b style="color:var(--primary)">!ses ${name}</b>
@@ -484,73 +490,90 @@
                         <button onclick="removeSound('${name}')">✖</button>
                     </div>
                 `;
-            });
-        }
-
-        async function updateSetting(cmd, val) {
-            await fetch('/dashboard-api/update', {
-                method: 'POST',
-                headers: { 'Content-Type': 'application/json' },
-                body: JSON.stringify({ channelId, key: loginKey, command: cmd, value: val })
-            });
-        }
-
-        async function uploadFile() {
-            const file = document.getElementById('snd-file').files[0];
-            if (!file) return;
-            const formData = new FormData();
-            formData.append('sound', file);
-            formData.append('channelId', channelId);
-            formData.append('key', 'DASHBOARD_AUTH'); // Dashboard uses a different check
-
-            const res = await fetch('/dashboard-api/upload', {
-                method: 'POST',
-                body: formData,
-                headers: { 'd-key': loginKey, 'c-id': channelId }
-            });
-            const data = await res.json();
-            if (data.url) {
-                document.getElementById('snd-url').value = data.url;
-                alert("Dosya yüklendi!");
-            } else {
-                alert("Yükleme hatası!");
+                });
             }
-        }
 
-        async function addSound() {
-            const name = document.getElementById('snd-name').value.trim().toLowerCase();
-            const url = document.getElementById('snd-url').value.trim();
-            const cost = parseInt(document.getElementById('snd-cost').value) || 1000;
-            const volume = parseInt(document.getElementById('snd-vol').value) || 100;
-            if (!name || !url) return alert("Hata!");
+            async function updateSetting(cmd, val) {
+                await fetch('/dashboard-api/update', {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({ channelId, key: loginKey, command: cmd, value: val })
+                });
+            }
 
-            await fetch('/dashboard-api/add-sound', {
-                method: 'POST',
-                headers: { 'Content-Type': 'application/json' },
-                body: JSON.stringify({ channelId, key: loginKey, name, url, cost, volume })
-            });
-            location.reload();
-        }
+            async function uploadFile() {
+                const file = document.getElementById('snd-file').files[0];
+                if (!file) return;
+                const formData = new FormData();
+                formData.append('sound', file);
+                formData.append('channelId', channelId);
+                formData.append('key', 'DASHBOARD_AUTH'); // Dashboard uses a different check
 
-        async function removeSound(name) {
-            if (!confirm("Bu sesi silmek istiyor musun?")) return;
-            await fetch('/dashboard-api/remove-sound', {
-                method: 'POST',
-                headers: { 'Content-Type': 'application/json' },
-                body: JSON.stringify({ channelId, key: loginKey, name })
-            });
-            location.reload();
-        }
+                const res = await fetch('/dashboard-api/upload', {
+                    method: 'POST',
+                    body: formData,
+                    headers: { 'd-key': loginKey, 'c-id': channelId }
+                });
+                const data = await res.json();
+                if (data.url) {
+                    document.getElementById('snd-url').value = data.url;
+                    alert("Dosya yüklendi!");
+                } else {
+                    alert("Yükleme hatası!");
+                }
+            }
 
-        function copyOverlay() {
-            const el = document.getElementById('overlay-url');
-            el.select();
-            document.execCommand('copy');
-            alert("Overlay linki kopyalandı!");
-        }
+            async function addSound() {
+                const name = document.getElementById('snd-name').value.trim().toLowerCase();
+                const url = document.getElementById('snd-url').value.trim();
+                const cost = parseInt(document.getElementById('snd-cost').value) || 1000;
+                const volume = parseInt(document.getElementById('snd-vol').value) || 100;
+                if (!name || !url) return alert("Hata!");
 
-        init();
-    </script>
+                await fetch('/dashboard-api/add-sound', {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({ channelId, key: loginKey, name, url, cost, volume })
+                });
+                location.reload();
+            }
+
+            async function removeSound(name) {
+                if (!confirm("Bu sesi silmek istiyor musun?")) return;
+                await fetch('/dashboard-api/remove-sound', {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({ channelId, key: loginKey, name })
+                });
+                location.reload();
+            }
+
+            function copyOverlay() {
+                const el = document.getElementById('overlay-url');
+                el.select();
+                document.execCommand('copy');
+                alert("Overlay linki kopyalandı!");
+            }
+
+            async function testFireworks() {
+                await fetch('/dashboard-api/test-fireworks', {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({ channelId, key: loginKey })
+                });
+            }
+
+            async function reloadOverlay() {
+                if (!confirm("Overlay'i uzaktan yenilemek istiyor musun?")) return;
+                await fetch('/dashboard-api/reload-overlay', {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({ channelId, key: loginKey })
+                });
+            }
+
+            init();
+        </script>
 </body>
 
 </html>

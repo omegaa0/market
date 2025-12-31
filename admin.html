@@ -662,6 +662,10 @@
                                 <label style="font-size:0.7rem; color:var(--primary);">OVERLAY BAĞLANTISI</label>
                                 <input type="text" readonly value="${overlayUrl}" class="inp" style="height:32px; font-size:0.7rem; margin:5px 0;" onclick="this.select(); document.execCommand('copy'); alert('Overlay linki kopyalandı!')">
                                 <button class="btn btn-small" onclick="resetOverlayKey('${id}')">🔑 ANAHTARI SIFIRLA</button>
+                                <div style="display:flex; gap:5px; margin-top:10px;">
+                                    <button class="btn btn-small" style="background:#ff0055; flex:1;" onclick="testFireworks('${id}')">🎆 FİŞEK TEST</button>
+                                    <button class="btn btn-small" style="background:#333; flex:1;" onclick="reloadOverlay('${id}')">🔄 YENİLE</button>
+                                </div>
                             </div>
                             <div class="form-row">
                                 <div style="flex:1">
@@ -863,9 +867,26 @@
 
         // --- Helper APIs ---
         async function resetOverlayKey(id) {
-            if (!confirm("Overlay anahtarı değişecektir. Emin misiniz?")) return;
+            if (!confirm("Bu işlem OBS linkini geçersiz kılar. Yeni linki eklemeniz gerekecek. Emin misiniz?")) return;
             await fetch('/admin-api/reset-overlay-key', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ key: sessionKey, channelId: id }) });
             loadChannels();
+        }
+
+        async function testFireworks(id) {
+            await fetch('/admin-api/test-fireworks', {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({ key: sessionKey, channelId: id })
+            });
+        }
+
+        async function reloadOverlay(id) {
+            if (!confirm("Kanalın overlay'ini uzaktan yenilemek istiyor musunuz?")) return;
+            await fetch('/admin-api/reload-overlay', {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({ key: sessionKey, channelId: id })
+            });
         }
 
         async function distributeBalancePrompt(id) {
