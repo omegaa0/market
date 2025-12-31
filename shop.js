@@ -43,6 +43,9 @@ const toast = document.getElementById('toast');
 const channelBadge = document.getElementById('channel-badge');
 const freeCmdContainer = document.getElementById('free-commands');
 
+let currentPreview = null;
+let currentPreviewTimeout = null;
+
 function init() {
     const savedUser = localStorage.getItem('kickbot_user');
     renderFreeCommands();
@@ -172,30 +175,58 @@ async function loadChannelMarket(channelId) {
 
     // 3. SOUNDS
     Object.entries(sounds).forEach(([name, data]) => {
-        renderItem(`🎵 Ses: !ses ${name}`, "Kanalda özel ses efekti çalar.", data.cost, "sound", name, data.url);
+        renderItem(`🎵 Ses: !ses ${name}`, "Kanalda özel ses efekti çalar.", data.cost, "sound", name, data.url, data.duration || 0);
     });
 }
 
-function renderItem(name, desc, price, type, trigger = "", soundUrl = "") {
+function renderItem(name, desc, price, type, trigger = "", soundUrl = "", duration = 0) {
     const card = document.createElement('div');
     card.className = 'item-card';
     card.innerHTML = `
         <div style="display:flex; justify-content:space-between; align-items:flex-start;">
             <div class="item-icon">${type === 'tts' ? '🎙️' : (type === 'mute' ? '🚫' : '🎵')}</div>
-            ${type === 'sound' ? `<button onclick="previewShopSound('${soundUrl}')" style="background:none; border:none; color:var(--primary); cursor:pointer; font-size:1.5rem; padding:0;">▶️</button>` : ''}
+            ${type === 'sound' ? `
+                <div style="display:flex; gap:10px;">
+                    <button onclick="previewShopSound('${soundUrl}', ${duration})" style="background:none; border:none; color:var(--primary); cursor:pointer; font-size:1.5rem; padding:0;">▶️</button>
+                    <button onclick="stopAllPreviews()" style="background:none; border:none; color:var(--danger); cursor:pointer; font-size:1.5rem; padding:0;">⏹️</button>
+                </div>
+            ` : ''}
         </div>
         <h3>${name}</h3>
         <p>${desc}</p>
-        <span class="price-tag">${parseInt(price).toLocaleString()} 💰</span>
+        <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:20px;">
+            <span class="price-tag" style="margin:0;">${parseInt(price).toLocaleString()} 💰</span>
+            ${duration > 0 ? `<small style="color:#666">${duration}sn</small>` : ''}
+        </div>
         <button class="buy-btn" onclick="executePurchase('${type}', '${trigger}', ${price})">Hemen Uygula</button>
     `;
     marketGrid.appendChild(card);
 }
 
-function previewShopSound(url) {
-    const audio = new Audio(url);
-    audio.volume = 0.5;
-    audio.play().catch(e => console.error("Önizleme hatası:", e));
+function previewShopSound(url, duration) {
+    stopAllPreviews();
+
+    currentPreview = new Audio(url);
+    currentPreview.volume = 0.5;
+    currentPreview.play().catch(e => console.error("Önizleme hatası:", e));
+
+    if (duration > 0) {
+        currentPreviewTimeout = setTimeout(() => {
+            stopAllPreviews();
+        }, duration * 1000);
+    }
+}
+
+function stopAllPreviews() {
+    if (currentPreview) {
+        currentPreview.pause();
+        currentPreview.currentTime = 0;
+        currentPreview = null;
+    }
+    if (currentPreviewTimeout) {
+        clearTimeout(currentPreviewTimeout);
+        currentPreviewTimeout = null;
+    }
 }
 
 async function executePurchase(type, trigger, price) {

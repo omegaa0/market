@@ -552,7 +552,7 @@ app.post('/kick/webhook', async (req, res) => {
         const data = snap.val() || { balance: 1000, last_work: 0, job: "İşsiz" };
         const now = Date.now();
         const jobName = data.job || "İşsiz";
-        if (jobName === "İşsiz") return await reply(`@${user}, Git çalış lan! 👤🚫 (Önce admin panelden bir meslek edinmelisin)`);
+        if (jobName === "İşsiz") return await reply(`@${user}, git iş bul 👤🚫`);
 
         const job = JOBS[jobName] || JOBS["İşsiz"];
 
