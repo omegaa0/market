@@ -84,7 +84,9 @@
     </div>
 
     <script>
-        let startTime = Date.now() - 60000; // 60 saniye öncesinden başla ki senkron hatası olmasın
+        let startTime = Date.now() - 60000;
+        let ttsVol = 1.0;
+        let soundVol = 0.8;
 
         function showNotification(title, text, icon, duration) {
             if (!duration) duration = 5000;
@@ -134,9 +136,6 @@
                     }
 
                     console.log("🎯 Hedef Kanal:", targetBroadcasterId);
-
-                    let ttsVol = 1.0;
-                    let soundVol = 0.8;
 
                     db.ref('channels/' + targetBroadcasterId + '/settings').on('value', function (sSnap) {
                         const settings = sSnap.val() || {};
@@ -203,6 +202,7 @@
                             if (!data || data.played) return;
 
                             db.ref('channels/' + targetBroadcasterId + '/stream_events/fireworks/' + snap.key).update({ played: true });
+                            console.log("🎆 Havai Fişek Tetiklendi!");
                             startFireworks();
                         });
                 });
@@ -210,6 +210,7 @@
 
         // --- HAVALİ FİŞEK MANTIĞI (Canvas) ---
         function startFireworks() {
+            console.log("🚀 Animasyon Başlatılıyor...");
             showNotification("KUTLAMA", "HAVAİ FİŞEK GÖSTERİSİ!", "🎇", 5000);
 
             const canvas = document.createElement('canvas');
