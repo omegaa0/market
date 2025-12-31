@@ -1,0 +1,533 @@
+<!DOCTYPE html>
+<html lang="tr">
+
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Streamer Dashboard | AloskeGangBOT</title>
+    <link href="https://fonts.googleapis.com/css2?family=Outfit:wght@300;400;600;800&display=swap" rel="stylesheet">
+    <style>
+        :root {
+            --bg: #0a0a0c;
+            --card: #121215;
+            --primary: #00ff88;
+            --secondary: #00e1ff;
+            --danger: #ff4a4a;
+            --text: #ffffff;
+            --muted: #888;
+        }
+
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+            font-family: 'Outfit', sans-serif;
+        }
+
+        body {
+            background: var(--bg);
+            color: var(--text);
+            overflow-x: hidden;
+        }
+
+        .container {
+            max-width: 800px;
+            margin: 40px auto;
+            padding: 20px;
+        }
+
+        header {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            margin-bottom: 30px;
+        }
+
+        h1 {
+            font-size: 1.8rem;
+            background: linear-gradient(45deg, var(--primary), var(--secondary));
+            -webkit-background-clip: text;
+            -webkit-text-fill-color: transparent;
+        }
+
+        .dashboard-card {
+            background: var(--card);
+            border-radius: 20px;
+            border: 1px solid #222;
+            padding: 30px;
+            box-shadow: 0 10px 30px rgba(0, 0, 0, 0.5);
+        }
+
+        .tabs {
+            display: flex;
+            gap: 10px;
+            margin-bottom: 25px;
+            background: #000;
+            padding: 5px;
+            border-radius: 12px;
+        }
+
+        .tab-btn {
+            flex: 1;
+            padding: 12px;
+            border: none;
+            background: none;
+            color: var(--muted);
+            cursor: pointer;
+            border-radius: 10px;
+            transition: 0.3s;
+            font-weight: 600;
+        }
+
+        .tab-btn.active {
+            background: var(--card);
+            color: var(--primary);
+            box-shadow: 0 4px 15px rgba(0, 255, 136, 0.1);
+        }
+
+        .section {
+            display: none;
+        }
+
+        .section.active {
+            display: block;
+        }
+
+        .inp {
+            width: 100%;
+            padding: 12px;
+            background: #08080a;
+            border: 1px solid #333;
+            border-radius: 10px;
+            color: #fff;
+            margin-bottom: 15px;
+            transition: 0.3s;
+        }
+
+        .inp:focus {
+            border-color: var(--primary);
+            outline: none;
+            box-shadow: 0 0 10px rgba(0, 255, 136, 0.1);
+        }
+
+        .btn {
+            width: 100%;
+            padding: 14px;
+            background: linear-gradient(45deg, var(--primary), var(--secondary));
+            border: none;
+            border-radius: 10px;
+            color: #000;
+            font-weight: 800;
+            cursor: pointer;
+            transition: 0.3s;
+        }
+
+        .btn:hover {
+            transform: translateY(-2px);
+            filter: brightness(1.1);
+            box-shadow: 0 5px 15px rgba(0, 255, 136, 0.3);
+        }
+
+        .toggle-item {
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+            background: #000;
+            padding: 15px;
+            border-radius: 12px;
+            margin-bottom: 10px;
+            border: 1px solid #222;
+        }
+
+        /* Switch UI */
+        .switch {
+            position: relative;
+            display: inline-block;
+            width: 44px;
+            height: 24px;
+        }
+
+        .switch input {
+            opacity: 0;
+            width: 0;
+            height: 0;
+        }
+
+        .slider {
+            position: absolute;
+            cursor: pointer;
+            top: 0;
+            left: 0;
+            right: 0;
+            bottom: 0;
+            background-color: #333;
+            transition: .4s;
+            border-radius: 24px;
+        }
+
+        .slider:before {
+            position: absolute;
+            content: "";
+            height: 18px;
+            width: 18px;
+            left: 3px;
+            bottom: 3px;
+            background-color: white;
+            transition: .4s;
+            border-radius: 50%;
+        }
+
+        input:checked+.slider {
+            background-color: var(--primary);
+        }
+
+        input:checked+.slider:before {
+            transform: translateX(20px);
+        }
+
+        .range-box {
+            margin-bottom: 20px;
+        }
+
+        .range-box label {
+            display: block;
+            margin-bottom: 8px;
+            font-size: 0.9rem;
+            color: var(--muted);
+        }
+
+        input[type="range"] {
+            width: 100%;
+            height: 6px;
+            background: #222;
+            border-radius: 5px;
+            appearance: none;
+            outline: none;
+        }
+
+        input[type="range"]::-webkit-slider-thumb {
+            appearance: none;
+            width: 18px;
+            height: 18px;
+            background: var(--primary);
+            border-radius: 50%;
+            cursor: pointer;
+        }
+
+        .sound-item {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            background: #1a1a1e;
+            padding: 12px;
+            border-radius: 10px;
+            margin-bottom: 5px;
+            border-left: 4px solid var(--primary);
+        }
+
+        .sound-item button {
+            background: none;
+            border: none;
+            color: var(--danger);
+            cursor: pointer;
+            font-size: 1.2rem;
+        }
+
+        #loading-overlay {
+            position: fixed;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            background: var(--bg);
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            z-index: 1000;
+        }
+
+        .spinner {
+            width: 40px;
+            height: 40px;
+            border: 4px solid rgba(0, 255, 136, 0.1);
+            border-top-color: var(--primary);
+            border-radius: 50%;
+            animation: spin 1s linear infinite;
+        }
+
+        @keyframes spin {
+            to {
+                transform: rotate(360deg);
+            }
+        }
+    </style>
+</head>
+
+<body>
+
+    <div id="loading-overlay">
+        <div class="spinner"></div>
+    </div>
+
+    <div class="container">
+        <header>
+            <h1>Streamer<span style="color:var(--text)">Dashboard</span></h1>
+            <div id="channel-name" style="font-weight: 600; color: var(--primary);">Yükleniyor...</div>
+        </header>
+
+        <div class="dashboard-card">
+            <div class="tabs">
+                <button class="tab-btn active" onclick="showSection('genel', event)">Genel</button>
+                <button class="tab-btn" onclick="showSection('oyunlar', event)">Oyunlar</button>
+                <button class="tab-btn" onclick="showSection('sesler', event)">Sesler</button>
+                <button class="tab-btn" onclick="showSection('komutlar', event)">Komutlar</button>
+            </div>
+
+            <!-- GENEL -->
+            <div id="genel" class="section active">
+                <div style="margin-bottom: 25px;">
+                    <h3 style="margin-bottom: 10px; font-size: 1rem; color: var(--secondary);">🔗 Yayın Overlay Linki
+                    </h3>
+                    <p style="font-size: 0.8rem; color: var(--muted); margin-bottom: 10px;">Bu linki OBS üzerinden
+                        'Browser Source' olarak ekleyin.</p>
+                    <input type="text" id="overlay-url" readonly class="inp" style="text-align: left; cursor: pointer;"
+                        onclick="copyOverlay()">
+                </div>
+
+                <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 15px;">
+                    <div class="range-box">
+                        <label>Günlük Ödül Miktarı</label>
+                        <input type="number" id="daily_reward" class="inp"
+                            onchange="updateSetting('daily_reward', this.value)">
+                    </div>
+                    <div class="range-box">
+                        <label>Pasif Gelir (10dk)</label>
+                        <input type="number" id="passive_reward" class="inp"
+                            onchange="updateSetting('passive_reward', this.value)">
+                    </div>
+                </div>
+            </div>
+
+            <!-- OYUNLAR -->
+            <div id="oyunlar" class="section">
+                <h3 style="margin-bottom: 15px; color: var(--secondary);">🎰 Kazanma Oranları</h3>
+                <div class="range-box">
+                    <label>Slot Kazanma Şansı: %<span id="v-slot">0</span></label>
+                    <input type="range" id="wr_slot" min="0" max="100"
+                        oninput="document.getElementById('v-slot').innerText=this.value"
+                        onchange="updateSetting('wr_slot', this.value)">
+                </div>
+                <div class="range-box">
+                    <label>Yazı Tura Şansı: %<span id="v-yt">0</span></label>
+                    <input type="range" id="wr_yazitura" min="0" max="100"
+                        oninput="document.getElementById('v-yt').innerText=this.value"
+                        onchange="updateSetting('wr_yazitura', this.value)">
+                </div>
+                <div class="range-box">
+                    <label>Kutu Şansı: %<span id="v-kutu">0</span></label>
+                    <input type="range" id="wr_kutu" min="0" max="100"
+                        oninput="document.getElementById('v-kutu').innerText=this.value"
+                        onchange="updateSetting('wr_kutu', this.value)">
+                </div>
+                <div class="range-box">
+                    <label>Soygun Şansı: %<span id="v-soy">0</span></label>
+                    <input type="range" id="wr_soygun" min="0" max="100"
+                        oninput="document.getElementById('v-soy').innerText=this.value"
+                        onchange="updateSetting('wr_soygun', this.value)">
+                </div>
+            </div>
+
+            <!-- SESLER -->
+            <div id="sesler" class="section">
+                <h3 style="margin-bottom: 15px; color: var(--secondary);">🔊 Ses Efektleri</h3>
+                <div
+                    style="background: #000; padding: 20px; border-radius: 15px; border: 1px solid #222; margin-bottom: 20px;">
+                    <div style="display: flex; gap: 10px; margin-bottom: 10px;">
+                        <input type="text" id="snd-name" placeholder="Komut (örn: gol)" class="inp" style="margin:0;">
+                        <input type="number" id="snd-cost" placeholder="Ücret" class="inp"
+                            style="margin:0; width: 100px;">
+                    </div>
+                    <div style="display: flex; gap: 10px; align-items: center; margin-bottom: 10px;">
+                        <input type="text" id="snd-url" placeholder="Ses Linki veya Dosya" class="inp"
+                            style="margin:0; text-align: left; padding-left: 15px;">
+                        <input type="file" id="snd-file" style="display:none;" onchange="uploadFile()">
+                        <button class="btn" style="width: 50px; background: #222; color: #fff;"
+                            onclick="document.getElementById('snd-file').click()">📂</button>
+                    </div>
+                    <div class="range-box">
+                        <label>Oynatma Sesi: %<span id="v-snd-vol">100</span></label>
+                        <input type="range" id="snd-vol" min="0" max="200" value="100"
+                            oninput="document.getElementById('v-snd-vol').innerText=this.value">
+                    </div>
+                    <button class="btn" onclick="addSound()">YENİ SES EKLE</button>
+                </div>
+
+                <div id="sound-list" style="max-height: 300px; overflow-y: auto;">
+                    <!-- JS -->
+                </div>
+            </div>
+
+            <!-- KOMUTLAR -->
+            <div id="komutlar" class="section">
+                <h3 style="margin-bottom: 15px; color: var(--secondary);">🛠️ Komut Kontrolü</h3>
+                <div id="command-toggles" style="display: grid; grid-template-columns: 1fr 1fr; gap: 10px;">
+                    <!-- JS -->
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <script>
+        const params = new URLSearchParams(window.location.search);
+        const channelId = params.get('c');
+        const loginKey = params.get('k');
+
+        if (!channelId || !loginKey) {
+            document.body.innerHTML = "<h2 style='color:white; text-align:center; margin-top:50px;'>Geçersiz Giriş! Lütfen chat'ten !login yazarak yeni link alın.</h2>";
+        }
+
+        let channelData = null;
+        const COMMANDS = ['slot', 'yazitura', 'kutu', 'duello', 'soygun', 'fal', 'ship', 'hava', 'zenginler', 'tts', 'ses'];
+
+        async function init() {
+            try {
+                const res = await fetch('/dashboard-api/data', {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({ channelId, key: loginKey })
+                });
+                const data = await res.json();
+                if (data.error) throw new Error(data.error);
+
+                channelData = data;
+                document.getElementById('channel-name').innerText = `@${data.username}`;
+                document.getElementById('overlay-url').value = `${window.location.origin}/overlay?key=${data.overlay_key}`;
+
+                // Settings mapping
+                const s = data.settings || {};
+                document.getElementById('daily_reward').value = s.daily_reward || 500;
+                document.getElementById('passive_reward').value = s.passive_reward || 100;
+
+                ['wr_slot', 'wr_yazitura', 'wr_kutu', 'wr_soygun'].forEach(key => {
+                    const val = s[key] || 40;
+                    document.getElementById(key).value = val;
+                    document.getElementById('v-' + key.split('_')[1]).innerText = val;
+                });
+
+                renderToggles(s);
+                renderSounds(s.custom_sounds || {});
+
+                document.getElementById('loading-overlay').style.display = 'none';
+            } catch (e) {
+                alert("Hata: " + e.message);
+                window.location.href = "/";
+            }
+        }
+
+        function showSection(id, e) {
+            document.querySelectorAll('.section').forEach(s => s.classList.remove('active'));
+            document.getElementById(id).classList.add('active');
+            document.querySelectorAll('.tab-btn').forEach(b => b.classList.remove('active'));
+            e.target.classList.add('active');
+        }
+
+        function renderToggles(settings) {
+            const container = document.getElementById('command-toggles');
+            container.innerHTML = "";
+            COMMANDS.forEach(cmd => {
+                const checked = settings[cmd] !== false ? "checked" : "";
+                container.innerHTML += `
+                    <div class="toggle-item">
+                        <span>!${cmd}</span>
+                        <label class="switch">
+                            <input type="checkbox" ${checked} onchange="updateSetting('${cmd}', this.checked)">
+                            <span class="slider"></span>
+                        </label>
+                    </div>
+                `;
+            });
+        }
+
+        function renderSounds(sounds) {
+            const container = document.getElementById('sound-list');
+            container.innerHTML = "";
+            Object.entries(sounds).forEach(([name, data]) => {
+                container.innerHTML += `
+                    <div class="sound-item">
+                        <div>
+                            <b style="color:var(--primary)">!ses ${name}</b>
+                            <div style="font-size:0.7rem; color:var(--muted)">Ücret: ${data.cost} | Ses: %${data.volume || 100}</div>
+                        </div>
+                        <button onclick="removeSound('${name}')">✖</button>
+                    </div>
+                `;
+            });
+        }
+
+        async function updateSetting(cmd, val) {
+            await fetch('/dashboard-api/update', {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({ channelId, key: loginKey, command: cmd, value: val })
+            });
+        }
+
+        async function uploadFile() {
+            const file = document.getElementById('snd-file').files[0];
+            if (!file) return;
+            const formData = new FormData();
+            formData.append('sound', file);
+            formData.append('channelId', channelId);
+            formData.append('key', 'DASHBOARD_AUTH'); // Dashboard uses a different check
+
+            const res = await fetch('/dashboard-api/upload', {
+                method: 'POST',
+                body: formData,
+                headers: { 'd-key': loginKey, 'c-id': channelId }
+            });
+            const data = await res.json();
+            if (data.url) {
+                document.getElementById('snd-url').value = data.url;
+                alert("Dosya yüklendi!");
+            } else {
+                alert("Yükleme hatası!");
+            }
+        }
+
+        async function addSound() {
+            const name = document.getElementById('snd-name').value.trim().toLowerCase();
+            const url = document.getElementById('snd-url').value.trim();
+            const cost = parseInt(document.getElementById('snd-cost').value) || 1000;
+            const volume = parseInt(document.getElementById('snd-vol').value) || 100;
+            if (!name || !url) return alert("Hata!");
+
+            await fetch('/dashboard-api/add-sound', {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({ channelId, key: loginKey, name, url, cost, volume })
+            });
+            location.reload();
+        }
+
+        async function removeSound(name) {
+            if (!confirm("Bu sesi silmek istiyor musun?")) return;
+            await fetch('/dashboard-api/remove-sound', {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({ channelId, key: loginKey, name })
+            });
+            location.reload();
+        }
+
+        function copyOverlay() {
+            const el = document.getElementById('overlay-url');
+            el.select();
+            document.execCommand('copy');
+            alert("Overlay linki kopyalandı!");
+        }
+
+        init();
+    </script>
+</body>
+
+</html>

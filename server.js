@@ -124,23 +124,42 @@ app.get('/auth/kick/callback', async (req, res) => {
         const userData = userRes.data.data[0];
         const bid = userData.user_id;
 
-        // KanalÄ± ayrÄ± olarak kaydet
-        await db.ref('channels/' + bid).set({
+        // Kanal verisini hazırla/güncelle
+        const chanRef = db.ref('channels/' + bid);
+        const chanSnap = await chanRef.once('value');
+        const existingData = chanSnap.val() || {};
+
+        // Yeni bir dashboard key oluştur (yoksa)
+        const loginKey = existingData.dashboard_key || crypto.randomBytes(16).toString('hex');
+
+        const updateObj = {
             access_token: response.data.access_token,
             refresh_token: response.data.refresh_token,
             username: userData.name.toLowerCase(),
             broadcaster_id: bid,
-            updatedAt: Date.now(),
-            settings: { // VarsayÄ±lan hepsi aÃ§Ä±k
+            dashboard_key: loginKey,
+            updatedAt: Date.now()
+        };
+
+        // Eğer ilk kez ekleniyorsa varsayılan ayarları koy
+        if (!existingData.settings) {
+            updateObj.settings = {
                 slot: true, yazitura: true, kutu: true,
                 duello: true, soygun: true, fal: true,
-                ship: true, hava: true, soz: true, zenginler: true
-            }
-        });
+                ship: true, hava: true, soz: true, zenginler: true,
+                daily_reward: 500, passive_reward: 100
+            };
+        }
 
+        await chanRef.update(updateObj);
         await subscribeToChat(response.data.access_token, bid);
-        res.send(`<body style='background:#111;color:lime;text-align:center;padding-top:100px;'><h1>✅ ${userData.name} KANALI EKLENDİ!</h1></body>`);
-    } catch (e) { res.status(500).json({ error: e.message }); }
+
+        // Dashboard'a yönlendir
+        res.redirect(`/dashboard?c=${bid}&k=${loginKey}`);
+    } catch (e) {
+        console.error("Auth Error:", e);
+        res.status(500).send("Giriş sırasında bir hata oluştu: " + e.message);
+    }
 });
 
 async function subscribeToChat(token, broadcasterId) {
@@ -1099,6 +1118,23 @@ const authAdmin = (req, res, next) => {
     res.status(403).json({ success: false, error: 'Yetkisiz Erişim' });
 };
 
+// STREAMER DASHBOARD AUTH
+const authDashboard = async (req, res, next) => {
+    const { key, channelId } = req.body;
+    const cid = channelId || req.headers['c-id'];
+    const k = key || req.headers['d-key'];
+
+    if (!k || !cid) return res.status(403).json({ error: 'Auth hatası' });
+    const snap = await db.ref(`channels/${cid}/dashboard_key`).once('value');
+    if (snap.val() && snap.val() === k) {
+        next();
+    } else {
+        res.status(403).json({ error: 'Yetkisiz erişim' });
+    }
+};
+
+app.get('/dashboard', (req, res) => { res.sendFile(path.join(__dirname, 'dashboard.html')); });
+
 // ... Eski API'ler ...
 app.post('/admin-api/check', authAdmin, (req, res) => res.json({ success: true }));
 
@@ -1226,10 +1262,47 @@ app.post('/admin-api/reset-overlay-key', authAdmin, async (req, res) => {
     const newKey = crypto.randomBytes(16).toString('hex');
     await db.ref(`channels/${channelId}`).update({ overlay_key: newKey });
     addLog("Overlay Anahtarı Sıfırlandı", `Yeni anahtar oluşturuldu`, channelId);
-    res.json({ success: true, key: newKey });
+    res.json({ success: true });
 });
 
+app.post('/dashboard-api/data', authDashboard, async (req, res) => {
+    const { channelId } = req.body;
+    const snap = await db.ref('channels/' + channelId).once('value');
+    res.json(snap.val() || {});
+});
 
+app.post('/dashboard-api/update', authDashboard, async (req, res) => {
+    const { channelId, command, value } = req.body;
+    await db.ref(`channels/${channelId}/settings`).update({ [command]: value });
+    res.json({ success: true });
+});
+
+app.post('/dashboard-api/add-sound', authDashboard, async (req, res) => {
+    const { channelId, name, url, cost, volume } = req.body;
+    const cleanName = name.toLowerCase().trim();
+    await db.ref(`channels/${channelId}/settings/custom_sounds/${cleanName}`).set({ url, cost, volume });
+    res.json({ success: true });
+});
+
+app.post('/dashboard-api/remove-sound', authDashboard, async (req, res) => {
+    const { channelId, name } = req.body;
+    await db.ref(`channels/${channelId}/settings/custom_sounds/${name}`).remove();
+    res.json({ success: true });
+});
+
+app.post('/dashboard-api/upload', upload.single('sound'), async (req, res) => {
+    const cid = req.headers['c-id'];
+    const k = req.headers['d-key'];
+
+    // Auth Check manually for Multer
+    const snap = await db.ref(`channels/${cid}/dashboard_key`).once('value');
+    if (!snap.val() || snap.val() !== k) return res.status(403).json({ error: 'Yetkisiz' });
+
+    if (!req.file) return res.status(400).json({ error: 'Dosya yok' });
+    const baseUrl = process.env.RENDER_EXTERNAL_URL || `${req.protocol}://${req.get('host')}`;
+    const fileUrl = `${baseUrl}/uploads/sounds/${cid}/${req.file.filename}`;
+    res.json({ url: fileUrl });
+});
 
 // --- ADMIN API ---
 // Ses Yükleme (Render Disk)

@@ -145,7 +145,7 @@
         /* Channel Cards */
         .grid {
             display: grid;
-            grid-template-columns: repeat(auto-fill, minmax(300px, 1fr));
+            grid-template-columns: repeat(auto-fill, minmax(350px, 1fr));
             gap: 20px;
         }
 
@@ -186,6 +186,62 @@
             background: #000;
             padding: 8px;
             border-radius: 5px;
+        }
+
+        /* Sub-Tabs */
+        .sub-tabs {
+            display: flex;
+            background: #000;
+            border-radius: 8px;
+            padding: 4px;
+            gap: 4px;
+            margin-bottom: 15px;
+        }
+
+        .sub-tab-btn {
+            flex: 1;
+            background: none;
+            border: none;
+            color: #666;
+            font-size: 0.7rem;
+            padding: 6px 2px;
+            cursor: pointer;
+            border-radius: 6px;
+            transition: 0.2s;
+            font-weight: 600;
+        }
+
+        .sub-tab-btn.active {
+            background: var(--card);
+            color: var(--primary);
+            box-shadow: 0 0 10px rgba(0, 255, 136, 0.1);
+        }
+
+        .sub-section {
+            display: none;
+        }
+
+        .sub-section.active {
+            display: block;
+        }
+
+        /* Fixed Slider */
+        input[type="range"] {
+            width: 100% !important;
+            height: 5px;
+            background: #222;
+            border-radius: 5px;
+            outline: none;
+            appearance: none;
+        }
+
+        input[type="range"]::-webkit-slider-thumb {
+            appearance: none;
+            width: 15px;
+            height: 15px;
+            background: var(--primary);
+            border-radius: 50%;
+            cursor: pointer;
         }
 
         /* Switch */
@@ -258,10 +314,25 @@
             background: rgba(255, 255, 255, 0.02);
         }
 
-        .action-btn {
-            padding: 5px 10px;
-            font-size: 0.8rem;
-            width: auto;
+        /* Panels */
+        .panel {
+            background: var(--card);
+            padding: 20px;
+            border-radius: 15px;
+            border: 1px solid #222;
+        }
+
+        .main-grid {
+            display: grid;
+            grid-template-columns: 1fr 1fr;
+            gap: 20px;
+        }
+
+        .table-container {
+            background: var(--card);
+            border-radius: 15px;
+            border: 1px solid #222;
+            overflow: hidden;
         }
     </style>
 </head>
@@ -296,7 +367,6 @@
         <!-- CHANNEL MANAGEMENT -->
         <div id="channels" class="section active">
             <div class="grid" id="channel-list">
-                <!-- Kanallar Burada Listelenecek (JS ile) -->
                 <p>Kanallar yükleniyor...</p>
             </div>
         </div>
@@ -304,7 +374,7 @@
         <!-- USERS MANAGEMENT -->
         <div id="users" class="section">
             <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:15px; gap:10px;">
-                <h2 style="margin:0;">👤 Kullanıcı Yönetimi (Son 1000)</h2>
+                <h2 style="margin:0;">👤 Kullanıcı Yönetimi</h2>
                 <div style="display:flex; gap:10px; flex:1; max-width:400px;">
                     <input type="text" id="usersearch" placeholder="Kullanıcı Ara..." class="inp"
                         style="margin:0; height:35px;" oninput="filterUsers()">
@@ -329,47 +399,40 @@
         <!-- TROLL & ACTION -->
         <div id="troll" class="section">
             <div class="main-grid">
-
                 <div class="panel">
                     <h2>💌 Rigged Ship (Aşk Ayarla)</h2>
-                    <input type="text" id="rigUser" class="inp" placeholder="Kullanıcı (Örn: omegacyr)">
-                    <input type="text" id="rigTarget" class="inp" placeholder="Partner (Örn: adrianalima)">
-                    <input type="number" id="rigPercent" class="inp" placeholder="Yüzde (0-100)" value="100">
+                    <input type="text" id="rigUser" class="inp" placeholder="Kullanıcı">
+                    <input type="text" id="rigTarget" class="inp" placeholder="Partner">
+                    <input type="number" id="rigPercent" class="inp" placeholder="Yüzde" value="100">
                     <button class="btn" onclick="setRigShip()">AYARLA</button>
                 </div>
-
                 <div class="panel">
                     <h2>🎰 Kumar Sonucu Ayarla</h2>
                     <input type="text" id="gambleUser" class="inp" placeholder="Kullanıcı Adı">
                     <div style="display:flex; gap:10px;">
-                        <button class="btn" style="background:var(--primary)" onclick="setGamble('win')">KAZANSIN
-                            🤑</button>
-                        <button class="btn btn-danger" onclick="setGamble('lose')">KAYBETSİN 📉</button>
+                        <button class="btn" style="background:var(--primary)"
+                            onclick="setGamble('win')">KAZANSIN</button>
+                        <button class="btn btn-danger" onclick="setGamble('lose')">KAYBETSİN</button>
                     </div>
                 </div>
-
                 <div class="panel" style="grid-column: span 2;">
                     <h2>🛡️ Chat İşlemleri (Tüm Kanallar)</h2>
-                    <p style="color:#666; font-size:0.8rem; margin-bottom:15px">Aktif olan ilk kanalda işlem yapar.</p>
                     <div style="display:flex; gap:10px;">
-                        <button class="btn" onclick="chatAction('clear')">Temizle (Clear)</button>
-                        <button class="btn" onclick="chatAction('slow')">Slow Mod (10s)</button>
+                        <button class="btn" onclick="chatAction('clear')">Temizle</button>
+                        <button class="btn" onclick="chatAction('slow')">Slow Mod</button>
                         <button class="btn" onclick="chatAction('slowoff')">Slow Mod Kapat</button>
                     </div>
                 </div>
-
             </div>
         </div>
 
+        <!-- GLOBAL -->
         <div id="global" class="section">
             <div class="card">
                 <h3>📢 Kanal Duyurusu</h3>
-                <p style="margin-bottom:10px; color:#888;">Seçili kanala mesaj gönder.</p>
-                <select id="targetChannel" class="inp" style="margin-bottom:10px;">
-                    <option value="">Kanal Seçin...</option>
-                </select>
+                <select id="targetChannel" class="inp"></select>
                 <textarea id="channelMsg" class="inp" style="height:100px; resize:none"
-                    placeholder="Mesajınızı yazın..."></textarea>
+                    placeholder="Mesaj..."></textarea>
                 <button class="btn" onclick="sendToChannel()">MESAJ GÖNDER</button>
             </div>
         </div>
@@ -377,11 +440,11 @@
         <!-- ADMIN LOGS -->
         <div id="logs" class="section">
             <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:15px;">
-                <h2 style="margin:0;">📋 Admin Panel Logları</h2>
+                <h2 style="margin:0;">📋 Loglar</h2>
                 <button class="btn" style="width: auto; height:35px;" onclick="loadLogs()">🔄 Yenile</button>
             </div>
             <div id="log-container"
-                style="background:var(--card); border:1px solid #222; border-radius:15px; padding:20px; max-height:600px; overflow-y:auto; font-family:monospace; font-size:0.85rem; line-height:1.6; border-left: 5px solid var(--primary);">
+                style="background:var(--card); border:1px solid #222; border-radius:15px; padding:20px; max-height:600px; overflow-y:auto; font-family:monospace; border-left: 5px solid var(--primary);">
                 Yükleniyor...
             </div>
         </div>
@@ -390,9 +453,9 @@
     <!-- BAN STATS MODAL -->
     <div id="banModal"
         style="display:none; position:fixed; top:0; left:0; width:100%; height:100%; background:rgba(0,0,0,0.8); z-index:1000; align-items:center; justify-content:center;">
-        <div class="card" style="width:400px; max-width:90%;">
-            <h3 style="margin-bottom:15px; color:var(--primary);">🚫 Ban Detayları</h3>
-            <div id="banModalContent" style="margin-bottom:20px; color:#ddd; font-size:0.9rem;"></div>
+        <div class="card" style="width:400px;">
+            <h3>🚫 Ban Detayları</h3>
+            <div id="banModalContent" style="margin:20px 0; color:#ddd;"></div>
             <button class="btn" onclick="document.getElementById('banModal').style.display='none'">KAPAT</button>
         </div>
     </div>
@@ -424,572 +487,197 @@
             document.getElementById(id).classList.add('active');
             document.querySelectorAll('.tab-btn').forEach(b => b.classList.remove('active'));
             event.currentTarget.classList.add('active');
-
-            if (id === 'logs') {
-                loadLogs();
-                // Real-time update every 5 seconds if logs tab is active
-                if (!window.logInterval) {
-                    window.logInterval = setInterval(() => {
-                        if (document.getElementById('logs').classList.contains('active')) {
-                            loadLogs();
-                        }
-                    }, 5000);
-                }
-            }
+            if (id === 'logs') loadLogs();
         }
 
-        async function loadLogs() {
-            try {
-                const res = await fetch('/admin-api/get-logs', {
-                    method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ key: sessionKey })
-                });
-                const logs = await res.json();
-                const container = document.getElementById('log-container');
-
-                if (!logs || logs.length === 0) {
-                    container.innerHTML = "<p style='color:#555;'>Henüz log kaydı yok.</p>";
-                    return;
-                }
-
-                let html = "";
-                logs.forEach(log => {
-                    const time = new Date(log.timestamp).toLocaleTimeString('tr-TR');
-                    const date = new Date(log.timestamp).toLocaleDateString('tr-TR');
-                    html += `<div style="margin-bottom:8px; border-bottom:1px solid #222; padding-bottom:4px;">
-                        <span style="color:var(--muted)">[${date} ${time}]</span> 
-                        <span style="color:var(--secondary)">[${log.channelId}]</span> 
-                        <b style="color:var(--primary)">${log.action}:</b> 
-                        <span style="color:#ddd">${log.details}</span>
-                    </div>`;
-                });
-                container.innerHTML = html;
-            } catch (e) {
-                console.error("Logs load error:", e);
-            }
-        }
-
-        let cachedUsers = {};
-
-        async function loadUsers() {
-            const res = await fetch('/admin-api/all-users', {
-                method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ key: sessionKey })
-            });
-            cachedUsers = await res.json();
-            renderUsers(cachedUsers);
-        }
-
-        function filterUsers() {
-            const search = document.getElementById('usersearch').value.toLowerCase().trim();
-            if (!search) {
-                renderUsers(cachedUsers);
-                return;
-            }
-            const filtered = {};
-            Object.entries(cachedUsers).forEach(([username, data]) => {
-                if (username.toLowerCase().includes(search)) {
-                    filtered[username] = data;
-                }
-            });
-            renderUsers(filtered);
-        }
-
-        function renderUsers(users) {
-            const list = document.getElementById('user-list');
-            list.innerHTML = "";
-
-            // Bakiyeye göre sırala (Azalan)
-            const sortedUsers = Object.entries(users).sort((a, b) => (b[1].balance || 0) - (a[1].balance || 0));
-
-            sortedUsers.forEach(([username, data]) => {
-                const date = data.last_seen ? new Date(data.last_seen).toLocaleDateString('tr-TR') : '-';
-                list.innerHTML += `
-                    <tr>
-                        <td><b>${username}</b></td>
-                        <td>${(data.balance || 0).toLocaleString()} 💰</td>
-                        <td>${date}</td>
-                        <td>
-                            <button class="btn" style="padding:4px 8px; font-size:0.75rem; background:#222;" onclick="editBalance('${username}', ${data.balance || 0})">💰</button>
-                            <button class="btn" style="padding:4px 8px; font-size:0.75rem; background:#555;" onclick="showBanStats('${username}')">🚫</button>
-                            <button class="btn btn-danger" style="padding:4px 8px; font-size:0.75rem;" onclick="resetUser('${username}')">🔄</button>
-                        </td>
-                    </tr>
-                `;
-            });
-
-            if (Object.keys(users).length === 0) {
-                list.innerHTML = '<tr><td colspan="4" style="text-align:center; color:#666; padding:20px;">Kullanıcı bulunamadı.</td></tr>';
-            }
+        function showSubTab(channelId, section, event) {
+            const card = event.target.closest('.card');
+            card.querySelectorAll('.sub-tab-btn').forEach(b => b.classList.remove('active'));
+            event.target.classList.add('active');
+            card.querySelectorAll('.sub-section').forEach(s => s.classList.remove('active'));
+            card.querySelector(`#sub-${section}-${channelId}`).classList.add('active');
         }
 
         async function loadChannels() {
             const res = await fetch('/admin-api/channels', {
-                method: 'POST',
-                headers: { 'Content-Type': 'application/json' },
-                body: JSON.stringify({ key: sessionKey })
+                method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ key: sessionKey })
             });
             const channels = await res.json();
             const container = document.getElementById('channel-list');
             container.innerHTML = "";
 
-            if (Object.keys(channels).length === 0) {
-                container.innerHTML = "<p>Hiçbir kanal bağlı değil.</p>";
-                return;
-            }
-
-            // Kanal dropdown'unu doldur (Global sekmesi için)
             const dropdown = document.getElementById('targetChannel');
             dropdown.innerHTML = '<option value="">Kanal Seçin...</option>';
 
             for (const [id, data] of Object.entries(channels)) {
-                // Dropdown'a ekle
                 dropdown.innerHTML += `<option value="${id}">${data.username || id}</option>`;
 
                 let toggles = "";
                 COMMANDS.forEach(cmd => {
                     const isChecked = data.settings && data.settings[cmd] !== false ? "checked" : "";
-                    toggles += `
-                        <div class="toggle-item">
-                            <span>!${cmd}</span>
-                            <label class="switch">
-                                <input type="checkbox" ${isChecked} onchange="toggleCmd('${id}', '${cmd}', this.checked)">
-                                <span class="slider"></span>
-                            </label>
-                        </div>
-                    `;
+                    toggles += `<div class="toggle-item"><span>!${cmd}</span><label class="switch"><input type="checkbox" ${isChecked} onchange="toggleCmd('${id}', '${cmd}', this.checked)"><span class="slider"></span></label></div>`;
                 });
 
-                // WinRate Sliders (Varsayılan değerler)
-                const wrSlot = data.settings && data.settings.wr_slot ? data.settings.wr_slot : 30;
-                const wrYazitura = data.settings && data.settings.wr_yazitura ? data.settings.wr_yazitura : 50;
-                const wrKutu = data.settings && data.settings.wr_kutu ? data.settings.wr_kutu : 40;
-                const wrSoygun = data.settings && data.settings.wr_soygun ? data.settings.wr_soygun : 40;
-                const soygunReward = data.settings && data.settings.soygun_reward ? data.settings.soygun_reward : 30000;
-                const slotLimit = data.settings && data.settings.slot_limit ? data.settings.slot_limit : 10;
-                const soygunLimit = data.settings && data.settings.soygun_limit ? data.settings.soygun_limit : 3;
-
-                const ttsCost = data.settings && data.settings.tts_cost ? data.settings.tts_cost : 2500;
-                const soundCost = data.settings && data.settings.sound_cost ? data.settings.sound_cost : 1000;
-                const muteCost = data.settings && data.settings.mute_cost ? data.settings.mute_cost : 10000;
-                const dailyRew = data.settings && data.settings.daily_reward ? data.settings.daily_reward : 500;
-                const passiveRew = data.settings && data.settings.passive_reward ? data.settings.passive_reward : 100;
-
-                const ttsVol = data.settings && data.settings.tts_volume !== undefined ? data.settings.tts_volume : 100;
-                const soundVol = data.settings && data.settings.sound_volume !== undefined ? data.settings.sound_volume : 80;
-
-                const mSlot3 = data.settings && data.settings.slot_mult_3 ? data.settings.slot_mult_3 : 5;
-                const mSlot2 = data.settings && data.settings.slot_mult_2 ? data.settings.slot_mult_2 : 1.5;
-                const mYT = data.settings && data.settings.yt_mult ? data.settings.yt_mult : 2;
-                const mKutu = data.settings && data.settings.kutu_mult ? data.settings.kutu_mult : 3;
-
+                const settings = data.settings || {};
                 const overlayUrl = `${window.location.origin}/overlay?key=${data.overlay_key || 'YOK'}`;
 
                 const html = `
                     <div class="card">
-                        <h3>${data.username} <span class="status-dot"></span></h3>
-                        <p style="font-size:0.8rem; color:#666;">ID: ${id}</p>
-
-                        <div style="margin: 15px 0; padding:10px; background:#000; border:1px solid #333; border-radius:8px;">
-                            <h4 style="margin-bottom:10px; color:var(--primary); font-size:0.9rem;">🔗 Overlay Linki</h4>
-                            <input type="text" readonly value="${overlayUrl}" class="inp" 
-                                style="margin:0; font-size:0.7rem; color:var(--muted); height:30px;" onclick="this.select(); document.execCommand('copy'); alert('Kopyalandı!')">
-                            <button class="btn action-btn" style="width:100%; margin-top:5px; height:25px; padding:0; font-size:0.7rem;" 
-                                onclick="resetOverlayKey('${id}')">YENİ ANAHTAR OLUŞTUR</button>
+                        <div style="display:flex; justify-content:space-between; align-items:flex-start; margin-bottom:10px;">
+                            <div><h3 style="margin:0;">${data.username} <span class="status-dot"></span></h3><p style="font-size:0.7rem; color:#666;">ID: ${id}</p></div>
+                            <button onclick="deleteChannel('${id}')" style="background:none; border:none; color:var(--danger); cursor:pointer; font-size:1.2rem;">✖</button>
                         </div>
-
-                        <div style="margin: 15px 0; padding:10px; background:#000; border:1px solid #333; border-radius:8px;">
-                            <h4 style="margin-bottom:10px; color:var(--primary); font-size:0.9rem;">💰 Toplu Para Dağıt</h4>
-                            <div style="display:flex; gap:5px;">
-                                <input type="number" id="dist-amt-${id}" placeholder="Miktar (Örn: 1000)" class="inp" 
-                                    style="margin:0; font-size:0.7rem; height:30px; flex:1;">
-                                <button class="btn" style="width:60px; height:30px; padding:0; font-size:0.7rem;" 
-                                    onclick="distributeBalance('${id}')">GÖNDER</button>
-                            </div>
+                        <div class="sub-tabs">
+                            <button class="sub-tab-btn active" onclick="showSubTab('${id}', 'genel', event)">Genel</button>
+                            <button class="sub-tab-btn" onclick="showSubTab('${id}', 'oyunlar', event)">Oyunlar</button>
+                            <button class="sub-tab-btn" onclick="showSubTab('${id}', 'sesler', event)">Sesler</button>
+                            <button class="sub-tab-btn" onclick="showSubTab('${id}', 'komutlar', event)">Komutlar</button>
                         </div>
-                        
-                        <div style="margin: 15px 0; padding:10px; background:#f0f0f0; border-radius:8px;">
-                            <h4 style="margin-bottom:10px; color:#333; font-size:0.9rem;">🎰 Kazanma Oranları (%)</h4>
-                            
-                            <div style="margin-bottom:8px;">
-                                <label style="font-size:0.8rem;">Slot: %<span id="val-slot-${id}">${wrSlot}</span></label>
-                                <input type="range" class="inp" min="0" max="100" value="${wrSlot}" 
-                                    oninput="document.getElementById('val-slot-${id}').innerText = this.value"
-                                    onchange="toggleCmd('${id}', 'wr_slot', parseInt(this.value))">
+                        <div id="sub-genel-${id}" class="sub-section active">
+                            <div style="background:#000; padding:10px; border-radius:8px; border:1px solid #222; margin-bottom:10px;">
+                                <h4 style="font-size:0.8rem; color:var(--primary); margin-bottom:5px;">Overlay Linki</h4>
+                                <input type="text" readonly value="${overlayUrl}" class="inp" style="height:28px; font-size:0.65rem; margin:0;" onclick="this.select(); document.execCommand('copy'); alert('Kopyalandı!')">
+                                <button class="btn" style="height:24px; font-size:0.65rem; margin-top:5px; padding:0;" onclick="resetOverlayKey('${id}')">SIFIRLA</button>
                             </div>
-
-                            <div style="margin-bottom:8px;">
-                                <label style="font-size:0.8rem;">Yazı Tura: %<span id="val-yt-${id}">${wrYazitura}</span></label>
-                                <input type="range" class="inp" min="0" max="100" value="${wrYazitura}" 
-                                    oninput="document.getElementById('val-yt-${id}').innerText = this.value"
-                                    onchange="toggleCmd('${id}', 'wr_yazitura', parseInt(this.value))">
-                            </div>
-
-                            <div style="margin-bottom:8px;">
-                                <label style="font-size:0.8rem;">Kutu: %<span id="val-kutu-${id}">${wrKutu}</span></label>
-                                <input type="range" class="inp" min="0" max="100" value="${wrKutu}" 
-                                    oninput="document.getElementById('val-kutu-${id}').innerText = this.value"
-                                    onchange="toggleCmd('${id}', 'wr_kutu', parseInt(this.value))">
-                            </div>
-
-                            <div style="margin-bottom:8px;">
-                                <label style="font-size:0.8rem;">Soygun: %<span id="val-soy-${id}">${wrSoygun}</span></label>
-                                <input type="range" class="inp" min="0" max="100" value="${wrSoygun}" 
-                                    oninput="document.getElementById('val-soy-${id}').innerText = this.value"
-                                    onchange="toggleCmd('${id}', 'wr_soygun', parseInt(this.value))">
-                            </div>
-
-                            <div style="margin-bottom:8px;">
-                                <label style="font-size:0.8rem;">Soygun Toplam Ödül: <span id="val-soy-rew-${id}">${soygunReward.toLocaleString()}</span> 💰</label>
-                                <input type="number" class="inp" value="${soygunReward}" step="1000"
-                                    style="margin-top:5px; height:35px; background:#000; border-color:#333;"
-                                    onchange="toggleCmd('${id}', 'soygun_reward', parseInt(this.value)); document.getElementById('val-soy-rew-${id}').innerText = parseInt(this.value).toLocaleString()">
-                            </div>
-
-                            <h4 style="margin: 15px 0 10px 0; color:#333; font-size:0.9rem;">🚫 Saatlik Limitler</h4>
-
-                            <div style="display:grid; grid-template-columns: 1fr 1fr; gap:10px;">
-                                <div>
-                                    <label style="font-size:0.75rem;">Slot Limiti:</label>
-                                    <input type="number" class="inp" value="${slotLimit}" min="1" max="100"
-                                        style="height:35px; background:#000; border-color:#333;"
-                                        onchange="toggleCmd('${id}', 'slot_limit', parseInt(this.value))">
-                                </div>
-                                <div>
-                                    <label style="font-size:0.75rem;">Soygun Limiti:</label>
-                                    <input type="number" class="inp" value="${soygunLimit}" min="1" max="24"
-                                        style="height:35px; background:#000; border-color:#333;"
-                                        onchange="toggleCmd('${id}', 'soygun_limit', parseInt(this.value))">
-                                </div>
-                            </div>
-
-                            <h4 style="margin: 15px 0 10px 0; color:#333; font-size:0.9rem;">📈 Kazanç Çarpanları</h4>
-                            
-                            <div style="display:grid; grid-template-columns: 1fr 1fr; gap:10px;">
-                                <div>
-                                    <label style="font-size:0.75rem;">Slot 3'lü:</label>
-                                    <input type="number" class="inp" value="${mSlot3}" step="0.5" 
-                                        style="height:30px; padding:5px; background:#000; border-color:#333;"
-                                        onchange="toggleCmd('${id}', 'slot_mult_3', parseFloat(this.value))">
-                                </div>
-                                <div>
-                                    <label style="font-size:0.75rem;">Slot 2'li:</label>
-                                    <input type="number" class="inp" value="${mSlot2}" step="0.1" 
-                                        style="height:30px; padding:5px; background:#000; border-color:#333;"
-                                        onchange="toggleCmd('${id}', 'slot_mult_2', parseFloat(this.value))">
-                                </div>
-                                <div>
-                                    <label style="font-size:0.75rem;">Yazı-Tura:</label>
-                                    <input type="number" class="inp" value="${mYT}" step="0.1" 
-                                        style="height:30px; padding:5px; background:#000; border-color:#333;"
-                                        onchange="toggleCmd('${id}', 'yt_mult', parseFloat(this.value))">
-                                </div>
-                                <div>
-                                    <label style="font-size:0.75rem;">Kutu Win:</label>
-                                    <input type="number" class="inp" value="${mKutu}" step="0.5" 
-                                        style="height:30px; padding:5px; background:#000; border-color:#333;"
-                                        onchange="toggleCmd('${id}', 'kutu_mult', parseFloat(this.value))">
-                                </div>
-                            </div>
-
-                            <h4 style="margin: 15px 0 10px 0; color:#333; font-size:0.9rem;">💎 Etkileşim Ücretleri</h4>
-
-                            <div style="display:grid; grid-template-columns: 1fr 1fr; gap:10px;">
-                                <div>
-                                    <label style="font-size:0.75rem;">TTS Ücreti:</label>
-                                    <input type="number" class="inp" value="${ttsCost}" step="100"
-                                        style="height:35px; background:#000; border-color:#333;"
-                                        onchange="toggleCmd('${id}', 'tts_cost', parseInt(this.value))">
-                                </div>
-                                <div>
-                                    <label style="font-size:0.75rem;">Sustur Ücreti:</label>
-                                    <input type="number" class="inp" value="${muteCost}" step="500"
-                                        style="height:35px; background:#000; border-color:#333;"
-                                        onchange="toggleCmd('${id}', 'mute_cost', parseInt(this.value))">
-                                </div>
-                                <div>
-                                    <label style="font-size:0.75rem;">Günlük Ödül:</label>
-                                    <input type="number" class="inp" value="${dailyRew}" step="100"
-                                        style="height:35px; background:#000; border-color:#333;"
-                                        onchange="toggleCmd('${id}', 'daily_reward', parseInt(this.value))">
-                                </div>
-                                <div>
-                                    <label style="font-size:0.75rem;">Pasif Gelir (10dk):</label>
-                                    <input type="number" class="inp" value="${passiveRew}" step="10"
-                                        style="height:35px; background:#000; border-color:#333;"
-                                        onchange="toggleCmd('${id}', 'passive_reward', parseInt(this.value))">
-                                </div>
-                            </div>
-
-                            <h4 style="margin: 15px 0 10px 0; color:#333; font-size:0.9rem;">🔊 Ses Seviyeleri</h4>
-                            
-                            <div style="display:grid; grid-template-columns: 1fr 1fr; gap:10px; margin-bottom:10px;">
-                                <div>
-                                    <label style="font-size:0.75rem;">TTS Sesi: %<span id="val-tts-vol-${id}">${ttsVol}</span></label>
-                                    <input type="range" min="0" max="100" value="${ttsVol}" 
-                                        oninput="document.getElementById('val-tts-vol-${id}').innerText = this.value"
-                                        onchange="toggleCmd('${id}', 'tts_volume', parseInt(this.value))" style="width:100%;">
-                                </div>
-                                <div>
-                                    <label style="font-size:0.75rem;">Ses Efekti: %<span id="val-snd-vol-${id}">${soundVol}</span></label>
-                                    <input type="range" min="0" max="100" value="${soundVol}" 
-                                        oninput="document.getElementById('val-snd-vol-${id}').innerText = this.value"
-                                        onchange="toggleCmd('${id}', 'sound_volume', parseInt(this.value))" style="width:100%;">
-                                </div>
-                            </div>
-
-                            <h4 style="margin: 15px 0 10px 0; color:#333; font-size:0.9rem;">🔊 Ses Yönetimi</h4>
-                            <div id="sound-list-${id}" style="font-size:0.8rem; background:#000; padding:10px; border-radius:8px; margin-bottom:10px; max-height:150px; overflow-y:auto;">
-                                <!-- Sesler JS ile dolacak -->
-                            </div>
-                            <div style="display:grid; gap:5px; margin-bottom:10px;">
-                                <div style="display:flex; gap:5px;">
-                                    <input type="text" id="snd-name-${id}" placeholder="Komut (örn: gol)" class="inp" style="margin:0; height:30px; font-size:0.7rem; flex:1;">
-                                    <input type="number" id="snd-cost-${id}" placeholder="Ücret" class="inp" style="margin:0; height:30px; width:70px; font-size:0.7rem;">
-                                    <div style="flex:1; display:flex; flex-direction:column; gap:2px;">
-                                        <label style="font-size:0.6rem; color:#aaa;">Ses Seviyesi: %<span id="vol-val-${id}">100</span></label>
-                                        <input type="range" id="snd-vol-${id}" min="0" max="200" value="100" class="slider" style="width:100%;" oninput="document.getElementById('vol-val-${id}').innerText = this.value">
-                                    </div>
-                                </div>
-                                <div style="display:flex; gap:5px;">
-                                    <input type="text" id="snd-url-${id}" placeholder="MP3 URL Yapıştır (Discord)" class="inp" style="margin:0; height:30px; font-size:0.7rem; flex:1;">
-                                    <button class="btn" style="width:40px; height:30px; padding:0;" onclick="addSound('${id}')">EKLE</button>
-                                </div>
+                            <div style="background:#000; padding:10px; border-radius:8px; border:1px solid #222;">
+                                <h4 style="font-size:0.8rem; color:var(--primary); margin-bottom:5px;">Para Dağıt</h4>
+                                <div style="display:flex; gap:5px;"><input type="number" id="dist-amt-${id}" class="inp" style="height:28px; margin:0; flex:1;"><button class="btn" style="width:40px; height:28px; padding:0;" onclick="distributeBalance('${id}')">OK</button></div>
                             </div>
                         </div>
-
-                        <div class="toggle-group">
-                            ${toggles}
+                        <div id="sub-oyunlar-${id}" class="sub-section">
+                            <div style="background:rgba(255,255,255,0.03); padding:8px; border-radius:8px;">
+                                <label style="font-size:0.7rem;">Slot: %<span id="v-sl-${id}">${settings.wr_slot || 30}</span></label>
+                                <input type="range" min="0" max="100" value="${settings.wr_slot || 30}" oninput="document.getElementById('v-sl-${id}').innerText=this.value" onchange="toggleCmd('${id}','wr_slot',parseInt(this.value))">
+                                <label style="font-size:0.7rem;">Y.Tura: %<span id="v-yt-${id}">${settings.wr_yazitura || 50}</span></label>
+                                <input type="range" min="0" max="100" value="${settings.wr_yazitura || 50}" oninput="document.getElementById('v-yt-${id}').innerText=this.value" onchange="toggleCmd('${id}','wr_yazitura',parseInt(this.value))">
+                                <label style="font-size:0.7rem;">Kutu: %<span id="v-kt-${id}">${settings.wr_kutu || 40}</span></label>
+                                <input type="range" min="0" max="100" value="${settings.wr_kutu || 40}" oninput="document.getElementById('v-kt-${id}').innerText=this.value" onchange="toggleCmd('${id}','wr_kutu',parseInt(this.value))">
+                            </div>
                         </div>
-                        <button class="btn btn-danger action-btn" style="margin-top:15px; width:100%" onclick="deleteChannel('${id}')">BAĞLANTIYI KES (SİL)</button>
+                        <div id="sub-sesler-${id}" class="sub-section">
+                            <div style="display:grid; grid-template-columns:1fr 1fr; gap:8px; margin-bottom:8px;">
+                                <div><label style="font-size:0.6rem;">TTS: %${settings.tts_volume || 100}</label><input type="range" min="0" max="100" value="${settings.tts_volume || 100}" onchange="toggleCmd('${id}','tts_volume',parseInt(this.value))"></div>
+                                <div><label style="font-size:0.6rem;">Efekt: %${settings.sound_volume || 80}</label><input type="range" min="0" max="100" value="${settings.sound_volume || 80}" onchange="toggleCmd('${id}','sound_volume',parseInt(this.value))"></div>
+                            </div>
+                            <div style="background:#000; padding:8px; border-radius:8px; border:1px solid #333;">
+                                <div style="display:flex; gap:4px; margin-bottom:4px;">
+                                    <input type="text" id="snd-name-${id}" placeholder="Komut" class="inp" style="height:26px; font-size:0.7rem; flex:1; margin:0;">
+                                    <input type="number" id="snd-cost-${id}" placeholder="💰" class="inp" style="height:26px; width:50px; font-size:0.7rem; margin:0;">
+                                </div>
+                                <div style="display:flex; gap:4px; align-items:center;">
+                                    <input type="text" id="snd-url-${id}" placeholder="Link" class="inp" style="height:26px; font-size:0.7rem; flex:1; margin:0; text-align:left; padding-left:8px;">
+                                    <input type="file" id="snd-file-${id}" style="display:none;" onchange="uploadSoundFile('${id}')">
+                                    <button class="btn" style="width:26px; height:26px; background:#222; border:1px solid #444;" onclick="document.getElementById('snd-file-${id}').click()">📂</button>
+                                    <button class="btn" style="width:40px; height:26px;" onclick="addSound('${id}')">OK</button>
+                                </div>
+                                <div style="margin-top:4px;"><label style="font-size:0.6rem;">Vol: %<span id="vol-val-${id}">100</span></label><input type="range" id="snd-vol-${id}" min="0" max="200" value="100" oninput="document.getElementById('vol-val-${id}').innerText=this.value"></div>
+                            </div>
+                            <div id="sound-list-${id}" style="font-size:0.7rem; max-height:80px; overflow-y:auto; border:1px solid #222; margin-top:5px; padding:4px;"></div>
+                        </div>
+                        <div id="sub-komutlar-${id}" class="sub-section">
+                            <div class="toggle-group">${toggles}</div>
+                        </div>
                     </div>
                 `;
                 container.innerHTML += html;
-                renderSoundList(id, data.settings?.custom_sounds || {});
+                renderSoundList(id, settings.custom_sounds || {});
             }
         }
 
         function renderSoundList(channelId, sounds) {
             const container = document.getElementById(`sound-list-${channelId}`);
-            if (!container) return;
-            container.innerHTML = "";
+            if (!container) return; container.innerHTML = "";
             Object.entries(sounds).forEach(([name, data]) => {
-                container.innerHTML += `
-                    <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:5px; padding:10px; background:#1a1a1a; border-radius:5px; border-left:4px solid var(--primary);">
-                        <div style="display:flex; flex-direction:column;">
-                            <span style="font-weight:bold; color:var(--primary);">!ses ${name}</span>
-                            <span style="font-size:0.75rem; color:#aaa;">Maliyet: ${data.cost} 💰 | Ses: %${data.volume || 100}</span>
-                        </div>
-                        <button onclick="removeSound('${channelId}', '${name}')" class="btn-danger" style="width:30px; height:30px; border-radius:50%; display:flex; align-items:center; justify-content:center; padding:0; border:none; cursor:pointer;">✖</button>
-                    </div>
-                `;
+                container.innerHTML += `<div style="display:flex; justify-content:space-between; padding:4px; background:#1a1a1a; margin-bottom:2px; border-radius:4px;">
+                    <span>!ses ${name}</span><button onclick="removeSound('${channelId}','${name}')" style="background:none; border:none; color:var(--danger); cursor:pointer;">✖</button>
+                </div>`;
             });
-            if (Object.keys(sounds).length === 0) container.innerHTML = "<p style='color:#555;'>Ses eklenmemiş.</p>";
-        }
-
-        async function addSound(channelId) {
-            const name = document.getElementById(`snd-name-${channelId}`).value.toLowerCase().trim();
-            const url = document.getElementById(`snd-url-${channelId}`).value.trim();
-            const cost = parseInt(document.getElementById(`snd-cost-${channelId}`).value) || 1000;
-            const volume = parseInt(document.getElementById(`snd-vol-${channelId}`).value) || 100;
-
-            if (!name || !url) return alert("Ad ve URL boş olamaz!");
-
-            // Mevcut ayarları çek
-            const res = await fetch('/admin-api/channels', {
-                method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ key: sessionKey })
-            });
-            const channels = await res.json();
-            const currentSounds = channels[channelId]?.settings?.custom_sounds || {};
-
-            currentSounds[name] = { url, cost, volume };
-
-            await toggleCmd(channelId, 'custom_sounds', currentSounds);
-            loadChannels();
         }
 
         async function uploadSoundFile(id) {
-            const fileInp = document.getElementById(`snd-file-${id}`);
-            if (!fileInp.files[0]) return;
-
+            const file = document.getElementById(`snd-file-${id}`).files[0];
+            if (!file) return;
             const formData = new FormData();
-            formData.append('sound', fileInp.files[0]);
+            formData.append('sound', file);
             formData.append('key', sessionKey);
             formData.append('channelId', id);
-
             try {
-                const res = await fetch('/admin-api/upload-sound', {
-                    method: 'POST',
-                    body: formData
-                });
+                const res = await fetch('/admin-api/upload-sound', { method: 'POST', body: formData });
                 const data = await res.json();
-                if (data.success) {
+                if (data.url) {
                     document.getElementById(`snd-url-${id}`).value = data.url;
-                    alert("Dosya yüklendi! Şimdi 'EKLE' butonuna basarak kaydedebilirsin.");
-                } else {
-                    alert("Hata: " + data.error);
+                    alert("Yüklendi!");
                 }
-            } catch (e) {
-                alert("Yükleme sırasında hata oluştu.");
-            }
+            } catch (e) { alert("Hata!"); }
+        }
+
+        async function addSound(channelId) {
+            const name = document.getElementById(`snd-name-${channelId}`).value.trim();
+            const url = document.getElementById(`snd-url-${channelId}`).value.trim();
+            const cost = parseInt(document.getElementById(`snd-cost-${channelId}`).value) || 1000;
+            const volume = parseInt(document.getElementById(`snd-vol-${channelId}`).value) || 100;
+            if (!name || !url) return alert("Hata!");
+            const res = await fetch('/admin-api/channels', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ key: sessionKey }) });
+            const channels = await res.json();
+            const current = channels[channelId]?.settings?.custom_sounds || {};
+            current[name] = { url, cost, volume };
+            await toggleCmd(channelId, 'custom_sounds', current);
+            loadChannels();
         }
 
         async function removeSound(channelId, name) {
-            if (!confirm("Sesi silmek istiyor musun?")) return;
-
-            const res = await fetch('/admin-api/channels', {
-                method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ key: sessionKey })
-            });
+            if (!confirm("Emin misin?")) return;
+            const res = await fetch('/admin-api/channels', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ key: sessionKey }) });
             const channels = await res.json();
-            const currentSounds = channels[channelId]?.settings?.custom_sounds || {};
-
-            delete currentSounds[name];
-
-            await toggleCmd(channelId, 'custom_sounds', currentSounds);
+            const current = channels[channelId]?.settings?.custom_sounds || {};
+            delete current[name];
+            await toggleCmd(channelId, 'custom_sounds', current);
             loadChannels();
         }
 
         async function toggleCmd(channelId, cmd, val) {
-            await fetch('/admin-api/toggle-command', {
-                method: 'POST', headers: { 'Content-Type': 'application/json' },
-                body: JSON.stringify({ key: sessionKey, channelId, command: cmd, value: val })
+            await fetch('/admin-api/toggle-command', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ key: sessionKey, channelId, command: cmd, value: val }) });
+        }
+
+        async function loadUsers() {
+            const res = await fetch('/admin-api/all-users', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ key: sessionKey }) });
+            const users = await res.json();
+            const list = document.getElementById('user-list');
+            list.innerHTML = "";
+            Object.entries(users).sort((a, b) => (b[1].balance || 0) - (a[1].balance || 0)).slice(0, 100).forEach(([u, d]) => {
+                list.innerHTML += `<tr><td>${u}</td><td>${d.balance || 0}</td><td>-</td><td><button onclick="resetUser('${u}')">🔄</button></td></tr>`;
             });
         }
 
-        async function deleteChannel(channelId) {
-            if (!confirm("Bu kanalı silmek istediğine emin misin? Bot çıkış yapacak.")) return;
-            await fetch('/admin-api/delete-channel', {
-                method: 'POST', headers: { 'Content-Type': 'application/json' },
-                body: JSON.stringify({ key: sessionKey, channelId })
-            });
-            loadChannels();
-        }
-
-        // Redundant functions removed
-
-        async function editBalance(name, current) {
-            const newBal = prompt(`Yeni bakiye gir(${name}): `, current);
-            if (newBal !== null) {
-                await fetch('/admin-api/update-user', {
-                    method: 'POST', headers: { 'Content-Type': 'application/json' },
-                    body: JSON.stringify({ key: sessionKey, user: name, balance: newBal })
-                });
-                alert("Güncellendi!");
-                loadUsers();
-            }
-        }
-
-        function showBanStats(username) {
-            const user = allUsers[username];
-            const modal = document.getElementById('banModal');
-            const content = document.getElementById('banModalContent');
-
-            if (!user || !user.bans || Object.keys(user.bans).length === 0) {
-                content.innerHTML = "<p>Bu kullanıcı hiç banlanmamış. 😇</p>";
-            } else {
-                let html = "<ul style='list-style:none; padding:0;'>";
-                for (const [channelId, count] of Object.entries(user.bans)) {
-                    html += `<li style='margin-bottom:5px; padding:5px; background:#444; border-radius:4px;'>
-                        <b>Kanal:</b> ${channelId} <br>
-                        <b>Ban Sayısı:</b> ${count}
-                    </li>`;
-                }
-                html += "</ul>";
-                content.innerHTML = html;
-            }
-            modal.style.display = 'flex';
-        }
-
-        async function resetUser(name) {
-            if (!confirm(`${name} kullanıcısını sıfırlamak istediğine emin misin ? (Bakiye: 1000)`)) return;
-            await fetch('/admin-api/update-user', {
-                method: 'POST', headers: { 'Content-Type': 'application/json' },
-                body: JSON.stringify({ key: sessionKey, user: name, balance: 1000 })
-            });
-            alert("Kullanıcı sıfırlandı!");
+        async function resetUser(u) {
+            if (!confirm("Sıfırla?")) return;
+            await fetch('/admin-api/update-user', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ key: sessionKey, user: u, balance: 1000 }) });
             loadUsers();
         }
 
-        async function sendToChannel() {
-            const channelId = document.getElementById('targetChannel').value;
-            const message = document.getElementById('channelMsg').value;
-            if (!channelId) return alert("Kanal seçmelisin!");
-            if (!message.trim()) return alert("Mesaj yazmalısın!");
-
-            const res = await fetch('/admin-api/send-message', {
-                method: 'POST', headers: { 'Content-Type': 'application/json' },
-                body: JSON.stringify({ key: sessionKey, channelId: parseInt(channelId), message })
-            });
-            const data = await res.json();
-            if (data.success) {
-                alert("Mesaj gönderildi! ✅");
-                document.getElementById('channelMsg').value = '';
-            } else {
-                alert("Hata: " + (data.error || "Bilinmeyen"));
-            }
+        async function loadLogs() {
+            const res = await fetch('/admin-api/get-logs', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ key: sessionKey }) });
+            const logs = await res.json();
+            const container = document.getElementById('log-container');
+            container.innerHTML = logs.map(l => `<div>[${new Date(l.timestamp).toLocaleTimeString()}] <b>${l.action}:</b> ${l.details}</div>`).join('');
         }
 
-        // TROLL ACTIONS
-        async function setRigShip() {
-            const user = document.getElementById('rigUser').value;
-            const target = document.getElementById('rigTarget').value;
-            const percent = document.getElementById('rigPercent').value;
-            await fetch('/admin-api/rig-ship', {
-                method: 'POST', headers: { 'Content-Type': 'application/json' },
-                body: JSON.stringify({ key: sessionKey, user, target, percent })
-            });
-            alert("AŞK AYARLANDI! ❤️");
+        async function distributeBalance(id) {
+            const amt = document.getElementById(`dist-amt-${id}`).value;
+            await fetch('/admin-api/distribute-balance', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ key: sessionKey, channelId: id, amount: amt }) });
+            alert("Dağıtıldı!");
         }
 
-        async function setGamble(res) {
-            const user = document.getElementById('gambleUser').value;
-            await fetch('/admin-api/rig-gamble', {
-                method: 'POST', headers: { 'Content-Type': 'application/json' },
-                body: JSON.stringify({ key: sessionKey, user, result: res })
-            });
-            alert("KUMAR AYARLANDI! 🎰");
+        async function deleteChannel(id) {
+            if (!confirm("Sileyim mi?")) return;
+            await fetch('/admin-api/delete-channel', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ key: sessionKey, channelId: id }) });
+            loadChannels();
         }
 
-        async function resetOverlayKey(channelId) {
-            if (!confirm("Overlay anahtarını sıfırlamak istiyor musun? Eski link artık çalışmayacaktır.")) return;
-            const res = await fetch('/admin-api/reset-overlay-key', {
-                method: 'POST', headers: { 'Content-Type': 'application/json' },
-                body: JSON.stringify({ key: sessionKey, channelId })
-            });
-            const data = await res.json();
-            if (data.success) {
-                alert("Yeni anahtar oluşturuldu!");
-                loadChannels();
-            }
-        }
-
-        async function distributeBalance(channelId) {
-            const amt = document.getElementById(`dist-amt-${channelId}`).value;
-            if (!amt || amt <= 0) return alert("Hatalı miktar!");
-
-            if (!confirm(`${amt} bakiyeyi bu kanaldaki HERKESE dağıtmak üzeresin. Emin misin?`)) return;
-
-            const res = await fetch('/admin-api/distribute-balance', {
-                method: 'POST', headers: { 'Content-Type': 'application/json' },
-                body: JSON.stringify({ key: sessionKey, channelId, amount: amt })
-            });
-            const data = await res.json();
-            if (data.success) {
-                alert(`İşlem Başarılı! Toplam ${data.count} kişiye ${amt} 💰 dağıtıldı.`);
-                document.getElementById(`dist-amt-${channelId}`).value = "";
-            } else {
-                alert("Hata: " + data.error);
-            }
-        }
-
-        async function chatAction(act) {
-            // İlk aktif kanalı hedef alalım (Geliştirilebilir: Kanal seçimi eklenebilir)
-            const firstChannel = document.querySelector('.card p')?.innerText.replace('ID: ', '');
-            if (!firstChannel) return alert("Aktif kanal yok!");
-
-            await fetch('/admin-api/chat-action', {
-                method: 'POST', headers: { 'Content-Type': 'application/json' },
-                body: JSON.stringify({ key: sessionKey, action: act, channelId: parseInt(firstChannel) })
-            });
-            alert("DURUM GÜNCELLENDİ! 🛡️");
+        function chatAction(act) {
+            const first = document.querySelector('h3')?.closest('.card')?.querySelector('p')?.innerText.replace('ID: ', '');
+            if (!first) return;
+            fetch('/admin-api/chat-action', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ key: sessionKey, action: act, channelId: parseInt(first) }) });
         }
     </script>
 </body>
