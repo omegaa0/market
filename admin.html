@@ -870,13 +870,15 @@
             list.innerHTML = users.map(([u, d]) => {
                 const lastSeen = d.last_seen ? new Date(d.last_seen).toLocaleString('tr-TR') : 'N/A';
                 const banCount = (d.bans && Object.values(d.bans).reduce((a, b) => a + b, 0)) || 0;
+                const isInf = d.is_infinite;
                 return `
-                <tr>
-                    <td><b>${u}</b></td>
-                    <td>${(d.balance || 0).toLocaleString()} 💰</td>
+                <tr style="${isInf ? 'background:rgba(0,255,136,0.05)' : ''}">
+                    <td><b>${u}</b> ${isInf ? '<span style="color:var(--primary); font-size:0.7rem;">(♾️)</span>' : ''}</td>
+                    <td>${isInf ? '♾️' : (d.balance || 0).toLocaleString() + ' 💰'}</td>
                     <td><small>${lastSeen}</small></td>
                     <td><span style="color:${banCount > 0 ? 'var(--danger)' : '#444'}">${banCount}</span></td>
                     <td style="text-align:right">
+                        <button class="btn btn-small" style="width:34px; height:34px; display:inline-flex; background:${isInf ? 'var(--primary)' : '#222'}; color:${isInf ? '#000' : '#fff'};" onclick="toggleInfinite('${u}', ${!isInf})">♾️</button>
                         <button class="btn btn-small" style="width:34px; height:34px; display:inline-flex; background:#222; color:#fff;" onclick="openBalanceModal('${u}', ${d.balance || 0})">✏️</button>
                         <button class="btn btn-small btn-danger" style="width:34px; height:34px; display:inline-flex;" onclick="resetUser('${u}')">🔄</button>
                     </td>
@@ -907,6 +909,15 @@
         }
 
         function closeModal(id) { document.getElementById(id).style.display = 'none'; }
+
+        async function toggleInfinite(user, val) {
+            await fetch('/admin-api/toggle-infinite', {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({ key: sessionKey, user, value: val })
+            });
+            loadUsers();
+        }
 
         async function loadLogs() {
             const res = await fetch('/admin-api/get-logs', {

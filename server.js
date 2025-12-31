@@ -501,7 +501,12 @@ app.post('/kick/webhook', async (req, res) => {
 
     else if (lowMsg === '!bakiye') {
         const snap = await userRef.once('value');
-        await reply(`@${user}, Bakiyeniz: ${(snap.val()?.balance || 0).toLocaleString()} 💰`);
+        const data = snap.val() || {};
+        if (data.is_infinite) {
+            await reply(`@${user}, Bakiye: Omeganın kartı 💳♾️`);
+        } else {
+            await reply(`@${user}, Bakiyeniz: ${(data.balance || 0).toLocaleString()} 💰`);
+        }
     }
 
     else if (lowMsg === '!günlük') {
@@ -547,9 +552,10 @@ app.post('/kick/webhook', async (req, res) => {
 
         if (now > data.slot_reset) { data.slot_count = 0; data.slot_reset = now + 3600000; }
         if (data.slot_count >= slotLimit) return await reply(`@${user}, 🚨 Slot limitin doldu! (${slotLimit}/saat)`);
-        if (data.balance < cost) return await reply(`@${user}, Yetersiz bakiye!`);
+        const isInf = snap.val()?.is_infinite;
+        if (!isInf && data.balance < cost) return await reply(`@${user}, Yetersiz bakiye!`);
 
-        data.balance -= cost;
+        if (!isInf) data.balance -= cost;
         data.slot_count++;
         const rig = checkRig();
         const sym = ["🍋", "🍒", "🍇", "🔔", "💎", "7️⃣", "🍊", "🍓"];
@@ -587,12 +593,16 @@ app.post('/kick/webhook', async (req, res) => {
         let prize = Math.floor(cost * mult);
         if (mult === 0) {
             const refund = Math.floor(cost * 0.1);
-            data.balance += refund;
-            await userRef.update(data);
+            if (!isInf) {
+                data.balance += refund;
+                await userRef.update(data);
+            }
             await reply(`🎰 | ${s[0]} | ${s[1]} | ${s[2]} | @${user} Kaybettin (%10 İade: +${refund})`);
         } else {
-            data.balance += prize;
-            await userRef.update(data);
+            if (!isInf) {
+                data.balance += prize;
+                await userRef.update(data);
+            }
             await reply(`🎰 | ${s[0]} | ${s[1]} | ${s[2]} | @${user} KAZANDIN (+${prize.toLocaleString()}) 💰`);
         }
     }
@@ -603,9 +613,10 @@ app.post('/kick/webhook', async (req, res) => {
         if (isNaN(cost) || !['y', 't', 'yazı', 'tura'].includes(pick)) return await reply(`@${user}, Kullanım: !yazitura [miktar] [y/t]`);
         const snap = await userRef.once('value');
         const data = snap.val() || { balance: 0 };
-        if (data.balance < cost) return await reply(`@${user}, Bakiye yetersiz!`);
+        const isInf = data.is_infinite;
+        if (!isInf && data.balance < cost) return await reply(`@${user}, Bakiye yetersiz!`);
 
-        data.balance -= cost;
+        if (!isInf) data.balance -= cost;
         const rig = checkRig();
         const isYazi = pick.startsWith('y');
         let win;
@@ -627,14 +638,19 @@ app.post('/kick/webhook', async (req, res) => {
         const resDisplay = win ? (isYazi ? 'YAZI' : 'TURA') : (isYazi ? 'TURA' : 'YAZI');
         if (win) {
             const prize = Math.floor(cost * multYT);
-            data.balance += prize;
+            if (!isInf) {
+                data.balance += prize;
+                await userRef.update({ balance: data.balance });
+            }
             await reply(`🪙 Para fırlatıldı... ${resDisplay}! @${user} KAZANDIN (+${prize.toLocaleString()})`);
         } else {
             const refund = Math.floor(cost * 0.1);
-            data.balance += refund;
+            if (!isInf) {
+                data.balance += refund;
+                await userRef.update({ balance: data.balance });
+            }
             await reply(`🪙 Para fırlatıldı... ${resDisplay}! @${user} Kaybettin (%10 İade: +${refund})`);
         }
-        await userRef.update({ balance: data.balance });
     }
 
     else if (isEnabled('kutu') && lowMsg.startsWith('!kutu')) {
@@ -642,9 +658,10 @@ app.post('/kick/webhook', async (req, res) => {
         if (isNaN(cost) || isNaN(choice) || choice < 1 || choice > 3) return await reply(`@${user}, Kullanım: !kutu [miktar] [1-3]`);
         const snap = await userRef.once('value');
         const data = snap.val() || { balance: 0 };
-        if (data.balance < cost) return await reply(`@${user}, Bakiye yetersiz!`);
+        const isInf = data.is_infinite;
+        if (!isInf && data.balance < cost) return await reply(`@${user}, Bakiye yetersiz!`);
 
-        data.balance -= cost;
+        if (!isInf) data.balance -= cost;
         const rig = checkRig();
         let resultType;
 
@@ -683,7 +700,8 @@ app.post('/kick/webhook', async (req, res) => {
 
         const snap = await userRef.once('value');
         const userData = snap.val() || { balance: 0 };
-        if (userData.balance < amt) return await reply('Bakiye yetersiz.');
+        const isInf = userData.is_infinite;
+        if (!isInf && userData.balance < amt) return await reply('Bakiye yetersiz.');
 
         const targetSnap = await db.ref('users/' + target).once('value');
         if (!targetSnap.exists() || targetSnap.val().balance < amt) return await reply('Rakibin bakiyesi yetersiz.');
@@ -698,8 +716,15 @@ app.post('/kick/webhook', async (req, res) => {
         delete activeDuels[user.toLowerCase()];
         const winner = Math.random() < 0.5 ? d.challenger : user;
         const loser = winner === user ? d.challenger : user;
-        await db.ref('users/' + winner.toLowerCase()).transaction(u => { if (u) u.balance += d.amount; return u; });
-        await db.ref('users/' + loser.toLowerCase()).transaction(u => { if (u) u.balance -= d.amount; return u; });
+        const winnerSnap = await db.ref('users/' + winner.toLowerCase()).once('value');
+        const loserSnap = await db.ref('users/' + loser.toLowerCase()).once('value');
+
+        if (!winnerSnap.val()?.is_infinite) {
+            await db.ref('users/' + winner.toLowerCase()).transaction(u => { if (u) u.balance += d.amount; return u; });
+        }
+        if (!loserSnap.val()?.is_infinite) {
+            await db.ref('users/' + loser.toLowerCase()).transaction(u => { if (u) u.balance -= d.amount; return u; });
+        }
         await reply(`🏆 @${winner} düelloyu kazandı ve ${d.amount} 💰 kaptı! ⚔️`);
     }
 
@@ -734,13 +759,16 @@ app.post('/kick/webhook', async (req, res) => {
                 if (roll < wrSoy) {
                     const totalPot = settings.soygun_reward || 30000;
                     const share = Math.floor(totalPot / activeH.p.length);
-                    for (let pName of activeH.p) {
-                        await db.ref('users/' + pName.toLowerCase()).transaction(u => {
-                            if (!u) u = { balance: 0 };
-                            u.balance = (u.balance || 0) + share;
-                            return u;
-                        });
-                    }
+                    activeH.p.forEach(async p => {
+                        const pSnap = await db.ref('users/' + p.toLowerCase()).once('value');
+                        if (!pSnap.val()?.is_infinite) {
+                            await db.ref('users/' + p.toLowerCase()).transaction(u => {
+                                if (!u) u = { balance: 0 };
+                                u.balance = (u.balance || 0) + share;
+                                return u;
+                            });
+                        }
+                    });
                     await reply(`💥 BANKA PATLADI! Ekip toplam ${totalPot.toLocaleString()} 💰 kaptı! Kişi başı: +${share.toLocaleString()} 💰`);
                 } else {
                     await reply(`🚔 POLİS BASKINI! Soygun başarısız, herkes dağılsın! 👮‍♂️`);
@@ -816,9 +844,12 @@ app.post('/kick/webhook', async (req, res) => {
 
     else if (settings.zenginler !== false && lowMsg === '!zenginler') {
         const snap = await db.ref('users').once('value');
-        const sorted = Object.entries(snap.val() || {}).sort((a, b) => (b[1].balance || 0) - (a[1].balance || 0)).slice(0, 5);
+        const sorted = Object.entries(snap.val() || {})
+            .filter(([_, d]) => !d.is_infinite)
+            .sort((a, b) => (b[1].balance || 0) - (a[1].balance || 0))
+            .slice(0, 5);
         let txt = "🏆 EN ZENGİNLER: ";
-        sorted.forEach((u, i) => txt += `${i + 1}. ${u[0]} (${u[1].balance.toLocaleString()}) | `);
+        sorted.forEach((u, i) => txt += `${i + 1}. ${u[0]} (${(u[1].balance || 0).toLocaleString()}) | `);
         await reply(txt);
     }
 
@@ -895,9 +926,11 @@ app.post('/kick/webhook', async (req, res) => {
 
         const ttsCost = settings.tts_cost || 2500;
         const snap = await userRef.once('value');
-        if ((snap.val()?.balance || 0) < ttsCost) return await reply(`@${user}, TTS için ${ttsCost.toLocaleString()} 💰 lazım!`);
+        const data = snap.val() || {};
+        const isInf = data.is_infinite;
+        if (!isInf && (data.balance || 0) < ttsCost) return await reply(`@${user}, TTS için ${ttsCost.toLocaleString()} 💰 lazım!`);
 
-        await userRef.transaction(u => { if (u) u.balance -= ttsCost; return u; });
+        if (!isInf) await userRef.transaction(u => { if (u) u.balance -= ttsCost; return u; });
         await db.ref(`channels/${broadcasterId}/stream_events/tts`).push({
             text: `@${user} diyor ki: ${text}`,
             played: false,
@@ -927,7 +960,9 @@ app.post('/kick/webhook', async (req, res) => {
         const soundCost = parseInt(sound.cost) || 1000;
 
         const snap = await userRef.once('value');
-        if ((snap.val()?.balance || 0) < soundCost) return await reply(`@${user}, "${soundTrigger}" sesi için ${soundCost.toLocaleString()} 💰 lazım!`);
+        const data = snap.val() || {};
+        const isInf = data.is_infinite;
+        if (!isInf && (data.balance || 0) < soundCost) return await reply(`@${user}, "${soundTrigger}" sesi için ${soundCost.toLocaleString()} 💰 lazım!`);
 
         // Gelişmiş dosya kontrolü
         if (sound.url.includes('/uploads/sounds/')) {
@@ -945,7 +980,7 @@ app.post('/kick/webhook', async (req, res) => {
             }
         }
 
-        await userRef.transaction(u => { if (u) u.balance -= soundCost; return u; });
+        if (!isInf) await userRef.transaction(u => { if (u) u.balance -= soundCost; return u; });
         await db.ref(`channels/${broadcasterId}/stream_events/sound`).push({
             soundId: soundTrigger,
             url: sound.url,
@@ -1003,12 +1038,14 @@ app.post('/kick/webhook', async (req, res) => {
         if (target) {
             const muteCost = settings.mute_cost || 10000;
             const snap = await userRef.once('value');
-            if ((snap.val()?.balance || 0) < muteCost) {
+            const data = snap.val() || {};
+            const isInf = data.is_infinite;
+            if (!isInf && (data.balance || 0) < muteCost) {
                 await reply(`@${user}, ${muteCost.toLocaleString()} 💰 bakiye lazım!`);
             } else {
                 const result = await timeoutUser(broadcasterId, target, 600);
                 if (result.success) {
-                    await userRef.transaction(u => { if (u) u.balance -= muteCost; return u; });
+                    if (!isInf) await userRef.transaction(u => { if (u) u.balance -= muteCost; return u; });
                     await reply(`🔇 @${user}, @${target} kullanıcısını 10 dakika susturdu! (-${muteCost.toLocaleString()} 💰)`);
 
                     // BAN Ä°STATÄ°STÄ°ÄÄ° (Target kullanÄ±cÄ±sÄ±nÄ±n ban sayÄ±sÄ±nÄ± artÄ±r)
@@ -1345,6 +1382,13 @@ app.post('/admin-api/lottery', authAdmin, async (req, res) => {
             res.json({ success: true, winner });
         }
     }
+});
+
+app.post('/admin-api/toggle-infinite', authAdmin, async (req, res) => {
+    const { key, user, value } = req.body;
+    await db.ref(`users/${user.toLowerCase()}`).update({ is_infinite: value });
+    addLog("Sınırsız Bakiye", `${user} -> ${value ? 'Açıldı' : 'Kapatıldı'}`, "SYSTEM");
+    res.json({ success: true });
 });
 
 app.post('/dashboard-api/data', authDashboard, async (req, res) => {
