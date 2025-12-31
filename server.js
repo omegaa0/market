@@ -1597,6 +1597,28 @@ db.ref('channels').on('child_added', (snapshot) => {
             }
         }
     });
+
+    // Market TTS Dinleyicisi (Chat bildirimi için)
+    db.ref(`channels/${channelId}/stream_events/tts`).on('child_added', async (snap) => {
+        const event = snap.val();
+        if (event && !event.notified) {
+            const userMatch = event.text.match(/@(\w+)/);
+            const buyer = userMatch ? userMatch[1] : "Bir kullanıcı";
+            await sendChatMessage(`🎙️ @${buyer}, Market'ten TTS (Sesli Mesaj) gönderdi!`, channelId);
+            await db.ref(`channels/${channelId}/stream_events/tts/${snap.key}`).update({ notified: true });
+        }
+    });
+
+    // Market Ses Dinleyicisi (Chat bildirimi için)
+    db.ref(`channels/${channelId}/stream_events/sound`).on('child_added', async (snap) => {
+        const event = snap.val();
+        if (event && !event.notified) {
+            // Buyer bilgisini executePurchase kısmında event'e eklemeliyiz.
+            const buyer = event.buyer || "Bir kullanıcı";
+            await sendChatMessage(`🎵 @${buyer}, Market'ten !ses ${event.soundId} efektini çaldı!`, channelId);
+            await db.ref(`channels/${channelId}/stream_events/sound/${snap.key}`).update({ notified: true });
+        }
+    });
 });
 
 const PORT = process.env.PORT || 3000;

@@ -161,21 +161,30 @@ async function loadChannelMarket(channelId) {
 
     // 3. SOUNDS
     Object.entries(sounds).forEach(([name, data]) => {
-        renderItem(`🎵 Ses: !ses ${name}`, "Kanalda özel ses efekti çalar.", data.cost, "sound", name);
+        renderItem(`🎵 Ses: !ses ${name}`, "Kanalda özel ses efekti çalar.", data.cost, "sound", name, data.url);
     });
 }
 
-function renderItem(name, desc, price, type, trigger = "") {
+function renderItem(name, desc, price, type, trigger = "", soundUrl = "") {
     const card = document.createElement('div');
     card.className = 'item-card';
     card.innerHTML = `
-        <div class="item-icon">${type === 'tts' ? '🎙️' : (type === 'mute' ? '🚫' : '🎵')}</div>
+        <div style="display:flex; justify-content:space-between; align-items:flex-start;">
+            <div class="item-icon">${type === 'tts' ? '🎙️' : (type === 'mute' ? '🚫' : '🎵')}</div>
+            ${type === 'sound' ? `<button onclick="previewShopSound('${soundUrl}')" style="background:none; border:none; color:var(--primary); cursor:pointer; font-size:1.5rem; padding:0;">▶️</button>` : ''}
+        </div>
         <h3>${name}</h3>
         <p>${desc}</p>
         <span class="price-tag">${parseInt(price).toLocaleString()} 💰</span>
         <button class="buy-btn" onclick="executePurchase('${type}', '${trigger}', ${price})">Hemen Uygula</button>
     `;
     marketGrid.appendChild(card);
+}
+
+function previewShopSound(url) {
+    const audio = new Audio(url);
+    audio.volume = 0.5;
+    audio.play().catch(e => console.error("Önizleme hatası:", e));
 }
 
 async function executePurchase(type, trigger, price) {
@@ -204,7 +213,7 @@ async function executePurchase(type, trigger, price) {
     if (type === 'tts') {
         await db.ref(`channels/${currentChannelId}/stream_events/tts`).push({
             text: `@${currentUser} (Market) diyor ki: ${userInput}`,
-            played: false, timestamp: Date.now(), broadcasterId: currentChannelId
+            played: false, notified: false, timestamp: Date.now(), broadcasterId: currentChannelId
         });
     } else if (type === 'sound') {
         const snap = await db.ref(`channels/${currentChannelId}/settings/custom_sounds/${trigger}`).once('value');
@@ -212,7 +221,8 @@ async function executePurchase(type, trigger, price) {
         if (sound) {
             await db.ref(`channels/${currentChannelId}/stream_events/sound`).push({
                 soundId: trigger, url: sound.url, volume: sound.volume || 100, duration: sound.duration || 0,
-                played: false, timestamp: Date.now(), broadcasterId: currentChannelId
+                buyer: currentUser, // Chat bildirimi için eklendi
+                played: false, notified: false, timestamp: Date.now(), broadcasterId: currentChannelId
             });
         }
     } else if (type === 'mute') {
