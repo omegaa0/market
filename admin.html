@@ -679,6 +679,7 @@
                             <button class="sub-tab-btn active" onclick="showSubTab('${id}', 'genel', event)">Genel</button>
                             <button class="sub-tab-btn" onclick="showSubTab('${id}', 'oyunlar', event)">Oyunlar</button>
                             <button class="sub-tab-btn" onclick="showSubTab('${id}', 'sesler', event)">Sesler</button>
+                            <button class="sub-tab-btn" onclick="showSubTab('${id}', 'piyango', event)">Piyango</button>
                             <button class="sub-tab-btn" onclick="showSubTab('${id}', 'komutlar', event)">Diger</button>
                         </div>
 
@@ -771,6 +772,27 @@
                         <!-- KANAL: KOMUTLAR -->
                         <div id="sub-komutlar-${id}" class="sub-section">
                             <div class="toggle-group">${toggles}</div>
+                        </div>
+
+                        <!-- KANAL: PİYANGO -->
+                        <div id="sub-piyango-${id}" class="sub-section">
+                            <div style="background:#000; padding:15px; border-radius:12px; border:1px solid #333;">
+                                <h4 style="color:var(--secondary); margin-bottom:10px; font-size:0.9rem;">🎰 Piyango Kontrolü</h4>
+                                <div class="form-row">
+                                    <div style="flex:1">
+                                        <label class="range-label">Bilet Ücreti</label>
+                                        <input type="number" id="lot-cost-${id}" value="500" class="inp" style="height:35px; margin:0;">
+                                    </div>
+                                    <div style="flex:1">
+                                        <label class="range-label">Başlangıç Havuzu</label>
+                                        <input type="number" id="lot-pool-${id}" value="10000" class="inp" style="height:35px; margin:0;">
+                                    </div>
+                                </div>
+                                <div style="display:flex; gap:10px; margin-top:10px;">
+                                    <button class="btn btn-small" style="background:var(--primary); color:#000; flex:1;" onclick="controlLottery('${id}', 'start')">🚀 BAŞLAT</button>
+                                    <button class="btn btn-small" style="background:var(--danger); flex:1;" onclick="controlLottery('${id}', 'end')">🏁 BİTİR</button>
+                                </div>
+                            </div>
                         </div>
                     </div>
                 `;
@@ -1020,6 +1042,22 @@
             if (!user) return alert("Kullanıcı gir!");
             await fetch('/admin-api/rig-gamble', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ key: sessionKey, user, result: res }) });
             alert("Gamble riglendi!");
+        }
+
+        async function controlLottery(id, action) {
+            const cost = document.getElementById(`lot-cost-${id}`).value;
+            const pool = document.getElementById(`lot-pool-${id}`).value;
+            const res = await fetch('/admin-api/lottery', {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({ key: sessionKey, channelId: id, action, cost, initialPool: pool })
+            });
+            const d = await res.json();
+            if (d.success) {
+                alert(action === 'start' ? "Piyango başlatıldı!" : "Piyango bitirildi!");
+            } else {
+                alert("Hata: " + d.error);
+            }
         }
 
         async function chatAction(act) {

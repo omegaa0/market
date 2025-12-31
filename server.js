@@ -1315,6 +1315,38 @@ app.post('/admin-api/reload-overlay', authAdmin, async (req, res) => {
     res.json({ success: true });
 });
 
+app.post('/admin-api/lottery', authAdmin, async (req, res) => {
+    const { channelId, action, cost, initialPool } = req.body;
+    if (action === 'start') {
+        const entryCost = parseInt(cost) || 500;
+        const startPool = parseInt(initialPool) || 0;
+        channelLotteries[channelId] = { p: [], cost: entryCost, pool: startPool };
+        await sendChatMessage(`🎰 PİYANGO BAŞLADI! Giriş: ${entryCost.toLocaleString()} 💰 | Ödül Havuzu: ${startPool.toLocaleString()} 💰 | Katılmak için !piyango katıl`, channelId);
+        addLog("Piyango Başlatıldı", `Giriş: ${entryCost}, Başlangıç: ${startPool}`, channelId);
+        res.json({ success: true });
+    } else if (action === 'end') {
+        const p = channelLotteries[channelId];
+        if (!p) return res.json({ success: false, error: 'Aktif piyango yok' });
+        if (!p.p.length) {
+            delete channelLotteries[channelId];
+            await sendChatMessage('❌ Piyango katılım olmadığı için iptal edildi.', channelId);
+            res.json({ success: true, message: 'Katılım yok' });
+        } else {
+            const winner = p.p[Math.floor(Math.random() * p.p.length)];
+            const winAmt = p.pool;
+            await db.ref('users/' + winner.toLowerCase()).transaction(u => {
+                if (!u) u = { balance: 0 };
+                u.balance = (u.balance || 0) + winAmt;
+                return u;
+            });
+            await sendChatMessage(`🎉 PİYANGO KAZANANI: @${winner} (+${winAmt.toLocaleString()} 💰)`, channelId);
+            addLog("Piyango Bitirildi", `Kazanan: ${winner}, Ödül: ${winAmt}`, channelId);
+            delete channelLotteries[channelId];
+            res.json({ success: true, winner });
+        }
+    }
+});
+
 app.post('/dashboard-api/data', authDashboard, async (req, res) => {
     const { channelId } = req.body;
     const snap = await db.ref('channels/' + channelId).once('value');
