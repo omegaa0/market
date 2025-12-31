@@ -1121,7 +1121,6 @@ app.post('/kick/webhook', async (req, res) => {
             timestamp: Date.now(),
             played: false
         });
-        await reply(`🎆 Havai fişekler patlatılıyor! Hazırlanın...`);
     }
 
     else if (lowMsg === '!komutlar') {
