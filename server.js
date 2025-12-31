@@ -48,6 +48,29 @@ const upload = multer({
     limits: { fileSize: 5 * 1024 * 1024 } // 5MB Limit
 });
 
+const JOBS = {
+    "İşsiz": { reward: 0, icon: "👤" },
+    "Simitçi": { reward: 50, icon: "🥯" },
+    "Çöpçü": { reward: 100, icon: "🧹" },
+    "Kurye": { reward: 150, icon: "🛵" },
+    "Garson": { reward: 250, icon: "☕" },
+    "Berber": { reward: 400, icon: "✂️" },
+    "Tamirci": { reward: 600, icon: "🔧" },
+    "Madenci": { reward: 800, icon: "⛏️" },
+    "Memur": { reward: 1000, icon: "🏢" },
+    "Öğretmen": { reward: 1500, icon: "👨‍🏫" },
+    "Avukat": { reward: 2200, icon: "⚖️" },
+    "Yazılımcı": { reward: 3000, icon: "💻" },
+    "Mimar": { reward: 4000, icon: "📐" },
+    "Doktor": { reward: 5000, icon: "🩺" },
+    "Kaptan": { reward: 6500, icon: "⚓" },
+    "Pilot": { reward: 8000, icon: "✈️" },
+    "Bilim İnsanı": { reward: 10000, icon: "🧪" },
+    "Kumarbaz": { reward: 12500, icon: "🎲" },
+    "CEO": { reward: 15000, icon: "👔" },
+    "Astronot": { reward: 20000, icon: "🚀" }
+};
+
 // 1. FIREBASE INITIALIZATION
 const firebaseConfig = {
     apiKey: process.env.FIREBASE_API_KEY,
@@ -524,6 +547,38 @@ app.post('/kick/webhook', async (req, res) => {
         await reply(`🎁 @${user}, +${dailyRew.toLocaleString()} 💰 eklendi! ✅`);
     }
 
+    else if (lowMsg === '!çalış') {
+        const snap = await userRef.once('value');
+        const data = snap.val() || { balance: 1000, last_work: 0, job: "İşsiz" };
+        const now = Date.now();
+        const jobName = data.job || "İşsiz";
+        if (jobName === "İşsiz") return await reply(`@${user}, Git çalış lan! 👤🚫 (Önce admin panelden bir meslek edinmelisin)`);
+
+        const job = JOBS[jobName] || JOBS["İşsiz"];
+
+        const cooldown = 86400000; // 24 Saat
+        const lastWork = data.last_work || 0;
+
+        if (now - lastWork < cooldown) {
+            const diff = cooldown - (now - lastWork);
+            const hours = Math.floor(diff / 3600000);
+            const mins = Math.ceil((diff % 3600000) / 60000);
+            return await reply(`@${user}, ⏳ Tekrar çalışmak için ${hours > 0 ? hours + ' saat ' : ''}${mins} dakika beklemelisin.`);
+        }
+
+        const reward = job.reward;
+        const isInf = data.is_infinite;
+
+        if (!isInf) data.balance = (data.balance || 0) + reward;
+        data.last_work = now;
+
+        const updateData = { last_work: data.last_work };
+        if (!isInf) updateData.balance = data.balance;
+
+        await userRef.update(updateData);
+        await reply(`${job.icon} @${user}, ${jobName} olarak çalıştın ve ${reward.toLocaleString()} 💰 kazandın! ✅`);
+    }
+
     // --- OYUNLAR (AYAR KONTROLLÜ) ---
     // Kumar kazanç oranları (varsayılan değerler)
     const wrSlot = settings.wr_slot || 30;
@@ -771,7 +826,10 @@ app.post('/kick/webhook', async (req, res) => {
                     });
                     await reply(`💥 BANKA PATLADI! Ekip toplam ${totalPot.toLocaleString()} 💰 kaptı! Kişi başı: +${share.toLocaleString()} 💰`);
                 } else {
-                    await reply(`🚔 POLİS BASKINI! Soygun başarısız, herkes dağılsın! 👮‍♂️`);
+                    activeH.p.forEach(async p => {
+                        await db.ref('users/' + p.toLowerCase()).update({ job: "İşsiz" });
+                    });
+                    await reply(`🚔 POLİS BASKINI! Soygun başarısız, herkes paket oldu ve işinden kovuldu! 👮‍♂️🚨`);
                 }
             }, 90000);
         } else if (!h.p.includes(user)) {
@@ -1388,6 +1446,13 @@ app.post('/admin-api/toggle-infinite', authAdmin, async (req, res) => {
     const { key, user, value } = req.body;
     await db.ref(`users/${user.toLowerCase()}`).update({ is_infinite: value });
     addLog("Sınırsız Bakiye", `${user} -> ${value ? 'Açıldı' : 'Kapatıldı'}`, "SYSTEM");
+    res.json({ success: true });
+});
+
+app.post('/admin-api/set-job', authAdmin, async (req, res) => {
+    const { user, job } = req.body;
+    await db.ref(`users/${user.toLowerCase()}`).update({ job });
+    addLog("Meslek Atandı", `${user} -> ${job}`, "SYSTEM");
     res.json({ success: true });
 });
 

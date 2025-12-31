@@ -508,6 +508,7 @@
                         <tr>
                             <th>Kullanıcı</th>
                             <th>Bakiye (💰)</th>
+                            <th>Meslek</th>
                             <th>Son Aktiflik</th>
                             <th>Ban (🚨)</th>
                             <th style="text-align:right">İşlemler</th>
@@ -598,6 +599,7 @@
         let sessionKey = "";
         let rawUsers = {};
         const COMMANDS = ['slot', 'yazitura', 'kutu', 'duello', 'soygun', 'fal', 'ship', 'hava', 'zenginler', 'tts', 'ses'];
+        const JOBS = ["İşsiz", "Simitçi", "Çöpçü", "Kurye", "Garson", "Berber", "Tamirci", "Madenci", "Memur", "Öğretmen", "Avukat", "Yazılımcı", "Mimar", "Doktor", "Kaptan", "Pilot", "Bilim İnsanı", "Kumarbaz", "CEO", "Astronot"];
         let logInterval = null;
 
         async function login() {
@@ -871,10 +873,19 @@
                 const lastSeen = d.last_seen ? new Date(d.last_seen).toLocaleString('tr-TR') : 'N/A';
                 const banCount = (d.bans && Object.values(d.bans).reduce((a, b) => a + b, 0)) || 0;
                 const isInf = d.is_infinite;
+                const userJob = d.job || "İşsiz";
+
+                let jobOptions = JOBS.map(j => `<option value="${j}" ${userJob === j ? 'selected' : ''}>${j}</option>`).join('');
+
                 return `
                 <tr style="${isInf ? 'background:rgba(0,255,136,0.05)' : ''}">
                     <td><b>${u}</b> ${isInf ? '<span style="color:var(--primary); font-size:0.7rem;">(♾️)</span>' : ''}</td>
                     <td>${isInf ? '♾️' : (d.balance || 0).toLocaleString() + ' 💰'}</td>
+                    <td>
+                        <select class="inp" style="margin:0; height:30px; font-size:0.75rem; padding:0 5px;" onchange="setUserJob('${u}', this.value)">
+                            ${jobOptions}
+                        </select>
+                    </td>
                     <td><small>${lastSeen}</small></td>
                     <td><span style="color:${banCount > 0 ? 'var(--danger)' : '#444'}">${banCount}</span></td>
                     <td style="text-align:right">
@@ -917,6 +928,21 @@
                 body: JSON.stringify({ key: sessionKey, user, value: val })
             });
             loadUsers();
+        }
+
+        async function setUserJob(user, job) {
+            const res = await fetch('/admin-api/set-job', {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({ key: sessionKey, user, job })
+            });
+            const d = await res.json();
+            if (d.success) {
+                const t = document.getElementById('toast');
+                t.innerText = "Meslek Atandı! 💼";
+                t.style.display = 'block';
+                setTimeout(() => t.style.display = 'none', 2000);
+            }
         }
 
         async function loadLogs() {
