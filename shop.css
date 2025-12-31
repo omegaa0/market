@@ -34,7 +34,9 @@ body {
     z-index: -1;
 }
 
-.hidden { display: none !important; }
+.hidden {
+    display: none !important;
+}
 
 /* AUTH PANEL */
 .glass-panel {
@@ -59,10 +61,22 @@ body {
     letter-spacing: -1px;
     margin-bottom: 20px;
 }
-.logo span { color: var(--primary); }
 
-h2 { font-size: 24px; margin-bottom: 10px; }
-p { color: var(--text-dim); font-size: 14px; margin-bottom: 30px; line-height: 1.6; }
+.logo span {
+    color: var(--primary);
+}
+
+h2 {
+    font-size: 24px;
+    margin-bottom: 10px;
+}
+
+p {
+    color: var(--text-dim);
+    font-size: 14px;
+    margin-bottom: 30px;
+    line-height: 1.6;
+}
 
 input {
     width: 100%;
@@ -77,7 +91,10 @@ input {
     transition: all 0.3s;
 }
 
-input:focus { border-color: var(--primary); box-shadow: 0 0 15px rgba(5, 234, 106, 0.1); }
+input:focus {
+    border-color: var(--primary);
+    box-shadow: 0 0 15px rgba(5, 234, 106, 0.1);
+}
 
 .primary-btn {
     width: 100%;
@@ -92,7 +109,10 @@ input:focus { border-color: var(--primary); box-shadow: 0 0 15px rgba(5, 234, 10
     transition: all 0.3s cubic-bezier(0.175, 0.885, 0.32, 1.275);
 }
 
-.primary-btn:hover { background: var(--primary-dark); transform: translateY(-2px); }
+.primary-btn:hover {
+    background: var(--primary-dark);
+    transform: translateY(-2px);
+}
 
 .verification-box {
     background: rgba(5, 234, 106, 0.05);
@@ -110,8 +130,20 @@ input:focus { border-color: var(--primary); box-shadow: 0 0 15px rgba(5, 234, 10
     margin-top: 5px;
 }
 
-.instruction { margin-top: 15px; font-size: 13px; }
-#cmd-example { background: rgba(0,0,0,0.5); padding: 5px 10px; border-radius: 6px; color: var(--primary); font-family: monospace; display: inline-block; margin-top: 8px; }
+.instruction {
+    margin-top: 15px;
+    font-size: 13px;
+}
+
+#cmd-example {
+    background: rgba(0, 0, 0, 0.5);
+    padding: 5px 10px;
+    border-radius: 6px;
+    color: var(--primary);
+    font-family: monospace;
+    display: inline-block;
+    margin-top: 8px;
+}
 
 /* MAIN CONTENT */
 #main-content {
@@ -131,14 +163,55 @@ header {
     border: 1px solid var(--glass-border);
 }
 
-.user-profile { display: flex; align-items: center; gap: 15px; }
-.avatar { width: 45px; height: 45px; background: var(--primary); color: black; border-radius: 50%; display: flex; align-items: center; justify-content: center; font-weight: 700; font-size: 20px; }
-.display-name { font-weight: 600; font-size: 16px; }
-.balance-pill { background: rgba(5, 234, 106, 0.15); color: var(--primary); padding: 4px 12px; border-radius: 20px; font-size: 12px; font-weight: 600; margin-top: 4px; display: inline-block; }
+.user-profile {
+    display: flex;
+    align-items: center;
+    gap: 15px;
+}
 
-.hero { margin-bottom: 50px; text-align: left; }
-.hero h1 { font-size: 48px; font-weight: 800; margin-bottom: 10px; }
-.hero h1 span { color: var(--primary); }
+.avatar {
+    width: 45px;
+    height: 45px;
+    background: var(--primary);
+    color: black;
+    border-radius: 50%;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    font-weight: 700;
+    font-size: 20px;
+}
+
+.display-name {
+    font-weight: 600;
+    font-size: 16px;
+}
+
+.balance-pill {
+    background: rgba(5, 234, 106, 0.15);
+    color: var(--primary);
+    padding: 4px 12px;
+    border-radius: 20px;
+    font-size: 12px;
+    font-weight: 600;
+    margin-top: 4px;
+    display: inline-block;
+}
+
+.hero {
+    margin-bottom: 50px;
+    text-align: left;
+}
+
+.hero h1 {
+    font-size: 48px;
+    font-weight: 800;
+    margin-bottom: 10px;
+}
+
+.hero h1 span {
+    color: var(--primary);
+}
 
 .market-grid {
     display: grid;
@@ -157,13 +230,35 @@ header {
     overflow: hidden;
 }
 
-.item-card:hover { transform: translateY(-10px); background: rgba(255, 255, 255, 0.05); border-color: rgba(5, 234, 106, 0.3); }
+.item-card:hover {
+    transform: translateY(-10px);
+    background: rgba(255, 255, 255, 0.05);
+    border-color: rgba(5, 234, 106, 0.3);
+}
 
-.item-icon { font-size: 40px; margin-bottom: 20px; }
-.item-card h3 { font-size: 20px; margin-bottom: 10px; }
-.item-card p { font-size: 14px; margin-bottom: 25px; color: var(--text-dim); }
+.item-icon {
+    font-size: 40px;
+    margin-bottom: 20px;
+}
 
-.price-tag { font-size: 20px; font-weight: 700; color: var(--primary); margin-bottom: 20px; display: block; }
+.item-card h3 {
+    font-size: 20px;
+    margin-bottom: 10px;
+}
+
+.item-card p {
+    font-size: 14px;
+    margin-bottom: 25px;
+    color: var(--text-dim);
+}
+
+.price-tag {
+    font-size: 20px;
+    font-weight: 700;
+    color: var(--primary);
+    margin-bottom: 20px;
+    display: block;
+}
 
 .buy-btn {
     width: 100%;
@@ -177,7 +272,9 @@ header {
     transition: all 0.3s;
 }
 
-.buy-btn:hover { background: var(--primary); }
+.buy-btn:hover {
+    background: var(--primary);
+}
 
 .loader {
     width: 24px;
@@ -189,7 +286,11 @@ header {
     margin: 20px auto;
 }
 
-@keyframes spin { to { transform: rotate(360deg); } }
+@keyframes spin {
+    to {
+        transform: rotate(360deg);
+    }
+}
 
 .toast {
     position: fixed;
@@ -200,12 +301,45 @@ header {
     padding: 15px 30px;
     border-radius: 12px;
     z-index: 1000;
-    box-shadow: 0 10px 20px rgba(0,0,0,0.5);
+    box-shadow: 0 10px 20px rgba(0, 0, 0, 0.5);
     transition: all 0.3s;
 }
 
-.toast.success { background: var(--primary); color: black; }
-.toast.error { background: #ff4444; color: white; }
+.toast.success {
+    background: var(--primary);
+    color: black;
+}
 
-.logout-btn { background: transparent; border: 1px solid #444; color: #888; padding: 8px 15px; border-radius: 10px; cursor: pointer; }
-.logout-btn:hover { border-color: #ff4444; color: #ff4444; }
+.toast.error {
+    background: #ff4444;
+    color: white;
+}
+
+@media (max-width: 900px) {
+    .shop-layout {
+        flex-direction: column;
+    }
+
+    .sidebar {
+        width: 100% !important;
+        margin-bottom: 30px;
+    }
+
+    .hero h1 {
+        font-size: 32px;
+    }
+}
+
+.logout-btn {
+    background: transparent;
+    border: 1px solid #444;
+    color: #888;
+    padding: 8px 15px;
+    border-radius: 10px;
+    cursor: pointer;
+}
+
+.logout-btn:hover {
+    border-color: #ff4444;
+    color: #ff4444;
+}

@@ -70,7 +70,11 @@
     <div id="main-content" class="hidden">
         <header>
             <div class="user-profile">
-                <div class="avatar" id="user-avatar">?</div>
+                <div class="avatar" id="user-avatar"
+                    style="overflow:hidden; background: #111; display: flex; align-items: center; justify-content: center;">
+                    <img id="user-pfp" src="" style="width:100%; height:100%; object-fit:cover; display:none;">
+                    <span id="user-pfp-fallback">?</span>
+                </div>
                 <div class="user-meta">
                     <span id="display-name">Misafir</span>
                     <div id="user-balance" class="balance-pill">0 💰</div>
@@ -89,14 +93,30 @@
             <p id="market-status">Bağlı olduğun kanalın market ürünleri listeleniyor.</p>
         </section>
 
-        <div id="no-channel-msg" class="glass-panel hidden"
-            style="position:static; transform:none; width:100%; margin-top:20px;">
-            <h3>⚠️ Kanal Bağlantısı Yok</h3>
-            <p>Market ürünlerini görmek için önce bir Kick kanalında aktif olmalısın (mesaj yazmalısın).</p>
-        </div>
+        <div class="shop-layout" style="display: flex; gap: 30px; align-items: flex-start; margin-top: 30px;">
+            <!-- LEFT SIDEBAR: FREE COMMANDS -->
+            <aside class="sidebar glass-panel"
+                style="position:static; transform:none; width: 280px; padding: 25px; flex-shrink: 0; text-align: left;">
+                <h3
+                    style="margin-bottom: 20px; font-size: 1.1rem; border-bottom: 1px solid var(--glass-border); padding-bottom: 10px;">
+                    📜 Tüm Komutlar</h3>
+                <div id="free-commands" style="display:flex; flex-direction:column; gap:12px;">
+                    <!-- JS will fill -->
+                </div>
+            </aside>
 
-        <div class="market-grid" id="market-items">
-            <!-- Dinamik olarak dolacak -->
+            <!-- RIGHT CONTENT: MARKET ITEMS -->
+            <div style="flex:1;">
+                <div id="no-channel-msg" class="glass-panel hidden"
+                    style="position:static; transform:none; width:100%; margin-top:0;">
+                    <h3>⚠️ Kanal Bağlantısı Yok</h3>
+                    <p>Market ürünlerini görmek için önce bir Kick kanalında aktif olmalısın (mesaj yazmalısın).</p>
+                </div>
+
+                <div class="market-grid" id="market-items">
+                    <!-- Dinamik olarak dolacak -->
+                </div>
+            </div>
         </div>
     </div>
 

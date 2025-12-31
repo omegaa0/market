@@ -830,9 +830,12 @@
             Object.entries(sounds).forEach(([name, data]) => {
                 container.innerHTML += `
                     <div style="padding:8px; background:#121212; margin-bottom:5px; border-radius:8px; border: 1px solid #222;">
-                        <div style="display:flex; justify-content:space-between; margin-bottom:5px;">
+                        <div style="display:flex; justify-content:space-between; margin-bottom:5px; align-items:center;">
                             <span>!ses <b>${name}</b></span>
-                            <button onclick="removeSound('${channelId}','${name}')" style="background:none; border:none; color:var(--danger); cursor:pointer;">✖</button>
+                            <div style="display:flex; gap:8px;">
+                                <button onclick="previewAdminSound('${data.url}')" style="background:none; border:none; color:var(--primary); cursor:pointer; font-size:1.1rem;">▶️</button>
+                                <button onclick="removeSound('${channelId}','${name}')" style="background:none; border:none; color:var(--danger); cursor:pointer;">✖</button>
+                            </div>
                         </div>
                         <div style="display:flex; gap:5px;">
                             <div style="flex:1"><label style="font-size:0.6rem; color:#666">Ücret</label><input type="number" value="${data.cost}" class="inp" style="height:25px; font-size:0.7rem;" onchange="editSound('${channelId}','${name}','cost',this.value)"></div>
@@ -975,6 +978,12 @@
         }
 
         function closeModal(id) { document.getElementById(id).style.display = 'none'; }
+
+        function previewAdminSound(url) {
+            const audio = new Audio(url);
+            audio.volume = 0.5;
+            audio.play().catch(e => console.error("Önizleme hatası:", e));
+        }
 
         async function toggleInfinite(user, val) {
             await fetch('/admin-api/toggle-infinite', {

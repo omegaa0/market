@@ -493,9 +493,12 @@
                 Object.entries(sounds).forEach(([name, data]) => {
                     container.innerHTML += `
                     <div style="padding:15px; background:rgba(255,255,255,0.03); margin-bottom:10px; border-radius:12px; border:1px solid #222;">
-                        <div style="display:flex; justify-content:space-between; margin-bottom:10px;">
+                        <div style="display:flex; justify-content:space-between; margin-bottom:10px; align-items:center;">
                             <b style="color:var(--primary)">!ses ${name}</b>
-                            <button onclick="removeSound('${name}')" style="background:none; border:none; color:var(--danger); cursor:pointer;">✖</button>
+                            <div style="display:flex; gap:10px;">
+                                <button onclick="previewDashSound('${data.url}')" style="background:none; border:none; color:var(--primary); cursor:pointer; font-size:1.2rem;">▶️</button>
+                                <button onclick="removeSound('${name}')" style="background:none; border:none; color:var(--danger); cursor:pointer;">✖</button>
+                            </div>
                         </div>
                         <div style="grid-column: span 3; display: flex; gap: 10px;">
                             <div style="flex:1"><label style="font-size:0.7rem; color:var(--muted)">Ücret</label><input type="number" value="${data.cost}" class="inp" style="height:30px; font-size:0.8rem;" onchange="editSound('${name}','cost',this.value)"></div>
@@ -604,6 +607,12 @@
                     headers: { 'Content-Type': 'application/json' },
                     body: JSON.stringify({ channelId, key: loginKey })
                 });
+            }
+
+            function previewDashSound(url) {
+                const audio = new Audio(url);
+                audio.volume = 0.5;
+                audio.play().catch(e => console.error("Önizleme hatası:", e));
             }
 
             init();

@@ -1,4 +1,4 @@
-// shop.js - Dynamic Based on Auth Channel
+// shop.js - Dynamic Channel Market Implementation
 const firebaseConfig = {
     apiKey: "AIzaSyCfAiqV9H8I8pyusMyDyxSbjJ6a3unQaR8",
     authDomain: "kickbot-market.firebaseapp.com",
@@ -15,6 +15,22 @@ const db = firebase.database();
 let currentUser = null;
 let currentChannelId = null;
 
+const FREE_COMMANDS = [
+    { cmd: "!bakiye", desc: "Mevcut paranı sorgula" },
+    { cmd: "!günlük", desc: "Günlük hediye paranı al" },
+    { cmd: "!çalış", desc: "Mesleğinde çalışıp para kazan" },
+    { cmd: "!slot [miktar]", desc: "Slot makinesinde şansını dene" },
+    { cmd: "!yazitura [miktar] [yazı/tura]", desc: "Yazı-tura bahis oyunu" },
+    { cmd: "!kutu [miktar]", desc: "Gizemli kutu aç" },
+    { cmd: "!duello @isim [miktar]", desc: "Başkasına meydan oku" },
+    { cmd: "!soygun", desc: "Bebeklerle banka soy" },
+    { cmd: "!zenginler", desc: "Kanalın en zenginlerini gör" },
+    { cmd: "!fal", desc: "Geleceğine dair ipucu al" },
+    { cmd: "!ship @isim", desc: "Aşk uyumunuzu test et" },
+    { cmd: "!hava [şehir]", desc: "Hava durumunu öğren" }
+];
+
+// UI Elements
 const authContainer = document.getElementById('auth-container');
 const mainContent = document.getElementById('main-content');
 const step1 = document.getElementById('step-1');
@@ -25,13 +41,51 @@ const cmdExample = document.getElementById('cmd-example');
 const marketGrid = document.getElementById('market-items');
 const toast = document.getElementById('toast');
 const channelBadge = document.getElementById('channel-badge');
+const freeCmdContainer = document.getElementById('free-commands');
 
 function init() {
     const savedUser = localStorage.getItem('kickbot_user');
+    renderFreeCommands();
     if (savedUser) { login(savedUser); } else { showAuth(); }
     document.getElementById('generate-code-btn').addEventListener('click', startAuth);
     document.getElementById('back-btn').addEventListener('click', showAuth);
     document.getElementById('logout-btn').addEventListener('click', logout);
+}
+
+function renderFreeCommands() {
+    freeCmdContainer.innerHTML = "";
+    FREE_COMMANDS.forEach(c => {
+        const item = document.createElement('div');
+        item.style.padding = "10px";
+        item.style.background = "rgba(255,255,255,0.02)";
+        item.style.borderRadius = "8px";
+        item.style.border = "1px solid var(--glass-border)";
+        item.innerHTML = `
+            <div style="color:var(--primary); font-weight:600; font-size:0.9rem;">${c.cmd}</div>
+            <div style="color:#777; font-size:0.75rem; margin-top:2px;">${c.desc}</div>
+        `;
+        freeCmdContainer.appendChild(item);
+    });
+}
+
+async function fetchKickPFP(username) {
+    try {
+        const pfpImg = document.getElementById('user-pfp');
+        const fallback = document.getElementById('user-pfp-fallback');
+
+        // We use a proxy because Kick API has CORS protection
+        const res = await fetch(`https://kick.com/api/v2/channels/${username}`);
+        const data = await res.json();
+
+        if (data.user && data.user.profile_pic) {
+            pfpImg.src = data.user.profile_pic;
+            pfpImg.style.display = 'block';
+            fallback.style.display = 'none';
+        }
+    } catch (e) {
+        console.log("PFP fetch error (CORS or server)", e);
+        // Fallback remains visible
+    }
 }
 
 function showAuth() {
@@ -64,7 +118,11 @@ function login(user) {
     mainContent.classList.remove('hidden');
     document.getElementById('display-name').innerText = user.toUpperCase();
     document.getElementById('hero-name').innerText = user.toUpperCase();
-    document.getElementById('user-avatar').innerText = user[0].toUpperCase();
+
+    // Setup PFP
+    const fallback = document.getElementById('user-pfp-fallback');
+    fallback.innerText = user[0].toUpperCase();
+    fetchKickPFP(user);
 
     db.ref('users/' + user).on('value', (snap) => {
         const data = snap.val() || { balance: 0, auth_channel: null };
@@ -93,7 +151,7 @@ async function loadChannelMarket(channelId) {
     document.getElementById('market-status').innerText = `${channelData.username || 'Kanal'} market ürünleri yönetiliyor.`;
     marketGrid.innerHTML = "";
 
-    // 1. MUTE (Sustur)
+    // 1. MUTE
     const muteCost = settings.mute_cost || 10000;
     renderItem("🚫 Kullanıcı Sustur", "Hedeflenen kişiyi 10 dakika boyunca susturur.", muteCost, "mute");
 
@@ -158,16 +216,9 @@ async function executePurchase(type, trigger, price) {
             });
         }
     } else if (type === 'mute') {
-        // We push a "mute_event" that the server logic (already in server.js but we trigger it here)
-        // Since timeoutUser is server-side, we should probably handle this via a dedicated event or API.
-        // For simplicity, let's just use the existing chat-like trigger if possible, or push a specific event.
         await db.ref(`channels/${currentChannelId}/stream_events/mute`).push({
-            user: currentUser,
-            target: userInput,
-            timestamp: Date.now(),
-            broadcasterId: currentChannelId
+            user: currentUser, target: userInput, timestamp: Date.now(), broadcasterId: currentChannelId
         });
-        // We additionally increment target's ban count
         await db.ref(`users/${userInput}/bans/${currentChannelId}`).transaction(c => (c || 0) + 1);
     }
     showToast("İşlem Başarılı! 🚀", "success");
