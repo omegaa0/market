@@ -8,11 +8,28 @@ const fs = require('fs');
 const multer = require('multer');
 const firebase = require('firebase/compat/app');
 require('firebase/compat/database');
+const fetch = (...args) => import('node-fetch').then(({ default: fetch }) => fetch(...args));
 
 const app = express();
-app.use(express.static(__dirname));
 app.use(bodyParser.json());
+
+// GÜVENLİK HEADERS (Helmet benzeri manuel koruma)
+app.use((req, res, next) => {
+    res.setHeader('X-Frame-Options', 'DENY');
+    res.setHeader('X-Content-Type-Options', 'nosniff');
+    res.setHeader('X-XSS-Protection', '1; mode=block');
+    res.setHeader('Strict-Transport-Security', 'max-age=31536000; includeSubDomains');
+    next();
+});
+
 app.use('/uploads', express.static(path.join(__dirname, 'uploads')));
+
+// GÜVENLİK: Tüm dosyaların dışarı sızmasını engelle (manifest, .env vb.)
+// Sadece gerekli dosyaları public yapıyoruz
+const publicFiles = ['shop.js', 'shop.css', 'admin.html', 'dashboard.html', 'shop.html', 'overlay.html'];
+publicFiles.forEach(file => {
+    app.get(`/${file}`, (req, res) => res.sendFile(path.join(__dirname, file)));
+});
 
 // PERSISTENT STORAGE (Render Disk)
 const persistPath = '/var/data';
@@ -1231,6 +1248,8 @@ app.post('/kick/webhook', async (req, res) => {
 // 5. ADMIN PANEL & API (GELİŞMİŞ)
 // ---------------------------------------------------------
 const ADMIN_KEY = process.env.ADMIN_KEY || "";
+const DISCORD_WEBHOOK = process.env.DISCORD_WEBHOOK || "";
+let active2FACodes = {}; // { key: { code, expires } }
 
 app.get('/admin', (req, res) => { res.sendFile(path.join(__dirname, 'admin.html')); });
 
@@ -1258,7 +1277,51 @@ const authDashboard = async (req, res, next) => {
 app.get('/dashboard', (req, res) => { res.sendFile(path.join(__dirname, 'dashboard.html')); });
 
 // ... Eski API'ler ...
-app.post('/admin-api/check', authAdmin, (req, res) => res.json({ success: true }));
+// 2FA İSTEĞİ (Şifre doğruysa Discord'a kod atar)
+app.post('/admin-api/2fa-request', async (req, res) => {
+    const { key } = req.body;
+    if (key !== ADMIN_KEY) return res.status(403).json({ success: false, error: 'Şifre Yanlış' });
+
+    const code = Math.floor(100000 + Math.random() * 900000).toString();
+    active2FACodes[key] = { code, expires: Date.now() + 5 * 60 * 1000 };
+
+    if (DISCORD_WEBHOOK) {
+        try {
+            await fetch(DISCORD_WEBHOOK, {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({
+                    embeds: [{
+                        title: "🛡️ Admin Giriş Denemesi",
+                        description: `Giriş denemesi yapıldı. Doğrulama kodunuz:\n\n**${code}**`,
+                        color: 52428,
+                        timestamp: new Date().toISOString()
+                    }]
+                })
+            });
+        } catch (e) {
+            console.error("Discord 2FA Hatası:", e.message);
+        }
+    } else {
+        console.log("⚠️ DISCORD_WEBHOOK bulunamadı! Konsol kodu:", code);
+    }
+
+    res.json({ success: true, message: 'Kod gönderildi' });
+});
+
+// GİRİŞ KONTROL (Şifre + 2FA Kodu)
+app.post('/admin-api/check', (req, res) => {
+    const { key, code } = req.body;
+    if (key !== ADMIN_KEY) return res.status(403).json({ success: false, error: 'Yetkisiz Erişim' });
+
+    const active = active2FACodes[key];
+    if (!active || active.code !== code || Date.now() > active.expires) {
+        return res.status(403).json({ success: false, error: 'Doğrulama Kodu Hatalı veya Süresi Dolmuş' });
+    }
+
+    delete active2FACodes[key]; // Kullandıktan sonra sil
+    res.json({ success: true });
+});
 
 
 
@@ -1542,10 +1605,22 @@ app.get('/overlay', (req, res) => {
     res.sendFile(path.join(__dirname, 'overlay.html'));
 });
 
+// Admin Paneli için ana route
+app.get('/admin', (req, res) => {
+    res.sendFile(path.join(__dirname, 'admin.html'));
+});
+
+// Dashboard için ana route
+app.get('/dashboard', (req, res) => {
+    res.sendFile(path.join(__dirname, 'dashboard.html'));
+});
+
+app.get('/', (req, res) => {
+    res.sendFile(path.join(__dirname, 'shop.html'));
+});
+
 // Health Check (UptimeRobot için)
 app.get('/health', (req, res) => res.status(200).send('OK (Bot Uyanık)'));
-
-app.get('/', (req, res) => { res.sendFile(path.join(__dirname, 'shop.html')); });
 
 // ---------------------------------------------------------
 // 6. PASSIVE INCOME (10 DK İZLEME ÖDÜLÜ)

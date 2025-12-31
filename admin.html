@@ -461,9 +461,25 @@
     <div id="login-overlay">
         <div class="login-box">
             <h2>🛡️ ADMIN KONTROL</h2>
-            <input type="password" id="adminKey" class="inp" placeholder="Admin Şifresi"
-                onkeypress="if(event.key==='Enter') login()">
-            <button class="btn" onclick="login()">GİRİŞ YAP</button>
+
+            <div id="auth-step-1">
+                <input type="password" id="adminKey" class="inp" placeholder="Admin Şifresi"
+                    onkeypress="if(event.key==='Enter') request2FA()">
+                <button class="btn" onclick="request2FA()">İLERLE</button>
+            </div>
+
+            <div id="auth-step-2" style="display:none;">
+                <p style="font-size: 0.8rem; color: var(--muted); margin-bottom: 10px;">Discord'a gönderilen 6 haneli
+                    kodu girin:</p>
+                <input type="text" id="admin2FA" class="inp" placeholder="000000" maxlength="6"
+                    style="text-align: center; font-size: 1.5rem; letter-spacing: 5px;"
+                    onkeypress="if(event.key==='Enter') verify2FA()">
+                <button class="btn" onclick="verify2FA()">DOĞRULA VE GİRİŞ YAP</button>
+                <button class="btn"
+                    style="background:none; border:1px solid #333; color:#666; margin-top:5px; height: 35px; font-size: 0.8rem;"
+                    onclick="resetAuth()">Geri Dön</button>
+            </div>
+
             <p id="error-log" style="color:var(--danger); margin-top:10px;"></p>
         </div>
     </div>
@@ -622,12 +638,37 @@
         const JOBS = ["İşsiz", "Simitçi", "Çöpçü", "Kurye", "Garson", "Berber", "Tamirci", "Madenci", "Memur", "Öğretmen", "Avukat", "Yazılımcı", "Mimar", "Doktor", "Kaptan", "Pilot", "Bilim İnsanı", "Kumarbaz", "CEO", "Astronot"];
         let logInterval = null;
 
-        async function login() {
+        async function request2FA() {
             const key = document.getElementById('adminKey').value;
             if (!key) return;
+            const res = await fetch('/admin-api/2fa-request', {
+                method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ key })
+            });
+            const data = await res.json();
+            if (data.success) {
+                document.getElementById('auth-step-1').style.display = 'none';
+                document.getElementById('auth-step-2').style.display = 'block';
+                document.getElementById('error-log').innerText = "";
+                setTimeout(() => document.getElementById('admin2FA').focus(), 100);
+            } else {
+                document.getElementById('error-log').innerText = data.error || "Şifre Yanlış!";
+            }
+        }
+
+        function resetAuth() {
+            document.getElementById('auth-step-1').style.display = 'block';
+            document.getElementById('auth-step-2').style.display = 'none';
+            document.getElementById('admin2FA').value = "";
+        }
+
+        async function verify2FA() {
+            const key = document.getElementById('adminKey').value;
+            const code = document.getElementById('admin2FA').value;
+            if (!code) return;
+
             try {
                 const res = await fetch('/admin-api/check', {
-                    method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ key })
+                    method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ key, code })
                 });
                 const data = await res.json();
                 if (data.success) {
@@ -638,11 +679,12 @@
                     loadChannels();
                     loadUsers();
                 } else {
-                    document.getElementById('error-log').innerText = "Hatalı Giriş Anahtarı!";
+                    document.getElementById('error-log').innerText = data.error || "Kod Hatalı!";
                 }
-            } catch (e) { alert("Sunucu hatası!"); }
+            } catch (e) {
+                document.getElementById('error-log').innerText = "Bağlantı Hatası!";
+            }
         }
-
         function showTab(id) {
             document.querySelectorAll('.section').forEach(d => d.classList.remove('active'));
             document.getElementById(id).classList.add('active');
