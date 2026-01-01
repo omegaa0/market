@@ -423,26 +423,28 @@ async function clearChat(broadcasterId) {
 // ---------------------------------------------------------
 app.post('/kick/webhook', async (req, res) => {
     try {
-        res.status(200).send('OK');
         const payload = req.body;
         const event = payload.data || payload;
 
+        // --- CHALLENGE RESPONSE (If Kick ever adds it) ---
+        if (payload.challenge) return res.send(payload.challenge);
+
+        res.status(200).send('OK');
+
         // Robust Broadcaster ID Discovery
         let broadcasterId =
-            event.broadcaster_user_id ||
             payload.broadcaster_user_id ||
+            event.broadcaster_user_id ||
             event.broadcaster?.user_id ||
             event.broadcaster?.id ||
-            payload.broadcaster?.user_id ||
-            payload.broadcaster?.id ||
             event.channel?.user_id ||
             event.channel?.id ||
-            payload.channel?.user_id ||
-            payload.channel?.id ||
-            event.chatroom_id ||
-            payload.chatroom_id;
+            event.chatroom_id;
 
-        if (!broadcasterId) return;
+        if (!broadcasterId) {
+            // console.log("⚠️ Broadcaster ID bulunamadı. Payload:", JSON.stringify(payload).substring(0, 200));
+            return;
+        }
         broadcasterId = String(broadcasterId); // String'e çevir ki cooldown objesi şaşmasın
 
         const channelRef = await db.ref('channels/' + broadcasterId).once('value');
@@ -1179,21 +1181,23 @@ app.post('/kick/webhook', async (req, res) => {
             }
 
             else if (lowMsg.startsWith('!doğrulama') || lowMsg.startsWith('!dogrulama') || lowMsg.startsWith('!kod')) {
-                console.log(`🔍 Doğrulama denemesi: ${user} - Kod: ${args[0]}`);
                 const code = args[0];
+                console.log(`[Auth] Attempt: ${user} | Code: ${code} | Chan: ${broadcasterId}`);
+
                 if (!code) return await reply(`@${user}, Lütfen mağazadaki 6 haneli kodu yazın. Örn: !doğrulama 123456`);
 
                 const cleanUser = user.toLowerCase().trim();
                 const pendingSnap = await db.ref('pending_auth/' + cleanUser).once('value');
                 const pending = pendingSnap.val();
 
-                if (pending && String(pending.code) === String(code)) {
+                if (pending && String(pending.code).trim() === String(code).trim()) {
+                    console.log(`[Auth] Success: ${user}`);
                     await db.ref('users/' + cleanUser).update({ auth_channel: broadcasterId });
                     await db.ref('auth_success/' + cleanUser).set(true);
                     await db.ref('pending_auth/' + cleanUser).remove();
                     await reply(`✅ @${user}, Kimliğin doğrulandı! Mağaza sayfasına geri dönebilirsin. Bu kanala özel market ürünlerini görebilirsin. 🛍️`);
                 } else {
-                    console.log(`❌ Doğrulama başarısız. Beklenen: ${pending?.code}, Gelen: ${code}`);
+                    console.log(`[Auth] Failed: ${user} (Expected: ${pending?.code}, Got: ${code})`);
                     await reply(`❌ @${user}, Geçersiz veya süresi dolmuş kod! Lütfen mağazadan yeni bir kod al.`);
                 }
             }
