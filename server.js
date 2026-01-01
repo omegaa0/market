@@ -1728,14 +1728,23 @@ async function trackWatchTime() {
                     }
                 }
 
-                // 3. CHATTERS API KONTROLÜ (Son çare ve doğrulama)
+                // 3. CHATTERS API + DB AKTİFLİK KONTROLÜ
                 const chattersRes = await axios.get(`https://kick.com/api/v2/channels/${chan.username}/chatters`, {
                     headers: { 'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36' },
                     timeout: 4000
                 }).catch(() => null);
 
-                const hasChatters = chattersRes && chattersRes.data && chattersRes.data.chatters &&
-                    (chattersRes.data.chatters.viewers?.length > 0 || chattersRes.data.chatters.moderators?.length > 0);
+                // API'den gelenler
+                const apiHasChatters = chattersRes && chattersRes.data && chattersRes.data.chatters &&
+                    (Object.values(chattersRes.data.chatters).some(list => Array.isArray(list) && list.length > 0));
+
+                // Veritabanından son 3 dakikada bu kanalda görülenler (API gecikmesine karşı garanti)
+                const threeMinsAgo = Date.now() - 180000;
+                const dbRecentSnap = await db.ref('users').orderByChild('last_seen').startAt(threeMinsAgo).once('value');
+                const dbRecentUsers = dbRecentSnap.val() || {};
+                const dbHasChatters = Object.values(dbRecentUsers).some(u => u.last_channel === chanId);
+
+                const hasChatters = apiHasChatters || dbHasChatters;
 
                 // DEBUG LOG
                 console.log(`[Watch] Kanal: ${chan.username}, Canlı mı: ${isLive ? 'EVET' : 'HAYIR'} (Kaynak: ${apiSource}, Chat Aktif: ${hasChatters ? 'Evet' : 'Hayır'})`);
@@ -1744,33 +1753,29 @@ async function trackWatchTime() {
                     continue; // Her iki API ve Chat boşsa gerçekten kapalıdır
                 }
 
+                // --- İZLEYİCİ LİSTESİ OLUŞTUR ---
+                const watchList = new Set();
+
                 // 1. Chatters API'den gelenler
                 if (chattersRes && chattersRes.data && chattersRes.data.chatters) {
-                    const cData = chattersRes.data;
-                    const c = cData.chatters;
-                    const allStrings = [
-                        ...(c.broadcaster || []),
-                        ...(c.moderators || []),
-                        ...(c.staff || []),
-                        ...(c.vips || []),
-                        ...(c.viewers || [])
-                    ];
-                    allStrings.forEach(u => {
-                        if (u && typeof u === 'string') watchList.add(u.toLowerCase());
-                        else if (u && u.username) watchList.add(u.username.toLowerCase());
+                    const c = chattersRes.data.chatters;
+                    Object.values(c).forEach(list => {
+                        if (Array.isArray(list)) {
+                            list.forEach(u => {
+                                if (u && typeof u === 'string') watchList.add(u.toLowerCase());
+                                else if (u && u.username) watchList.add(u.username.toLowerCase());
+                            });
+                        }
                     });
                 }
 
-                // 2. Fallback: Son 10 dk içinde bu kanalda aktif olanlar
+                // 2. Veritabanında aktif olanlar (API gecikmesi fallback)
                 const tenMinsAgo = Date.now() - 600000;
-                const recentSnap = await db.ref('users').orderByChild('last_channel').equalTo(chanId).once('value');
-                const recentUsers = recentSnap.val() || {};
-
-                for (const [username, data] of Object.entries(recentUsers)) {
-                    if (data.last_seen && data.last_seen > tenMinsAgo) {
+                Object.entries(dbRecentUsers).forEach(([username, u]) => {
+                    if (u.last_channel === chanId && u.last_seen > tenMinsAgo) {
                         watchList.add(username.toLowerCase());
                     }
-                }
+                });
 
                 const settings = chan.settings || {};
                 const rewardPerMin = (parseFloat(settings.passive_reward) || 100) / 10;
