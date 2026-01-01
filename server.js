@@ -542,7 +542,7 @@ app.post('/kick/webhook', async (req, res) => {
             const isEnabled = (cmd) => settings[cmd] !== false;
 
             const updateStats = async (username, type) => {
-                const today = new Date().toLocaleDateString('tr-TR').replace(/\./g, '-');
+                const today = getTodayKey();
                 await db.ref('users/' + username.toLowerCase()).transaction(u => {
                     if (u) {
                         if (!u.quests) u.quests = {};
@@ -1661,8 +1661,11 @@ app.post('/api/claim-quest', async (req, res) => {
 
 // --- SERVER-SIDE PASSIVE INCOME & QUEST TRACKING ---
 function getTodayKey() {
-    // TR Saatiyle Tarih (Format: YYYY-MM-DD)
-    return new Date().toLocaleDateString('en-CA', { timeZone: 'Europe/Istanbul' });
+    const d = new Date(new Date().toLocaleString("en-US", { timeZone: "Europe/Istanbul" }));
+    const year = d.getFullYear();
+    const month = String(d.getMonth() + 1).padStart(2, '0');
+    const day = String(d.getDate()).padStart(2, '0');
+    return `${year}-${month}-${day}`;
 }
 
 async function trackWatchTime() {
@@ -1677,13 +1680,15 @@ async function trackWatchTime() {
                 // Check if live
                 const res = await axios.get(`https://kick.com/api/v2/channels/${chan.username}`, {
                     headers: { 'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36' },
-                    timeout: 4000
+                    timeout: 5000
                 }).catch(() => null);
 
-                if (!res || !res.data || !res.data.livestream) continue;
+                const isLive = res && res.data && res.data.livestream;
+
+                // DEBUG LOG
+                console.log(`[Watch] Kanal: ${chan.username}, Canlı mı: ${isLive ? 'EVET' : 'HAYIR'} (API: ${res ? res.status : 'HATA'})`);
 
                 const watchList = new Set();
-                const today = getTodayKey();
 
                 // Sync with Chatters API
                 const chattersRes = await axios.get(`https://kick.com/api/v2/channels/${chan.username}/chatters`, {
@@ -1723,10 +1728,24 @@ async function trackWatchTime() {
                 const rewardPerMin = (parseFloat(settings.passive_reward) || 100) / 10;
 
                 // 3. Tek döngüde herkesi işle
+                const processedUsers = new Set();
                 for (const user of watchList) {
-                    const userRef = db.ref('users/' + user);
+                    if (!user) continue;
+                    const userRef = db.ref('users/' + user.toLowerCase());
                     userRef.transaction(u => {
-                        if (u) {
+                        if (!u) {
+                            // Yeni izleyici (Hiç mesaj atmamış ama izliyor)
+                            u = {
+                                balance: 1000,
+                                last_seen: Date.now(),
+                                last_channel: chanId,
+                                created_at: Date.now(),
+                                lifetime_m: 0, lifetime_g: 0, lifetime_d: 0, lifetime_w: 1,
+                                channel_m: {},
+                                channel_watch_time: { [chanId]: 1 },
+                                quests: { [today]: { m: 0, g: 0, d: 0, w: 1, claimed: {} } }
+                            };
+                        } else {
                             if (rewardPerMin > 0 && !u.is_infinite) u.balance = (u.balance || 0) + rewardPerMin;
                             if (!u.quests) u.quests = {};
                             if (!u.quests[today]) u.quests[today] = { m: 0, g: 0, d: 0, w: 0, claimed: {} };
@@ -1734,11 +1753,17 @@ async function trackWatchTime() {
                             if (!u.channel_watch_time) u.channel_watch_time = {};
                             u.channel_watch_time[chanId] = (u.channel_watch_time[chanId] || 0) + 1;
                             u.lifetime_w = (u.lifetime_w || 0) + 1;
+                            u.last_seen = Date.now();
+                            u.last_channel = chanId;
                         }
                         return u;
                     }, (err) => {
                         if (err && err.message !== 'set') console.error(`Watch Error (${user}):`, err.message);
                     }, false);
+                    processedUsers.add(user.toLowerCase());
+                }
+                if (processedUsers.size > 0) {
+                    console.log(`✅ İzleme işlendi: Kanal ${chan.username}, ${processedUsers.size} kullanıcı.`);
                 }
 
             } catch (err) { console.error("Track Channel Error:", chanId, err.message); }
