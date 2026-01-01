@@ -584,6 +584,18 @@ app.post('/kick/webhook', async (req, res) => {
                 }
             }
 
+            else if (lowMsg.startsWith('!host ')) {
+                if (!isAuthorized) return;
+                const target = args[0];
+                if (!target) return await reply(`@${user}, lütfen hostlanacak kanalı belirt: !host BaşkaKanal`);
+
+                // Başlıkta @ varsa kaldır
+                const cleanTarget = target.startsWith('@') ? target.substring(1) : target;
+
+                await reply(`/host ${cleanTarget}`);
+                addLog("Moderasyon", `!host komutu kullanıldı: ${user} -> ${cleanTarget}`, broadcasterId);
+            }
+
             else if (lowMsg === '!bakiye') {
                 const snap = await userRef.once('value');
                 const data = snap.val() || {};
