@@ -368,7 +368,7 @@ async function loadQuests() {
 
         db.ref('users/' + currentUser).once('value', snap => {
             const u = snap.val() || {};
-            const today = new Date().toLocaleDateString('tr-TR');
+            const today = new Date().toLocaleDateString('tr-TR').replace(/\./g, '-');
             const userToday = u.quests?.[today] || { m: 0, g: 0, d: 0, claimed: {} };
 
             container.innerHTML = "";
@@ -468,7 +468,7 @@ async function loadProfile() {
                         </div>
                         <div class="stat-mini" style="background:rgba(255,255,255,0.05); border:1px solid var(--primary);">
                             <label style="color:var(--primary);">Günlük İzleme</label>
-                            <div class="v" style="color:var(--primary);">${u.quests?.[new Date().toLocaleDateString('tr-TR')]?.w || 0} dk</div>
+                            <div class="v" style="color:var(--primary);">${u.quests?.[new Date().toLocaleDateString('tr-TR').replace(/\./g, '-')]?.w || 0} dk</div>
                         </div>
                     </div>
                 </div>

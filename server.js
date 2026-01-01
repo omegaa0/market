@@ -491,7 +491,7 @@ app.post('/kick/webhook', async (req, res) => {
 
         // --- OTOMATİK KAYIT & AKTİFLİK TAKİBİ ---
         const userSnap = await userRef.once('value');
-        const today = new Date().toLocaleDateString('tr-TR');
+        const today = new Date().toLocaleDateString('tr-TR').replace(/\./g, '-');
 
         if (!userSnap.exists()) {
             await userRef.set({
@@ -536,7 +536,7 @@ app.post('/kick/webhook', async (req, res) => {
             const isEnabled = (cmd) => settings[cmd] !== false;
 
             const updateStats = async (username, type) => {
-                const today = new Date().toLocaleDateString('tr-TR');
+                const today = new Date().toLocaleDateString('tr-TR').replace(/\./g, '-');
                 await db.ref('users/' + username.toLowerCase()).transaction(u => {
                     if (u) {
                         if (!u.quests) u.quests = {};
@@ -1125,7 +1125,7 @@ app.post('/kick/webhook', async (req, res) => {
                 const uData = uSnap.val() || {};
 
                 // GÜNLÜK SINIR KONTROLÜ
-                const today = new Date().toLocaleDateString('tr-TR');
+                const today = new Date().toLocaleDateString('tr-TR').replace(/\./g, '-');
                 if (uData.last_kredi_date === today) {
                     return await reply(`🚫 @${user}, Bugün kredini zaten çektin! Yarın tekrar gel.`);
                 }
@@ -1597,7 +1597,7 @@ app.post('/api/leaderboard', async (req, res) => {
 // --- YENİ: GÖREV ÖDÜLÜ AL ---
 app.post('/api/claim-quest', async (req, res) => {
     const { username, questId } = req.body;
-    const today = new Date().toLocaleDateString('tr-TR');
+    const today = new Date().toLocaleDateString('tr-TR').replace(/\./g, '-');
     const userRef = db.ref('users/' + username.toLowerCase());
 
     try {
@@ -1643,7 +1643,7 @@ async function trackWatchTime() {
     try {
         const channelsSnap = await db.ref('channels').once('value');
         const channels = channelsSnap.val() || {};
-        const today = new Date().toLocaleDateString('tr-TR');
+        const today = new Date().toLocaleDateString('tr-TR').replace(/\./g, '-');
 
         for (const [chanId, chan] of Object.entries(channels)) {
             if (!chan.username) continue;
