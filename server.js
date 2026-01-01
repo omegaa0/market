@@ -1178,7 +1178,7 @@ app.post('/kick/webhook', async (req, res) => {
                 await reply(`@${user}, Market & Mağaza bağlantın: ${webSiteUrl} 🛒 (Giriş yaptıktan sonra chat'e !doğrulama [kod] yazmayı unutmayın!)`);
             }
 
-            else if (lowMsg.startsWith('!doğrulama') || lowMsg.startsWith('!kod')) {
+            else if (lowMsg.startsWith('!doğrulama') || lowMsg.startsWith('!dogrulama') || lowMsg.startsWith('!kod')) {
                 console.log(`🔍 Doğrulama denemesi: ${user} - Kod: ${args[0]}`);
                 const code = args[0];
                 if (!code) return await reply(`@${user}, Lütfen mağazadaki 6 haneli kodu yazın. Örn: !doğrulama 123456`);
