@@ -186,7 +186,11 @@ async function loadChannelMarket(channelId) {
     const ttsCost = settings.tts_cost || 2500;
     renderItem("🎙️ TTS (Sesli Mesaj)", "Mesajınızı yayında seslendirir.", ttsCost, "tts");
 
-    // 3. SOUNDS
+    // 3. SR
+    const srCost = settings.sr_cost || 5000;
+    renderItem("🎵 Şarkı İsteği (!sr)", "YouTube'dan istediğiniz şarkıyı açar.", srCost, "sr");
+
+    // 4. SOUNDS
     Object.entries(sounds).forEach(([name, data]) => {
         renderItem(`🎵 Ses: !ses ${name}`, "Kanalda özel ses efekti çalar.", data.cost, "sound", name, data.url, data.duration || 0);
     });
@@ -195,9 +199,10 @@ async function loadChannelMarket(channelId) {
 function renderItem(name, desc, price, type, trigger = "", soundUrl = "", duration = 0) {
     const card = document.createElement('div');
     card.className = 'item-card';
+    const icon = type === 'tts' ? '🎙️' : (type === 'mute' ? '🚫' : (type === 'sr' ? '🎵' : '🎼'));
     card.innerHTML = `
         <div style="display:flex; justify-content:space-between; align-items:flex-start;">
-            <div class="item-icon">${type === 'tts' ? '🎙️' : (type === 'mute' ? '🚫' : '🎵')}</div>
+            <div class="item-icon">${icon}</div>
             ${type === 'sound' ? `
                 <div style="display:flex; gap:10px;">
                     <button onclick="previewShopSound('${soundUrl}', ${duration})" style="background:none; border:none; color:var(--primary); cursor:pointer; font-size:1.5rem; padding:0;">▶️</button>
@@ -258,6 +263,13 @@ async function executePurchase(type, trigger, price) {
         userInput = prompt("Susturulacak kullanıcının adını girin (Örn: aloske):");
         if (!userInput) return;
         userInput = userInput.replace('@', '').toLowerCase().trim();
+    } else if (type === 'sr') {
+        userInput = prompt("YouTube Video Linkini Yapıştırın:");
+        if (!userInput) return;
+        if (!userInput.includes('youtube.com') && !userInput.includes('youtu.be')) {
+            alert("Lütfen geçerli bir YouTube linki girin!");
+            return;
+        }
     } else {
         if (!confirm(`"${trigger}" sesi çalınsın mı?`)) return;
     }
@@ -286,6 +298,11 @@ async function executePurchase(type, trigger, price) {
             user: currentUser, target: userInput, timestamp: Date.now(), broadcasterId: currentChannelId
         });
         await db.ref(`users/${userInput}/bans/${currentChannelId}`).transaction(c => (c || 0) + 1);
+    } else if (type === 'sr') {
+        await db.ref(`channels/${currentChannelId}/stream_events/song_requests`).push({
+            query: userInput, user: currentUser, source: "market",
+            played: false, timestamp: Date.now(), broadcasterId: currentChannelId
+        });
     }
     showToast("İşlem Başarılı! 🚀", "success");
 }

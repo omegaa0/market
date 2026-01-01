@@ -946,6 +946,20 @@
                                     <label class="range-label">Ses Vol: <span>%<span id="v-snd-${id}">${getVal(s.sound_volume, 80)}</span></span></label>
                                     <input type="range" min="0" max="100" value="${getVal(s.sound_volume, 80)}" oninput="document.getElementById('v-snd-${id}').innerText=this.value" onchange="toggleCmd('${id}','sound_volume',parseInt(this.value))">
                                 </div>
+                                <div style="flex:1">
+                                    <label class="range-label">Şarkı Vol: <span>%<span id="v-sr-${id}">${getVal(s.sr_volume, 80)}</span></span></label>
+                                    <input type="range" min="0" max="100" value="${getVal(s.sr_volume, 80)}" oninput="document.getElementById('v-sr-${id}').innerText=this.value" onchange="toggleCmd('${id}','sr_volume',parseInt(this.value))">
+                                </div>
+                            </div>
+                            <div class="form-row">
+                                <div style="flex:1">
+                                    <label class="range-label">Şarkı (!sr) Ücret</label>
+                                    <input type="number" value="${getVal(s.sr_cost, 5000)}" class="inp" style="height:35px; margin:0;" onchange="toggleCmd('${id}','sr_cost',parseInt(this.value))">
+                                </div>
+                                <div style="flex:1">
+                                </div>
+                                <div style="flex:1">
+                                </div>
                             </div>
                             <div style="background:#000; padding:10px; border-radius:10px; border:1px solid #333;">
                                 <div style="display:flex; gap:5px; margin-bottom:5px;">

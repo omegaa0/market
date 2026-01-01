@@ -123,6 +123,7 @@
         let startTime = Date.now() - 60000;
         let ttsVol = 1.0;
         let soundVol = 0.8;
+        let srVol = 80;
 
         let songQueue = [];
         let isPlaying = false;
@@ -215,6 +216,10 @@
                         // OBS Uyumluluğu için basit mantık
                         ttsVol = (settings.tts_volume !== undefined ? settings.tts_volume : 100) / 100;
                         soundVol = (settings.sound_volume !== undefined ? settings.sound_volume : 80) / 100;
+                        srVol = (settings.sr_volume !== undefined ? settings.sr_volume : 80);
+                        if (player && typeof player.setVolume === 'function') {
+                            player.setVolume(srVol);
+                        }
                     });
 
                     // TTS Dinle
@@ -314,8 +319,9 @@
                                 isPlaying = true;
                                 document.getElementById('yt-player-container').style.display = 'block';
                                 showNotification("ŞARKI İSTEĞİ", data.user + " bir şarkı açtı!", "🎵");
+                                player.setVolume(srVol);
                                 player.loadVideoById(videoId);
-                                logDebug("Video yüklendi: " + videoId);
+                                logDebug("Video yüklendi: " + videoId + " | Vol: " + srVol);
                             } else {
                                 logDebug("Şarkı oynatılamadı. ID: " + videoId + " | Ready: " + playerReady);
                                 isPlaying = false;

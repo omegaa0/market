@@ -547,9 +547,17 @@
                         <label>Şarkı İsteği (!sr) Ücreti</label>
                         <input type="number" id="sr_cost" class="inp" onchange="updateSetting('sr_cost', this.value)">
                     </div>
+                </div>
+                <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 20px;">
                     <div class="input-group">
                         <label>Konuşan Bot (!tts) Ücreti</label>
                         <input type="number" id="tts_cost" class="inp" onchange="updateSetting('tts_cost', this.value)">
+                    </div>
+                    <div class="input-group">
+                        <label>Şarkı İsteği Ses Seviyesi: %<span id="v-sr">80</span></label>
+                        <input type="range" id="sr_volume" class="range-slider" min="0" max="100"
+                            oninput="document.getElementById('v-sr').innerText=this.value"
+                            onchange="updateSetting('sr_volume', this.value)">
                     </div>
                 </div>
             </div>
@@ -665,7 +673,7 @@
                 document.getElementById('sr_cost').value = getVal(s.sr_cost, 5000);
                 document.getElementById('tts_cost').value = getVal(s.tts_cost, 2500);
 
-                const sliders = { tts_volume: 'v-tts', sound_volume: 'v-snd' };
+                const sliders = { tts_volume: 'v-tts', sound_volume: 'v-snd', sr_volume: 'v-sr' };
                 Object.keys(sliders).forEach(key => {
                     const val = getVal(s[key], key === 'tts_volume' ? 100 : 80);
                     document.getElementById(key).value = val;
