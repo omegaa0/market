@@ -26,7 +26,7 @@ app.use('/uploads', express.static(path.join(__dirname, 'uploads')));
 
 // GÜVENLİK: Tüm dosyaların dışarı sızmasını engelle (manifest, .env vb.)
 // Sadece gerekli dosyaları public yapıyoruz
-const publicFiles = ['shop.js', 'shop.css', 'admin.html', 'dashboard.html', 'shop.html', 'overlay.html'];
+const publicFiles = ['shop.js', 'shop.css', 'admin.html', 'dashboard.html', 'shop.html', 'overlay.html', 'goals.html'];
 publicFiles.forEach(file => {
     app.get(`/${file}`, (req, res) => res.sendFile(path.join(__dirname, file)));
 });
@@ -1897,27 +1897,49 @@ async function syncChannelStats() {
         for (const [chanId, chan] of Object.entries(channels)) {
             if (!chan.username) continue;
             try {
-                // Kick V2 üzerinden takipçi sayısını çek
+                let followers = 0;
+                let subscribers = 0;
+
+                // 1. Kick V2 üzerinden takipçi sayısını çek (Public)
                 const v2Res = await axios.get(`https://kick.com/api/v2/channels/${chan.username}`, {
                     headers: { 'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36' },
                     timeout: 5000
                 }).catch(() => null);
 
                 if (v2Res && v2Res.data) {
-                    const followers = v2Res.data.followersCount || 0;
-                    // Not: Abone sayısı her zaman açık olmayabilir, varsayılan 0
-                    const subscribers = v2Res.data.subscriber_count || 0;
-
-                    await db.ref(`channels/${chanId}/stats`).update({
-                        followers,
-                        subscribers,
-                        last_sync: Date.now()
-                    });
+                    followers = v2Res.data.followers_count || v2Res.data.followersCount || 0;
+                    subscribers = v2Res.data.subscriber_count || 0;
                 }
+
+                // 2. Eğer Access Token varsa Resmi V1 API'den detayları çek (Subscriber count için)
+                if (chan.access_token) {
+                    try {
+                        const v1Res = await axios.get(`https://api.kick.com/public/v1/channels?slug=${chan.username}`, {
+                            headers: { 'Authorization': `Bearer ${chan.access_token}` },
+                            timeout: 5000
+                        });
+                        if (v1Res.data && v1Res.data.data && v1Res.data.data[0]) {
+                            const d = v1Res.data.data[0];
+                            if (d.followers_count > 0) followers = d.followers_count;
+                            // Subscriber count resmi API'de yetkili girişte döner
+                            if (d.subscriber_count !== undefined) subscribers = d.subscriber_count;
+                        }
+                    } catch (e1) {
+                        if (e1.response?.status === 401) await refreshChannelToken(chanId);
+                    }
+                }
+
+                console.log(`[Sync] ${chan.username} -> F: ${followers}, S: ${subscribers}`);
+
+                await db.ref(`channels/${chanId}/stats`).update({
+                    followers,
+                    subscribers,
+                    last_sync: Date.now()
+                });
             } catch (e) {
                 console.error(`Sync Stats Error (${chan.username}):`, e.message);
             }
-            await sleep(500); // API'yi yormamak için
+            await sleep(500);
         }
     } catch (e) { }
 }
@@ -2036,6 +2058,10 @@ app.get('/admin', (req, res) => {
 // Dashboard için ana route
 app.get('/dashboard', (req, res) => {
     res.sendFile(path.join(__dirname, 'dashboard.html'));
+});
+
+app.get('/', (req, res) => {
+    res.sendFile(path.join(__dirname, 'shop.html'));
 });
 
 app.get('/market', (req, res) => {
