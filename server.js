@@ -1567,20 +1567,27 @@ app.post('/dashboard-api/data', authDashboard, async (req, res) => {
 
 // --- YENİ: LİDERLİK TABLOSU ---
 app.post('/api/leaderboard', async (req, res) => {
-    const { type, channelId } = req.body;
-    let snap;
-    if (type === 'channel' && channelId) {
-        snap = await db.ref('users').orderByChild('last_channel').equalTo(channelId).limitToLast(100).once('value');
-    } else {
-        snap = await db.ref('users').orderByChild('balance').limitToLast(50).once('value');
-    }
+    try {
+        const { type, channelId } = req.body;
+        let snap;
+        if (type === 'channel' && channelId) {
+            // Not: last_channel indexi Firebase kurallarında tanımlı olmalıdır.
+            snap = await db.ref('users').orderByChild('last_channel').equalTo(channelId).limitToLast(100).once('value');
+        } else {
+            // Not: balance indexi Firebase kurallarında tanımlı olmalıdır.
+            snap = await db.ref('users').orderByChild('balance').limitToLast(100).once('value');
+        }
 
-    const users = snap.val() || {};
-    const sorted = Object.entries(users)
-        .sort((a, b) => b[1].balance - a[1].balance)
-        .slice(0, 10)
-        .map(([name, data]) => ({ name, balance: data.balance }));
-    res.json(sorted);
+        const users = snap.val() || {};
+        const sorted = Object.entries(users)
+            .sort((a, b) => (b[1].balance || 0) - (a[1].balance || 0))
+            .slice(0, 10)
+            .map(([name, data]) => ({ name, balance: data.balance || 0 }));
+        res.json(sorted);
+    } catch (e) {
+        console.error("Leaderboard Error:", e.message);
+        res.json([]);
+    }
 });
 
 // --- YENİ: GÖREV ÖDÜLÜ AL ---
@@ -1589,36 +1596,41 @@ app.post('/api/claim-quest', async (req, res) => {
     const today = new Date().toLocaleDateString('tr-TR');
     const userRef = db.ref('users/' + username.toLowerCase());
 
-    const [uSnap, qSnap] = await Promise.all([
-        userRef.once('value'),
-        db.ref(`global_quests/${questId}`).once('value')
-    ]);
+    try {
+        const [uSnap, qSnap] = await Promise.all([
+            userRef.once('value'),
+            db.ref(`global_quests/${questId}`).once('value')
+        ]);
 
-    if (!uSnap.exists() || !qSnap.exists()) return res.json({ success: false, error: 'Hata' });
+        if (!uSnap.exists() || !qSnap.exists()) return res.json({ success: false, error: 'Hata' });
 
-    const u = uSnap.val();
-    const quest = qSnap.val();
-    const userToday = u.quests?.[today] || { m: 0, g: 0, d: 0, claimed: {} };
+        const u = uSnap.val();
+        const quest = qSnap.val();
+        const userToday = u.quests?.[today] || { m: 0, g: 0, d: 0, claimed: {} };
 
-    if (userToday.claimed?.[questId]) return res.json({ success: false, error: 'Zaten alındı' });
+        if (userToday.claimed?.[questId]) return res.json({ success: false, error: 'Zaten alındı' });
 
-    // Şart kontrolü
-    const currentProgress = userToday[quest.type] || 0;
-    if (currentProgress < quest.goal) return res.json({ success: false, error: 'Görev henüz tamamlanmadı!' });
+        // Şart kontrolü
+        const currentProgress = userToday[quest.type] || 0;
+        if (currentProgress < quest.goal) return res.json({ success: false, error: 'Görev henüz tamamlanmadı!' });
 
-    await userRef.transaction(old => {
-        if (old) {
-            if (!old.quests) old.quests = {};
-            if (!old.quests[today]) old.quests[today] = { m: 0, g: 0, d: 0, claimed: {} };
-            if (!old.quests[today].claimed) old.quests[today].claimed = {};
+        await userRef.transaction(old => {
+            if (old) {
+                if (!old.quests) old.quests = {};
+                if (!old.quests[today]) old.quests[today] = { m: 0, g: 0, d: 0, claimed: {} };
+                if (!old.quests[today].claimed) old.quests[today].claimed = {};
 
-            old.balance = (old.balance || 0) + parseInt(quest.reward);
-            old.quests[today].claimed[questId] = true;
-        }
-        return old;
-    });
+                old.balance = (old.balance || 0) + parseInt(quest.reward);
+                old.quests[today].claimed[questId] = true;
+            }
+            return old;
+        });
 
-    res.json({ success: true, reward: quest.reward });
+        res.json({ success: true, reward: quest.reward });
+    } catch (e) {
+        console.error("Claim Quest Error:", e.message);
+        res.json({ success: false, error: 'Sunucu hatası' });
+    }
 });
 
 // --- SERVER-SIDE PASSIVE INCOME & QUEST TRACKING ---
@@ -1695,8 +1707,13 @@ app.post('/admin-api/add-quest', authAdmin, async (req, res) => {
 });
 
 app.post('/admin-api/get-quests', async (req, res) => {
-    const snap = await db.ref('global_quests').once('value');
-    res.json(snap.val() || {});
+    try {
+        const snap = await db.ref('global_quests').once('value');
+        res.json(snap.val() || {});
+    } catch (e) {
+        console.error("Get Quests error:", e.message);
+        res.json({});
+    }
 });
 
 app.post('/admin-api/delete-quest', authAdmin, async (req, res) => {
