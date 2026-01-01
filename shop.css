@@ -344,16 +344,34 @@ header {
     color: #ff4444;
 }
 
-/* FLOATING PFP */
-.floating-avatar {
+/* SIDE GIFS */
+.side-gif {
     position: fixed;
-    width: 60px;
-    height: 60px;
-    border-radius: 50%;
-    border: 3px solid var(--primary);
-    box-shadow: 0 0 20px rgba(5, 234, 106, 0.4);
-    z-index: 9999;
+    top: 50%;
+    transform: translateY(-50%);
+    width: 200px;
+    /* Adjust size as needed */
+    z-index: 1;
     pointer-events: none;
-    transition: all 4s linear;
-    object-fit: cover;
+    opacity: 0.8;
+}
+
+.side-gif.left {
+    left: 20px;
+}
+
+.side-gif.right {
+    right: 20px;
+}
+
+.side-gif img {
+    width: 100%;
+    height: auto;
+    border-radius: 12px;
+}
+
+@media (max-width: 1400px) {
+    .side-gif {
+        display: none;
+    }
 }

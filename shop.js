@@ -159,14 +159,17 @@ async function loadChannelMarket(channelId) {
         const data = await res.json();
         if (data.user && data.user.profile_pic) {
             document.getElementById('chan-pfp').src = data.user.profile_pic;
-
-            // Floating PFP Setup
-            const floatImg = document.getElementById('floating-pfp');
-            floatImg.src = data.user.profile_pic;
-            floatImg.style.display = 'block';
-            startFloatingPFP();
         }
     } catch (e) { console.log("Broadcaster PFP error", e); }
+
+    // Side GIFs Update
+    const leftGif = settings.left_gif || "https://media.giphy.com/media/v1.Y2lkPTc5MGI3NjExOHlxYnV4YzB6MzB6bmR4bmR4bmR4bmR4bmR4bmR4bmR4bmR4bmR4JmVwPXYxX2ludGVybmFsX2dpZl9ieV9pZCZjdD1n/3o7TKMGpxPucV0G3S0/giphy.gif";
+    const rightGif = settings.right_gif || "https://media.giphy.com/media/v1.Y2lkPTc5MGI3NjExOHlxYnV4YzB6MzB6bmR4bmR4bmR4bmR4bmR4bmR4bmR4bmR4bmR4JmVwPXYxX2ludGVybmFsX2dpZl9ieV9pZCZjdD1n/3o7TKMGpxPucV0G3S0/giphy.gif";
+
+    const leftGifEl = document.querySelector('.side-gif.left img');
+    const rightGifEl = document.querySelector('.side-gif.right img');
+    if (leftGifEl) leftGifEl.src = leftGif;
+    if (rightGifEl) rightGifEl.src = rightGif;
 
     document.getElementById('market-status').innerText = `${chanName} market ürünleri yönetiliyor.`;
     marketGrid.innerHTML = "";
@@ -235,24 +238,6 @@ function stopAllPreviews() {
     }
 }
 
-let floatInterval = null;
-function startFloatingPFP() {
-    if (floatInterval) return;
-    const img = document.getElementById('floating-pfp');
-
-    const move = () => {
-        const maxX = window.innerWidth - 60;
-        const maxY = window.innerHeight - 60;
-        const randX = Math.floor(Math.random() * maxX);
-        const randY = Math.floor(Math.random() * maxY);
-
-        img.style.left = randX + 'px';
-        img.style.top = randY + 'px';
-    };
-
-    move(); // Initial move
-    floatInterval = setInterval(move, 4000); // Move every 4 seconds (matching CSS transition)
-}
 
 async function executePurchase(type, trigger, price) {
     if (!currentUser || !currentChannelId) return;
@@ -280,7 +265,7 @@ async function executePurchase(type, trigger, price) {
     if (type === 'tts') {
         await db.ref(`channels/${currentChannelId}/stream_events/tts`).push({
             text: `@${currentUser} (Market) diyor ki: ${userInput}`,
-            played: false, notified: false, timestamp: Date.now(), broadcasterId: currentChannelId
+            played: false, notified: false, source: "market", timestamp: Date.now(), broadcasterId: currentChannelId
         });
     } else if (type === 'sound') {
         const snap = await db.ref(`channels/${currentChannelId}/settings/custom_sounds/${trigger}`).once('value');
@@ -288,7 +273,7 @@ async function executePurchase(type, trigger, price) {
         if (sound) {
             await db.ref(`channels/${currentChannelId}/stream_events/sound`).push({
                 soundId: trigger, url: sound.url, volume: sound.volume || 100, duration: sound.duration || 0,
-                buyer: currentUser, // Chat bildirimi için eklendi
+                buyer: currentUser, source: "market",
                 played: false, notified: false, timestamp: Date.now(), broadcasterId: currentChannelId
             });
         }

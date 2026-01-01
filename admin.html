@@ -864,6 +864,7 @@
                             <button class="sub-tab-btn active" onclick="showSubTab('${id}', 'genel', event)">Genel</button>
                             <button class="sub-tab-btn" onclick="showSubTab('${id}', 'oyunlar', event)">Oyunlar</button>
                             <button class="sub-tab-btn" onclick="showSubTab('${id}', 'sesler', event)">Sesler</button>
+                            <button class="sub-tab-btn" onclick="showSubTab('${id}', 'gorseller', event)">Görseller</button>
                             <button class="sub-tab-btn" onclick="showSubTab('${id}', 'piyango', event)">Piyango</button>
                             <button class="sub-tab-btn" onclick="showSubTab('${id}', 'komutlar', event)">Diger</button>
                         </div>
@@ -952,6 +953,21 @@
                                 </div>
                             </div>
                             <div id="sound-list-${id}" style="font-size:0.75rem; max-height:100px; overflow-y:auto; border:1px solid #222; margin-top:10px; padding:5px; border-radius:8px;"></div>
+                        </div>
+
+                        <!-- KANAL: GÖRSELLER -->
+                        <div id="sub-gorseller-${id}" class="sub-section">
+                            <div style="background:#000; padding:15px; border-radius:12px; border:1px solid #333;">
+                                <h4 style="color:var(--primary); margin-bottom:10px; font-size:0.9rem;">🖼️ Market GIF Ayarları</h4>
+                                <div class="range-box">
+                                    <label class="range-label">Sol GIF URL</label>
+                                    <input type="text" value="${getVal(s.left_gif, '')}" class="inp" placeholder="https://..." onchange="toggleCmd('${id}','left_gif',this.value)">
+                                </div>
+                                <div class="range-box">
+                                    <label class="range-label">Sağ GIF URL</label>
+                                    <input type="text" value="${getVal(s.right_gif, '')}" class="inp" placeholder="https://..." onchange="toggleCmd('${id}','right_gif',this.value)">
+                                </div>
+                            </div>
                         </div>
 
                         <!-- KANAL: KOMUTLAR -->

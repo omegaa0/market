@@ -281,6 +281,7 @@
                 <button class="tab-btn active" onclick="showSection('genel', event)">Genel</button>
                 <button class="tab-btn" onclick="showSection('oyunlar', event)">Oyunlar</button>
                 <button class="tab-btn" onclick="showSection('sesler', event)">Sesler</button>
+                <button class="tab-btn" onclick="showSection('gorseller', event)">Görseller</button>
                 <button class="tab-btn" onclick="showSection('komutlar', event)">Komutlar</button>
             </div>
 
@@ -390,6 +391,25 @@
                     </div>
                 </div>
 
+                <!-- GÖRSELLER -->
+                <div id="gorseller" class="section">
+                    <h3 style="margin-bottom: 20px;">🖼️ Market Görsel Ayarları</h3>
+                    <p style="font-size: 0.85rem; color: var(--muted); margin-bottom: 20px;">Market panelinin sağ ve sol
+                        tarafında görünecek animasyonlu GIF linklerini buraya yapıştırın.</p>
+
+                    <div class="range-box">
+                        <label>Sol GIF URL (animasyonlu)</label>
+                        <input type="text" id="left_gif" class="inp" placeholder="https://.../sol.gif"
+                            onchange="updateSetting('left_gif', this.value)">
+                    </div>
+
+                    <div class="range-box">
+                        <label>Sağ GIF URL (animasyonlu)</label>
+                        <input type="text" id="right_gif" class="inp" placeholder="https://.../sag.gif"
+                            onchange="updateSetting('right_gif', this.value)">
+                    </div>
+                </div>
+
                 <!-- KOMUTLAR -->
                 <div id="komutlar" class="section">
                     <h3 style="margin-bottom: 15px; color: var(--secondary);">🛠️ Komut Kontrolü</h3>
@@ -432,6 +452,8 @@
 
                     document.getElementById('daily_reward').value = getVal(s.daily_reward, 500);
                     document.getElementById('passive_reward').value = getVal(s.passive_reward, 100);
+                    document.getElementById('left_gif').value = getVal(s.left_gif, "");
+                    document.getElementById('right_gif').value = getVal(s.right_gif, "");
 
                     const labelMap = {
                         wr_slot: 'v-slot', wr_yazitura: 'v-yt', wr_kutu: 'v-kutu',

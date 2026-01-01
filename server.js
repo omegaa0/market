@@ -550,8 +550,6 @@ app.post('/kick/webhook', async (req, res) => {
             };
 
             // --- KOMUT ZİNCİRİ ---
-            // SELAM - Sadece tam kelime olarak geçiyorsa cevap ver (ve cooldown)
-            const selamRegex = /\b(sa|sea|selam|selamlar|slm|selamün aleyküm|selamünaleyküm)\b/i;
             const selamCooldowns = global.selamCooldowns || (global.selamCooldowns = {});
             const iiremCooldowns = global.iiremCooldowns || (global.iiremCooldowns = {});
             const userCooldownKey = `${broadcasterId}_${user.toLowerCase()}`;
@@ -566,7 +564,13 @@ app.post('/kick/webhook', async (req, res) => {
                 }
             }
 
-            if (selamRegex.test(lowMsg) && !lowMsg.startsWith('!') && !lowMsg.includes('aleyküm')) {
+            // SELAM - Sadece ayrı bir kelime olarak geçiyorsa cevap ver
+            const words = lowMsg.split(/\s+/);
+            const isGreeting = words.some(w => ['sa', 'sea', 'slm', 'selam', 'selamlar'].includes(w)) ||
+                lowMsg.includes('selamün aleyküm') ||
+                lowMsg.includes('selamünaleyküm');
+
+            if (isGreeting && !lowMsg.startsWith('!') && !lowMsg.includes('aleyküm selam') && !lowMsg.includes('as')) {
                 // Aynı kullanıcıya 60 saniye içinde tekrar cevap verme
                 if (!selamCooldowns[userCooldownKey] || now - selamCooldowns[userCooldownKey] > 60000) {
                     selamCooldowns[userCooldownKey] = now;
@@ -1883,7 +1887,7 @@ db.ref('channels').on('child_added', (snapshot) => {
     // Market TTS Dinleyicisi (Chat bildirimi için)
     db.ref(`channels/${channelId}/stream_events/tts`).on('child_added', async (snap) => {
         const event = snap.val();
-        if (event && !event.notified) {
+        if (event && !event.notified && event.source === 'market') {
             const userMatch = event.text.match(/@(\w+)/);
             const buyer = userMatch ? userMatch[1] : "Bir kullanıcı";
             await sendChatMessage(`🎙️ @${buyer}, Market'ten TTS (Sesli Mesaj) gönderdi!`, channelId);
@@ -1902,8 +1906,7 @@ db.ref('channels').on('child_added', (snapshot) => {
     // Market Ses Dinleyicisi (Chat bildirimi için)
     db.ref(`channels/${channelId}/stream_events/sound`).on('child_added', async (snap) => {
         const event = snap.val();
-        if (event && !event.notified) {
-            // Buyer bilgisini executePurchase kısmında event'e eklemeliyiz.
+        if (event && !event.notified && event.source === 'market') {
             const buyer = event.buyer || "Bir kullanıcı";
             await sendChatMessage(`🎵 @${buyer}, Market'ten !ses ${event.soundId} efektini çaldı!`, channelId);
             await db.ref(`channels/${channelId}/stream_events/sound/${snap.key}`).update({ notified: true });
