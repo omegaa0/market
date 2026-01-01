@@ -545,6 +545,8 @@
                         <tr>
                             <th>Kullanıcı</th>
                             <th>Bakiye (💰)</th>
+                            <th>İzleme (🕒)</th>
+                            <th>Mesaj (💬)</th>
                             <th>Meslek</th>
                             <th>Son Aktiflik</th>
                             <th>Ban (🚨)</th>
@@ -1076,7 +1078,7 @@
             function displayUsers(users) {
                 const list = document.getElementById('user-list');
                 if (!users.length) {
-                    list.innerHTML = "<tr><td colspan='5' style='text-align:center; padding:50px;'><p style='color:#555; margin-bottom:10px;'>Yerel listede bulunamadı.</p><button class='btn' style='width:auto; margin:0 auto;' onclick='deepSearch()'>🔍 SUNUCUDA ARA</button></td></tr>";
+                    list.innerHTML = "<tr><td colspan='8' style='text-align:center; padding:50px;'><p style='color:#555; margin-bottom:10px;'>Yerel listede bulunamadı.</p><button class='btn' style='width:auto; margin:0 auto;' onclick='deepSearch()'>🔍 SUNUCUDA ARA</button></td></tr>";
                     return;
                 }
                 list.innerHTML = users.map(([u, d]) => {
@@ -1084,6 +1086,21 @@
                     const banCount = (d.bans && Object.values(d.bans).reduce((a, b) => a + b, 0)) || 0;
                     const isInf = d.is_infinite;
                     const userJob = d.job || "İşsiz";
+                    const totalWatch = d.lifetime_w || 0;
+
+                    // En çok izlediği kanalı bul
+                    let mostWatched = "Yok";
+                    if (d.channel_watch_time) {
+                        const top = Object.entries(d.channel_watch_time).sort((a, b) => b[1] - a[1])[0];
+                        if (top) mostWatched = `${top[1]}dk`;
+                    }
+
+                    // En çok mesaj attığı kanalı bul
+                    let mostMessages = "Yok";
+                    if (d.channel_m) {
+                        const top = Object.entries(d.channel_m).sort((a, b) => b[1] - a[1])[0];
+                        if (top) mostMessages = `${top[1]}`;
+                    }
 
                     let jobOptions = JOBS.map(j => `<option value="${j}" ${userJob === j ? 'selected' : ''}>${j}</option>`).join('');
 
@@ -1091,6 +1108,14 @@
                 <tr style="${isInf ? 'background:rgba(0,255,136,0.05)' : ''}">
                     <td><b>${u}</b> ${isInf ? '<span style="color:var(--primary); font-size:0.7rem;">(♾️)</span>' : ''}</td>
                     <td>${isInf ? '♾️' : (d.balance || 0).toLocaleString() + ' 💰'}</td>
+                    <td>
+                        <div style="font-size:0.8rem;">Toplam: <b>${totalWatch}dk</b></div>
+                        <div style="font-size:0.65rem; color:var(--muted)">Max: ${mostWatched}</div>
+                    </td>
+                    <td>
+                        <div style="font-size:0.8rem;">Toplam: <b>${d.lifetime_m || 0}</b></div>
+                        <div style="font-size:0.65rem; color:var(--muted)">Max: ${mostMessages}</div>
+                    </td>
                     <td>
                         <select class="inp" style="margin:0; height:30px; font-size:0.75rem; padding:0 5px;" onchange="setUserJob('${u}', this.value)">
                             ${jobOptions}

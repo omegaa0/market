@@ -500,6 +500,7 @@ app.post('/kick/webhook', async (req, res) => {
                 last_channel: broadcasterId,
                 created_at: Date.now(),
                 lifetime_m: 1, lifetime_g: 0, lifetime_d: 0, lifetime_w: 0,
+                channel_m: { [broadcasterId]: 1 },
                 quests: { [today]: { m: 1, g: 0, d: 0, w: 0, claimed: {} } }
             });
         } else {
@@ -509,11 +510,15 @@ app.post('/kick/webhook', async (req, res) => {
             if (!quests[today]) quests[today] = { m: 0, g: 0, d: 0, w: 0, claimed: {} };
             quests[today].m = (quests[today].m || 0) + 1;
 
+            const channelM = uData.channel_m || {};
+            channelM[broadcasterId] = (channelM[broadcasterId] || 0) + 1;
+
             await userRef.update({
                 last_seen: Date.now(),
                 last_channel: broadcasterId,
                 quests,
-                lifetime_m: (uData.lifetime_m || 0) + 1
+                lifetime_m: (uData.lifetime_m || 0) + 1,
+                channel_m: channelM
             });
         }
 
@@ -1842,11 +1847,13 @@ app.get('/', (req, res) => {
 app.get('/health', (req, res) => res.status(200).send('OK (Bot Uyanık)'));
 
 // ---------------------------------------------------------
-// 6. PASSIVE INCOME & WATCH TIME TRACKING (5 MIN - FALLBACK)
+// 6. PASSIVE INCOME & WATCH TIME TRACKING (1 MIN - FALLBACK)
 // ---------------------------------------------------------
 setInterval(async () => {
-    const fiveMinsAgo = Date.now() - (5 * 60 * 1000);
+    const now = Date.now();
+    const oneMinAgo = now - (60 * 1000);
     const today = getTodayKey();
+    const isTenMinuteMark = Math.floor(now / 60000) % 10 === 0;
 
     const [usersSnap, channelsSnap] = await Promise.all([
         db.ref('users').once('value'),
@@ -1857,30 +1864,33 @@ setInterval(async () => {
     const allChannels = channelsSnap.val() || {};
 
     for (const [username, data] of Object.entries(allUsers)) {
-        if (data.last_seen && data.last_seen > fiveMinsAgo && data.last_channel) {
+        // Son 1 dakika içinde aktifse
+        if (data.last_seen && data.last_seen > oneMinAgo && data.last_channel) {
             const channelSettings = allChannels[data.last_channel]?.settings || {};
-            const rewardAmt = (parseInt(channelSettings.passive_reward) || 100) / 2; // 5 dakikalık pay
+            const rewardAmt = parseInt(channelSettings.passive_reward) || 100;
 
             await db.ref('users/' + username).transaction(u => {
                 if (u) {
-                    // 1. Para ekle
-                    if (!u.is_infinite) u.balance = (u.balance || 0) + rewardAmt;
+                    // 1. Para ekle (Sadece 10 dakikada bir)
+                    if (isTenMinuteMark && !u.is_infinite) {
+                        u.balance = (u.balance || 0) + rewardAmt;
+                    }
 
-                    // 2. İzleme Süresi (Fallback - Quest için)
+                    // 2. İzleme Süresi (Her dakika eklenir)
                     if (!u.quests) u.quests = {};
                     if (!u.quests[today]) u.quests[today] = { m: 0, g: 0, d: 0, w: 0, claimed: {} };
-                    u.quests[today].w = (u.quests[today].w || 0) + 5;
+                    u.quests[today].w = (u.quests[today].w || 0) + 1;
 
-                    // 3. Kanal ve Ömür Boyu İzleme
+                    // 3. Kanal ve Ömür Boyu İzleme (Her dakika eklenir)
                     if (!u.channel_watch_time) u.channel_watch_time = {};
-                    u.channel_watch_time[data.last_channel] = (u.channel_watch_time[data.last_channel] || 0) + 5;
-                    u.lifetime_w = (u.lifetime_w || 0) + 5;
+                    u.channel_watch_time[data.last_channel] = (u.channel_watch_time[data.last_channel] || 0) + 1;
+                    u.lifetime_w = (u.lifetime_w || 0) + 1;
                 }
                 return u;
             });
         }
     }
-}, 5 * 60 * 1000); // 5 Dakikada bir
+}, 60 * 1000); // 1 Dakikada bir
 
 // ---------------------------------------------------------
 // 7. BACKGROUND EVENT LISTENERS (SHOP MUTE ETC)
