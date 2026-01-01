@@ -1145,6 +1145,28 @@ app.post('/kick/webhook', async (req, res) => {
                 await reply(`🎵 @${user}, ${soundTrigger} sesi çalınıyor! (-${soundCost.toLocaleString()} 💰)`);
             }
 
+            else if (lowMsg.startsWith('!sr ') || lowMsg.startsWith('!şarkı ')) {
+                const query = args.join(' ');
+                if (!query) return await reply(`@${user}, !sr [şarkı adı veya link] şeklinde kullanmalısın!`);
+
+                const srCost = settings.sr_cost || 5000;
+                const snap = await userRef.once('value');
+                const data = snap.val() || {};
+                const isInf = data.is_infinite;
+                if (!isInf && (data.balance || 0) < srCost) return await reply(`@${user}, Şarkı isteği için ${srCost.toLocaleString()} 💰 lazım!`);
+
+                if (!isInf) await userRef.transaction(u => { if (u) u.balance -= srCost; return u; });
+
+                await db.ref(`channels/${broadcasterId}/stream_events/song_requests`).push({
+                    query: query,
+                    user: user,
+                    played: false,
+                    timestamp: Date.now()
+                });
+
+                await reply(`🎵 @${user}, Şarkı isteğin sıraya eklendi! (-${srCost.toLocaleString()} 💰)`);
+            }
+
             else if (lowMsg.startsWith('!kredi')) {
                 const sub = args[0]?.toLowerCase();
                 const options = {
@@ -1604,8 +1626,31 @@ app.post('/admin-api/set-job', authAdmin, async (req, res) => {
 
 app.post('/dashboard-api/data', authDashboard, async (req, res) => {
     const { channelId } = req.body;
-    const snap = await db.ref('channels/' + channelId).once('value');
-    res.json(snap.val() || {});
+    const chanSnap = await db.ref('channels/' + channelId).once('value');
+    const channelData = chanSnap.val() || {};
+
+    // İstatistikleri hesapla
+    const usersSnap = await db.ref('users').orderByChild('last_channel').equalTo(channelId).once('value');
+    const users = usersSnap.val() || {};
+
+    let totalMsgs = 0;
+    let totalWatch = 0;
+    const today = getTodayKey();
+
+    Object.values(users).forEach(u => {
+        totalWatch += (u.lifetime_w || 0);
+        if (u.quests && u.quests[today]) {
+            totalMsgs += (u.quests[today].m || 0);
+        }
+    });
+
+    channelData.stats = {
+        users: Object.keys(users).length,
+        msgs: totalMsgs,
+        watch: totalWatch
+    };
+
+    res.json(channelData);
 });
 
 // --- YENİ: LİDERLİK TABLOSU ---
@@ -1738,9 +1783,9 @@ async function trackWatchTime() {
                 const apiHasChatters = chattersRes && chattersRes.data && chattersRes.data.chatters &&
                     (Object.values(chattersRes.data.chatters).some(list => Array.isArray(list) && list.length > 0));
 
-                // Veritabanından son 3 dakikada bu kanalda görülenler (API gecikmesine karşı garanti)
-                const threeMinsAgo = Date.now() - 180000;
-                const dbRecentSnap = await db.ref('users').orderByChild('last_seen').startAt(threeMinsAgo).once('value');
+                // Veritabanından son 60 saniyede bu kanalda mesaj yazanlar (Offline iken saymayı zorlaştırır)
+                const activeThreshold = Date.now() - 60000;
+                const dbRecentSnap = await db.ref('users').orderByChild('last_seen').startAt(activeThreshold).once('value');
                 const dbRecentUsers = dbRecentSnap.val() || {};
                 const dbHasChatters = Object.values(dbRecentUsers).some(u => u.last_channel === chanId);
 

@@ -69,7 +69,23 @@
                 opacity: 0;
             }
         }
+
+        #yt-player-container {
+            position: absolute;
+            top: 20px;
+            left: 20px;
+            width: 300px;
+            height: 170px;
+            background: black;
+            border: 2px solid #00ff88;
+            border-radius: 10px;
+            overflow: hidden;
+            display: none;
+            /* Şarkı çalmadığında gizli */
+            box-shadow: 0 0 15px rgba(0, 255, 136, 0.2);
+        }
     </style>
+    <script src="https://www.youtube.com/iframe_api"></script>
 </head>
 
 <body>
@@ -81,6 +97,10 @@
         <div class="alert-body" id="alert-text">
             Mesaj yükleniyor...
         </div>
+    </div>
+
+    <div id="yt-player-container">
+        <div id="player"></div>
     </div>
 
     <script>
@@ -201,6 +221,76 @@
                             if (!data || data.played) return;
                             db.ref('channels/' + targetBroadcasterId + '/stream_events/alerts/' + snap.key).update({ played: true });
                             showNotification(data.title, data.text, data.icon);
+                        });
+
+                    // Song Requests Dinle
+                    let songQueue = [];
+                    let isPlaying = false;
+                    let player;
+
+                    window.onYouTubeIframeAPIReady = function () {
+                        player = new YT.Player('player', {
+                            height: '170',
+                            width: '300',
+                            playerVars: { 'autoplay': 1, 'controls': 0, 'modestbranding': 1 },
+                            events: {
+                                'onStateChange': onPlayerStateChange,
+                                'onError': onPlayerError
+                            }
+                        });
+                    };
+
+                    function onPlayerStateChange(event) {
+                        if (event.data === YT.PlayerState.ENDED) {
+                            isPlaying = false;
+                            document.getElementById('yt-player-container').style.display = 'none';
+                            processQueue();
+                        }
+                    }
+
+                    function onPlayerError() {
+                        isPlaying = false;
+                        document.getElementById('yt-player-container').style.display = 'none';
+                        processQueue();
+                    }
+
+                    function processQueue() {
+                        if (songQueue.length > 0 && !isPlaying) {
+                            const next = songQueue.shift();
+                            playSong(next);
+                        }
+                    }
+
+                    function playSong(data) {
+                        isPlaying = true;
+                        document.getElementById('yt-player-container').style.display = 'block';
+                        showNotification("ŞARKI İSTEĞİ", data.user + " bir şarkı açtı!", "🎵");
+
+                        // Link mi yoksa arama terimi mi?
+                        if (data.query.includes('youtube.com/') || data.query.includes('youtu.be/')) {
+                            const url = new URL(data.query.replace('watch?v=', 'v/'));
+                            let videoId = "";
+                            if (data.query.includes('youtu.be/')) videoId = data.query.split('/').pop();
+                            else videoId = new URLSearchParams(new URL(data.query).search).get('v');
+                            player.loadVideoById(videoId);
+                        } else {
+                            // Link değilse direkt link olarak kabul edemeyiz ama YouTube API search gerektirir.
+                            // Basitlik için link zorunlu tutulabilir veya arama başlığı gösterilir.
+                            showNotification("BİLGİ", "Lütfen YouTube linki kullanın!", "⚠️");
+                            isPlaying = false;
+                            document.getElementById('yt-player-container').style.display = 'none';
+                        }
+                    }
+
+                    db.ref('channels/' + targetBroadcasterId + '/stream_events/song_requests')
+                        .orderByChild('timestamp')
+                        .startAt(startTime)
+                        .on('child_added', function (snap) {
+                            const data = snap.val();
+                            if (!data || data.played) return;
+                            db.ref('channels/' + targetBroadcasterId + '/stream_events/song_requests/' + snap.key).update({ played: true });
+                            songQueue.push(data);
+                            processQueue();
                         });
 
                     // UZAKTAN YENİLEME DİNLE (Remote Reload)
