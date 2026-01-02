@@ -84,6 +84,55 @@
             /* Şarkı çalmadığında gizli */
             box-shadow: 0 0 15px rgba(0, 255, 136, 0.2);
         }
+
+        #horse-race-container {
+            position: absolute;
+            top: 50%;
+            left: 50%;
+            transform: translate(-50%, -50%);
+            width: 800px;
+            background: rgba(10, 10, 12, 0.95);
+            border: 3px solid #f1c40f;
+            border-radius: 20px;
+            padding: 30px;
+            display: none;
+            z-index: 2000;
+            box-shadow: 0 0 40px rgba(241, 196, 15, 0.5);
+            font-family: 'Outfit', sans-serif;
+        }
+
+        .race-track {
+            position: relative;
+            height: 70px;
+            margin: 10px 0;
+            background: rgba(255, 255, 255, 0.05);
+            border-radius: 10px;
+            overflow: hidden;
+            border-bottom: 2px solid rgba(241, 196, 15, 0.2);
+        }
+
+        .horse {
+            position: absolute;
+            left: 0;
+            top: 50%;
+            transform: translateY(-50%);
+            font-size: 45px;
+            white-space: nowrap;
+            display: flex;
+            align-items: center;
+            gap: 15px;
+            transition: left 0s linear;
+        }
+
+        .horse-no {
+            font-size: 16px;
+            background: #f1c40f;
+            color: black;
+            padding: 4px 10px;
+            border-radius: 50%;
+            font-weight: 900;
+            box-shadow: 0 0 10px rgba(241, 196, 15, 0.5);
+        }
     </style>
     <script src="https://www.youtube.com/iframe_api"></script>
 </head>
@@ -96,6 +145,27 @@
         </div>
         <div class="alert-body" id="alert-text">
             Mesaj yükleniyor...
+        </div>
+    </div>
+
+    <div id="horse-race-container">
+        <h1
+            style="text-align:center; color: #f1c40f; margin-bottom: 30px; font-weight: 900; text-transform: uppercase; letter-spacing: 2px;">
+            🏇 HİPODROM - YARIŞ BAŞLADI 🏇</h1>
+        <div class="race-track">
+            <div class="horse" id="horse-1"><span class="horse-no">1</span>🐎</div>
+        </div>
+        <div class="race-track">
+            <div class="horse" id="horse-2"><span class="horse-no">2</span>🏇</div>
+        </div>
+        <div class="race-track">
+            <div class="horse" id="horse-3"><span class="horse-no">3</span>🐎</div>
+        </div>
+        <div class="race-track">
+            <div class="horse" id="horse-4"><span class="horse-no">4</span>🏇</div>
+        </div>
+        <div class="race-track">
+            <div class="horse" id="horse-5"><span class="horse-no">5</span>🐎</div>
         </div>
     </div>
 
@@ -169,6 +239,43 @@
                 box.style.animation = 'fadeOut 0.5s ease-in forwards';
                 setTimeout(function () { box.style.display = 'none'; }, 500);
             }, duration);
+        }
+
+        function startHorseRaceVisual(winner) {
+            const raceContainer = document.getElementById('horse-race-container');
+            raceContainer.style.display = 'block';
+
+            const horses = raceContainer.querySelectorAll('.horse');
+            const trackWidth = raceContainer.clientWidth - 150;
+
+            horses.forEach((horse, index) => {
+                horse.style.transition = 'none';
+                horse.style.left = '0px';
+
+                const horseNo = index + 1;
+                const duration = (horseNo === winner) ? 8000 : 8200 + Math.random() * 2000;
+
+                setTimeout(() => {
+                    horse.style.transition = `left ${duration}ms cubic-bezier(0.45, 0.05, 0.55, 0.95)`;
+                    horse.style.left = trackWidth + 'px';
+                }, 100);
+            });
+
+            setTimeout(() => {
+                const winnerHorse = document.getElementById('horse-' + winner);
+                winnerHorse.style.filter = 'drop-shadow(0 0 15px #f1c40f)';
+                winnerHorse.style.transform = 'translateY(-50%) scale(1.2)';
+            }, 8500);
+
+            setTimeout(() => {
+                raceContainer.style.display = 'none';
+                horses.forEach(h => {
+                    h.style.transition = 'none';
+                    h.style.left = '0px';
+                    h.style.filter = 'none';
+                    h.style.transform = 'translateY(-50%) scale(1)';
+                });
+            }, 13000);
         }
 
         fetch('/api/overlay-config')
@@ -272,6 +379,17 @@
                             if (!data || data.played) return;
                             db.ref('channels/' + targetBroadcasterId + '/stream_events/alerts/' + snap.key).update({ played: true });
                             showNotification(data.title, data.text, data.icon);
+                        });
+
+                    // At Yarışı Dinle
+                    db.ref('channels/' + targetBroadcasterId + '/stream_events/horse_race')
+                        .orderByChild('timestamp')
+                        .startAt(startTime)
+                        .on('child_added', function (snap) {
+                            const data = snap.val();
+                            if (!data || data.played) return;
+                            db.ref('channels/' + targetBroadcasterId + '/stream_events/horse_race/' + snap.key).update({ played: true });
+                            startHorseRaceVisual(data.winner);
                         });
 
                     // Song Requests Dinle

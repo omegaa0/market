@@ -126,6 +126,7 @@ const channelPredictions = {};
 const heistHistory = {}; // { broadcasterId: [timestamp1, timestamp2] }
 const riggedGambles = {};
 const riggedShips = {};
+const horseRaces = {};
 
 // PKCE & HELPERS
 const sleep = (ms) => new Promise(resolve => setTimeout(resolve, ms));
@@ -747,20 +748,16 @@ app.post('/kick/webhook', async (req, res) => {
 
                 if (!isInf) data.balance -= cost;
                 const rig = checkRig();
+                const wrYazitura = settings.wr_yt || 50;
+                const multYT = settings.mult_yt || 2;
+                const isYazi = ['y', 'yazı'].includes(pick);
                 let win;
 
                 if (rig === 'win') win = true;
                 else if (rig === 'lose') win = false;
                 else {
-                    // WinRate kontrolü (YAZI TURA)
                     const roll = Math.random() * 100;
-                    if (roll < wrYazitura) {
-                        // Kazanması lazım - Seçtiği gelir
-                        win = true;
-                    } else {
-                        // Kaybetmesi lazım - Seçtiğinin tersi gelir
-                        win = false;
-                    }
+                    win = roll < wrYazitura;
                 }
 
                 const resDisplay = win ? (isYazi ? 'YAZI' : 'TURA') : (isYazi ? 'TURA' : 'YAZI');
@@ -1070,6 +1067,53 @@ app.post('/kick/webhook', async (req, res) => {
                 await reply(`🚬 @${user} Efkar Seviyesi: %${p} ${p > 70 ? '😩🚬' : '🍷'}`);
             }
 
+            else if (isEnabled('fal') && lowMsg.startsWith('!burç')) {
+                const signs = ['koc', 'boga', 'ikizler', 'yengec', 'aslan', 'basak', 'terazi', 'akrep', 'yay', 'oglak', 'kova', 'balik'];
+                let sign = args[0]?.toLowerCase()
+                    .replace(/ı/g, 'i').replace(/ö/g, 'o').replace(/ü/g, 'u')
+                    .replace(/ş/g, 's').replace(/ç/g, 'c').replace(/ğ/g, 'g');
+
+                if (!sign || !signs.includes(sign)) return await reply(`@${user}, Kullanım: !burç koç, aslan, balık...`);
+
+                try {
+                    const res = await axios.get(`https://isaretapi.herokuapp.com/burc/${sign}`, { timeout: 4000 }).catch(() => null);
+                    if (res && res.data && res.data.yorum) {
+                        await reply(`✨ @${user} [${sign.toUpperCase()}]: ${res.data.yorum}`);
+                    } else {
+                        const generic = ["Bugün yıldızlar senin için parlıyor! 🌟", "Maddi konularda şanslı bir gün. 💰", "Aşk hayatında sürprizler olabilir. ❤️", "Enerjin bugün çok yüksek! ⚡", "Dinlenmeye vakit ayırmalısın. 🛌"];
+                        await reply(`✨ @${user} [${sign.toUpperCase()}]: ${generic[Math.floor(Math.random() * generic.length)]}`);
+                    }
+                } catch {
+                    await reply(`✨ @${user} [${sign.toUpperCase()}]: Yıldızlar şu an ulaşılamaz durumda, daha sonra dene! 🌌`);
+                }
+            }
+
+            else if (isEnabled('fal') && lowMsg === '!toxic') {
+                const p = Math.floor(Math.random() * 101);
+                await reply(`🤢 @${user} Toksiklik Seviyesi: %${p} ${p > 80 ? '☢️ UZAKLAŞIN!' : '🍃'}`);
+            }
+
+            else if (isEnabled('fal') && lowMsg === '!karizma') {
+                const p = Math.floor(Math.random() * 101);
+                await reply(`😎 @${user} Karizma Seviyesi: %${p} ${p > 90 ? '🕶️ ŞEKİLSİN!' : '🔥'}`);
+            }
+
+            else if (isEnabled('fal') && lowMsg === '!gay') {
+                const p = Math.floor(Math.random() * 101);
+                await reply(`🌈 @${user} Gaylik Seviyesi: %${p} ${p > 50 ? '✨' : '👀'}`);
+            }
+
+            else if (isEnabled('fal') && lowMsg === '!keko') {
+                const p = Math.floor(Math.random() * 101);
+                await reply(`🔪 @${user} Keko Seviyesi: %${p} ${p > 70 ? '🚬 Semt çocuğu!' : '🏙️'}`);
+            }
+
+            else if (isEnabled('fal') && lowMsg.startsWith('!ask') || lowMsg.startsWith('!aşk')) {
+                const target = args[0]?.replace('@', '') || "Bot";
+                const p = Math.floor(Math.random() * 101);
+                await reply(`❤️ @${user} & @${target} Aşk Uyumu: %${p} ${p > 80 ? '💍' : '💔'}`);
+            }
+
             // --- YENİ BAKİYE HARCAMA KOMUTLARI: TTS & SES ---
             else if (lowMsg.startsWith('!tts')) {
                 const text = args.join(' ');
@@ -1097,6 +1141,37 @@ app.post('/kick/webhook', async (req, res) => {
                 const keys = Object.keys(customSounds);
                 if (keys.length === 0) return await reply(`@${user}, Bu kanalda henüz özel ses eklenmemiş.`);
                 await reply(`🎵 Mevcut Sesler: ${keys.map(k => `!ses ${k} (${parseInt(customSounds[k].cost).toLocaleString()} 💰)`).join(' | ')}`);
+            }
+
+            else if (isEnabled('atyarisi') && lowMsg.startsWith('!atyarışı')) {
+                const amount = parseInt(args[0]);
+                const horseNo = parseInt(args[1]);
+
+                if (isNaN(amount) || isNaN(horseNo) || horseNo < 1 || horseNo > 5) {
+                    return await reply(`@${user}, Kullanım: !atyarışı [miktar] [1-5]`);
+                }
+
+                const snap = await userRef.once('value');
+                const data = snap.val() || { balance: 0 };
+                if (!data.is_infinite && data.balance < amount) return await reply(`@${user}, Bakiye yetersiz!`);
+
+                let race = horseRaces[broadcasterId];
+                if (!race) {
+                    race = horseRaces[broadcasterId] = {
+                        bets: [],
+                        timer: setTimeout(() => startHorseRace(broadcasterId), 45000),
+                        startTime: Date.now()
+                    };
+                    await reply(`🐎 AT YARIŞI BAŞLADI! Bahislerinizi yapın! (45sn) Kullanım: !atyarışı [miktar] [1-5]`);
+                }
+
+                // Aynı kullanıcı tek yarışta tek bahis yapabilir (Opsiyonel: Daha basit tutuyorum)
+                race.bets.push({ user, amount, horse: horseNo });
+                if (!data.is_infinite) {
+                    await userRef.transaction(u => { if (u) u.balance -= amount; return u; });
+                }
+
+                await reply(`@${user}, ${horseNo} numaralı ata ${amount.toLocaleString()} 💰 yatırdın! 🏇`);
             }
 
             else if (lowMsg.startsWith('!ses') && isEnabled('ses')) {
@@ -1987,6 +2062,45 @@ async function syncChannelStats() {
 // Her 3 dakikada bir takipçi/abone sayılarını güncelle
 setInterval(syncChannelStats, 180000);
 syncChannelStats(); // Başlangıçta bir kez çalıştır
+
+async function startHorseRace(broadcasterId) {
+    const race = horseRaces[broadcasterId];
+    if (!race || race.bets.length === 0) {
+        delete horseRaces[broadcasterId];
+        return;
+    }
+
+    const winner = Math.floor(Math.random() * 5) + 1;
+
+    // Overlay'e event gönder
+    await db.ref(`channels/${broadcasterId}/stream_events/horse_race`).push({
+        winner: winner,
+        timestamp: Date.now(),
+        played: false
+    });
+
+    // Yarışın bitmesini bekle (15 sn)
+    setTimeout(async () => {
+        const winners = race.bets.filter(b => b.horse === winner);
+        const winnersText = winners.map(w => `@${w.user}`).join(', ');
+
+        for (const w of winners) {
+            const prize = Math.floor(w.amount * 2);
+            await db.ref('users/' + w.user.toLowerCase()).transaction(u => {
+                if (u) u.balance = (u.balance || 0) + prize;
+                return u;
+            });
+        }
+
+        if (winners.length > 0) {
+            await sendChatMessage(`🏆 YARIŞ BİTTİ! Kazanan at: ${winner} Numaralı At! 💰 Kazananlar: ${winnersText}`, broadcasterId);
+        } else {
+            await sendChatMessage(`🏆 YARIŞ BİTTİ! Kazanan at: ${winner} Numaralı At! Ama kimse kazanamadı... 😢`, broadcasterId);
+        }
+
+        delete horseRaces[broadcasterId];
+    }, 15000);
+}
 
 // --- ADMIN QUEST MANAGEMENT ---
 app.post('/admin-api/add-quest', authAdmin, async (req, res) => {
