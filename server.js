@@ -1280,6 +1280,13 @@ app.post('/kick/webhook', async (req, res) => {
                 if (rig !== undefined) delete riggedStats[user.toLowerCase()].keko;
             }
 
+            else if (isEnabled('fal') && lowMsg === '!prenses') {
+                const rig = riggedStats[user.toLowerCase()]?.prenses;
+                const p = rig !== undefined ? rig : Math.floor(Math.random() * 101);
+                await reply(`👸 @${user} Prenseslik Seviyesi: %${p} ${p > 80 ? '👑 Tam bir prensessin!' : '👸'}`);
+                if (rig !== undefined) delete riggedStats[user.toLowerCase()].prenses;
+            }
+
 
             // --- YENİ BAKİYE HARCAMA KOMUTLARI: TTS & SES ---
             else if (lowMsg.startsWith('!tts')) {
@@ -1654,7 +1661,7 @@ app.post('/kick/webhook', async (req, res) => {
             else if (lowMsg === '!komutlar') {
                 const toggleable = ['slot', 'yazitura', 'kutu', 'duello', 'soygun', 'fal', 'ship', 'hava', 'zenginler', 'soz'];
                 const enabled = toggleable.filter(k => settings[k] !== false).map(k => "!" + k);
-                const fixed = ['!bakiye', '!günlük', '!sustur', '!efkar', '!veriler'];
+                const fixed = ['!bakiye', '!günlük', '!sustur', '!efkar', '!veriler', '!prenses'];
                 await reply(`📋 Komutlar: ${[...enabled, ...fixed].join(', ')}`);
             }
         }
