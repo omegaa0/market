@@ -1643,10 +1643,18 @@ app.post('/kick/webhook', async (req, res) => {
                 });
             }
 
+            else if (lowMsg === '!veriler') {
+                const snap = await userRef.once('value');
+                const d = snap.val() || {};
+                const watchTime = d.channel_watch_time?.[broadcasterId] || 0;
+                const messageCount = d.channel_m?.[broadcasterId] || 0;
+                await reply(`📊 @${user} Verilerin:\n🕒 İzleme: ${watchTime} dakika\n💬 Mesaj: ${messageCount}`);
+            }
+
             else if (lowMsg === '!komutlar') {
                 const toggleable = ['slot', 'yazitura', 'kutu', 'duello', 'soygun', 'fal', 'ship', 'hava', 'zenginler', 'soz'];
                 const enabled = toggleable.filter(k => settings[k] !== false).map(k => "!" + k);
-                const fixed = ['!bakiye', '!günlük', '!sustur', '!efkar'];
+                const fixed = ['!bakiye', '!günlük', '!sustur', '!efkar', '!veriler'];
                 await reply(`📋 Komutlar: ${[...enabled, ...fixed].join(', ')}`);
             }
         }
