@@ -1133,7 +1133,7 @@ app.post('/kick/webhook', async (req, res) => {
             else if (settings.hava !== false && (lowMsg === '!hava' || lowMsg.startsWith('!hava '))) {
                 const city = args.join(' ');
                 const cityLower = city.toLowerCase();
-                if (cityLower === "kürdistan" || cityLower === "rojova" || cityLower === "rojava") {
+                if (cityLower === "kürdistan" || cityLower === "kurdistan" || cityLower === "rojova" || cityLower === "rojava") {
                     return await reply("T.C. sınırları içerisinde böyle bir yer bulunamadı! 🇹🇷");
                 }
                 try {
