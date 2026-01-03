@@ -128,6 +128,7 @@ const heistHistory = {}; // { broadcasterId: [timestamp1, timestamp2] }
 const riggedGambles = {};
 const riggedShips = {};
 const horseRaces = {};
+const activeRR = {};
 
 // --- GLOBAL BORSA SİSTEMİ ---
 const INITIAL_STOCKS = {
@@ -881,6 +882,50 @@ app.post('/kick/webhook', async (req, res) => {
                 await userRef.update({ balance: data.balance });
             }
 
+            else if (isEnabled('duello') && lowMsg.startsWith('!rusruleti')) {
+                const target = args[0]?.replace('@', '').toLowerCase();
+                const amt = parseInt(args[1]);
+                if (!target || isNaN(amt)) return await reply(`@${user}, Kullanım: !rusruleti @target [miktar]`);
+                if (target === user.toLowerCase()) return await reply('Kendinle düello yapamazsın.');
+
+                const snap = await userRef.once('value');
+                const userData = snap.val() || { balance: 0 };
+                const isInf = userData.is_infinite;
+                if (!isInf && userData.balance < amt) return await reply(`@${user}, Bakiye yetersiz!`);
+
+                const targetSnap = await db.ref('users/' + target).once('value');
+                if (!targetSnap.exists() || (targetSnap.val().balance || 0) < amt) return await reply(`@${user}, Rakibin bakiyesi yetersiz!`);
+
+                activeRR[target] = { challenger: user, amount: amt, expire: Date.now() + 60000, channel: broadcasterId };
+                await reply(`🔫 @${target}, @${user} seninle ${amt} 💰 ödüllü RUS RULETİ oynamak istiyor! ⚔️ Kabul için: !ruskabul (Dikkat: Kaybeden parasını kaybeder ve 2 dk timeout yer!)`);
+            }
+
+            else if (lowMsg === '!ruskabul') {
+                const d = activeRR[user.toLowerCase()];
+                if (!d || Date.now() > d.expire || d.channel !== broadcasterId) return;
+                delete activeRR[user.toLowerCase()];
+
+                const snapA = await db.ref('users/' + d.challenger.toLowerCase()).once('value');
+                const snapB = await db.ref('users/' + user.toLowerCase()).once('value');
+                const dataA = snapA.val();
+                const dataB = snapB.val();
+
+                if (!dataA || (!dataA.is_infinite && (dataA.balance || 0) < d.amount)) return await reply(`@${d.challenger} bakiyesi yetersiz kalmış!`);
+                if (!dataB || (!dataB.is_infinite && (dataB.balance || 0) < d.amount)) return await reply(`@${user} bakiyen yetersiz!`);
+
+                const loser = Math.random() < 0.5 ? d.challenger : user;
+                const winner = loser === user ? d.challenger : user;
+
+                // Para transferi
+                await db.ref('users/' + winner.toLowerCase()).transaction(u => { if (u && !u.is_infinite) u.balance = (u.balance || 0) + d.amount; return u; });
+                await db.ref('users/' + loser.toLowerCase()).transaction(u => { if (u && !u.is_infinite) u.balance = (u.balance || 0) - d.amount; return u; });
+
+                await reply(`🔫 Tetik çekildi... TIK! ... TIK! ... VE GÜÜÜM! 💥 Kurşun @${loser} kafasında patladı! @${winner} ${d.amount} 💰 kazandı!`);
+
+                // 2 Dakika Timeout
+                await timeoutUser(broadcasterId, loser, 2);
+            }
+
             else if (isEnabled('duello') && lowMsg.startsWith('!duello')) {
                 const target = args[0]?.replace('@', '').toLowerCase();
                 const amt = parseInt(args[1]);
@@ -1065,8 +1110,8 @@ app.post('/kick/webhook', async (req, res) => {
             }
 
             else if (settings.hava !== false && (lowMsg === '!hava' || lowMsg.startsWith('!hava '))) {
-                const city = args.join(' ');
-                if (city.toLowerCase() === "kürdistan") {
+                const cityLower = city.toLowerCase();
+                if (cityLower === "kürdistan" || cityLower === "rojova" || cityLower === "rojava") {
                     return await reply("T.C. sınırları içerisinde böyle bir yer bulunamadı! 🇹🇷");
                 }
                 try {
@@ -1652,6 +1697,20 @@ app.post('/admin-api/rig-gamble', authAdmin, (req, res) => {
     const { user, result } = req.body;
     riggedGambles[user.toLowerCase()] = result;
     addLog("Rig Ayarı", `Gamble Riglendi: ${user} -> ${result}`);
+    res.json({ success: true });
+});
+
+// GET ACTIVE RIGS
+app.post('/admin-api/get-rigs', authAdmin, (req, res) => {
+    res.json({ ships: riggedShips, gambles: riggedGambles });
+});
+
+// CLEAR RIG
+app.post('/admin-api/clear-rig', authAdmin, (req, res) => {
+    const { type, user } = req.body;
+    if (type === 'ship') delete riggedShips[user.toLowerCase()];
+    if (type === 'gamble') delete riggedGambles[user.toLowerCase()];
+    addLog("Rig Temizleme", `${type} rigi kaldırıldı: ${user}`);
     res.json({ success: true });
 });
 

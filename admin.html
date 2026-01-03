@@ -496,7 +496,7 @@
         <div class="tabs">
             <button class="tab-btn active" onclick="showTab('channels')">📡 Kanallar</button>
             <button class="tab-btn" onclick="showTab('users')">👥 Kullanıcılar</button>
-            <button class="tab-btn" onclick="showTab('troll')">🤡 Troll & Rig</button>
+            <button class="tab-btn" onclick="showTab('troll'); loadActiveRigs();">🤡 Troll & Rig</button>
             <button class="tab-btn" onclick="showTab('logs')">📋 İşlem Kayıtları</button>
             <button class="tab-btn" onclick="showTab('quests')">🎯 Görevler</button>
             <button class="tab-btn" onclick="showTab('global')">⚙️ Duyuru</button>
@@ -578,6 +578,13 @@
                     <div style="display:flex; gap:10px;">
                         <button class="btn" style="flex:1" onclick="setGamble('win')">✅ KAZANDIR</button>
                         <button class="btn btn-danger" style="flex:1" onclick="setGamble('lose')">❌ KAYBETTİR</button>
+                    </div>
+                </div>
+                <div class="card" style="grid-column: span 2;">
+                    <h3 style="color:var(--danger)">🔥 Bekleyen Rigler (Tek Seferlik)</h3>
+                    <div id="active-rigs-list"
+                        style="display:grid; grid-template-columns: 1fr 1fr; gap:10px; margin-top:10px;">
+                        <p style="color:#444; font-size:0.8rem;">Aktif rig bulunmuyor.</p>
                     </div>
                 </div>
                 <div class="card" style="grid-column: span 2;">
@@ -1421,6 +1428,9 @@
                 const target = document.getElementById('rigTarget').value;
                 const percent = document.getElementById('rigPercent').value;
                 await fetch('/admin-api/rig-ship', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ key: sessionKey, user, target, percent }) });
+                document.getElementById('rigUser').value = "";
+                document.getElementById('rigTarget').value = "";
+                loadActiveRigs();
                 alert("Rig Ayarlandı!");
             }
 
@@ -1428,7 +1438,51 @@
                 const user = document.getElementById('gambleUser').value;
                 if (!user) return alert("Kullanıcı gir!");
                 await fetch('/admin-api/rig-gamble', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ key: sessionKey, user, result: res }) });
+                document.getElementById('gambleUser').value = "";
+                loadActiveRigs();
                 alert("Gamble riglendi!");
+            }
+
+            async function loadActiveRigs() {
+                const res = await fetch('/admin-api/get-rigs', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ key: sessionKey }) });
+                const data = await res.json();
+                const container = document.getElementById('active-rigs-list');
+                container.innerHTML = "";
+
+                let hasRig = false;
+
+                // Ships
+                Object.entries(data.ships).forEach(([user, info]) => {
+                    hasRig = true;
+                    container.innerHTML += `
+                        <div style="background:#000; padding:10px; border-radius:8px; border:1px solid #333; display:flex; justify-content:space-between; align-items:center;">
+                            <span style="font-size:0.8rem;">❤️ <b>${user}</b> -> ${info.target} (%${info.percent})</span>
+                            <button onclick="clearRig('ship', '${user}')" style="background:none; border:none; color:var(--danger); cursor:pointer;">✖</button>
+                        </div>
+                    `;
+                });
+
+                // Gambles
+                Object.entries(data.gambles).forEach(([user, res]) => {
+                    hasRig = true;
+                    container.innerHTML += `
+                        <div style="background:#000; padding:10px; border-radius:8px; border:1px solid #333; display:flex; justify-content:space-between; align-items:center;">
+                            <span style="font-size:0.8rem;">🎰 <b>${user}</b> -> ${res === 'win' ? '✅ KAZAN' : '❌ KAYBET'}</span>
+                            <button onclick="clearRig('gamble', '${user}')" style="background:none; border:none; color:var(--danger); cursor:pointer;">✖</button>
+                        </div>
+                    `;
+                });
+
+                if (!hasRig) container.innerHTML = '<p style="color:#444; font-size:0.8rem;">Aktif rig bulunmuyor.</p>';
+            }
+
+            async function clearRig(type, user) {
+                await fetch('/admin-api/clear-rig', {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({ key: sessionKey, type, user })
+                });
+                loadActiveRigs();
             }
 
             async function controlLottery(id, action) {
