@@ -344,19 +344,31 @@ async function loadBorsa() {
     container.innerHTML = `<div style="text-align:center; width:100%; padding:60px;"><div class="loader"></div><p style="margin-top:10px;">Borsa verileri yükleniyor...</p></div>`;
 
     const renderStocks = (stocks) => {
-        container.innerHTML = "";
-        if (!stocks || Object.keys(stocks).length === 0) {
+        if (!stocks) return;
+
+        // --- HATA KONTROLÜ ---
+        if (stocks.error) {
+            console.error("Borsa Error Data:", stocks.error);
             container.innerHTML = `
-                <div style="grid-column: 1 / -1; text-align:center; padding: 40px 20px; background: rgba(255,255,255,0.02); border-radius: 20px; border: 1px dashed var(--glass-border);">
-                    <div style="font-size: 2rem; margin-bottom: 20px;">📉</div>
-                    <h3 style="margin-bottom: 10px;">Borsa Şu An Kapalı</h3>
-                    <p>Sunucudan veri alınamadı. Lütfen bir süre sonra tekrar deneyin.</p>
+                <div style="grid-column: 1 / -1; text-align:center; padding: 40px; background: rgba(255,50,50,0.05); border-radius: 15px; border: 1px solid rgba(255,50,50,0.2);">
+                    <div style="font-size: 2rem; margin-bottom: 10px;">⚠️</div>
+                    <h3 style="color:#ff4d4d;">Borsa Bağlantı Hatası</h3>
+                    <p style="font-size:0.8rem;">${stocks.error}</p>
                 </div>
             `;
             return;
         }
 
-        Object.entries(stocks).forEach(([code, data]) => {
+        container.innerHTML = "";
+        const entries = Object.entries(stocks);
+
+        if (entries.length === 0) {
+            container.innerHTML = `<p style="grid-column: 1/-1; text-align:center; padding:40px;">Borsa şu an kapalı.</p>`;
+            return;
+        }
+
+        entries.forEach(([code, data]) => {
+            if (!data || typeof data !== 'object') return;
             const trend = data.trend === 1 ? '📈' : '📉';
             const color = data.trend === 1 ? '#05ea6a' : '#ff4d4d';
             const diff = data.oldPrice ? (((data.price - data.oldPrice) / data.oldPrice) * 100).toFixed(2) : "0.00";

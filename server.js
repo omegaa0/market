@@ -2373,10 +2373,17 @@ app.get('/health', (req, res) => res.status(200).send('OK (Bot Uyanık)'));
 
 app.get('/api/borsa', async (req, res) => {
     try {
-        const snap = await db.ref('global_stocks').once('value');
-        res.json(snap.val() || INITIAL_STOCKS);
+        const snap = await db.ref('global_stocks').once('value').catch(err => {
+            console.error("Firebase Read Error (Borsa API):", err.message);
+            return null;
+        });
+
+        const data = snap ? snap.val() : null;
+        // Eğer Firebase boşsa veya hata verdiyse INITIAL_STOCKS'u (güncel halini) gönder
+        res.json(data || INITIAL_STOCKS);
     } catch (e) {
-        res.status(500).json({ error: e.message });
+        console.error("Borsa API Route Error:", e);
+        res.json(INITIAL_STOCKS); // En kötü ihtimalle başlangıç değerlerini JSON olarak gönder (hata verme)
     }
 });
 
