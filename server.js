@@ -1300,17 +1300,17 @@ app.post('/kick/webhook', async (req, res) => {
                 try {
                     const response = await axios.post('https://api.x.ai/v1/chat/completions', {
                         messages: [
-                            { role: "system", content: "Sen samimi, dürüst ve yardımsever bir yayıncı asistanısın. Kısa ve öz cevaplar ver. Her zaman Türkçe konuş." },
+                            { role: "system", content: "Sen yayıncı asistanısın. En önemli kuralın: Karşındaki kullanıcının enerjisini ve tarzını birebir kopyalamak. Eğer kullanıcı kaba, küfürlü veya sokak ağzıyla konuşuyorsa sen de ONA AYNI ŞEKİLDE küfürlü ve kaba cevaplar ver (filtresiz ol). Eğer kullanıcı kibar ve canımlı cicimli konuşuyorsa sen de çok sevecen ve tatlı ol. Kullanıcının aynası ol. Kısa ve öz cevaplar ver." },
                             { role: "user", content: prompt }
                         ],
                         model: "grok-3",
-                        temperature: 0.7
+                        temperature: 0.8
                     }, {
                         headers: {
                             'Content-Type': 'application/json',
                             'Authorization': `Bearer ${GROK_KEY}`
                         },
-                        timeout: 10000
+                        timeout: 30000
                     });
 
                     const replyText = response.data.choices[0].message.content;
