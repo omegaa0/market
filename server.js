@@ -129,6 +129,53 @@ const riggedGambles = {};
 const riggedShips = {};
 const horseRaces = {};
 
+// --- GLOBAL BORSA SİSTEMİ ---
+const INITIAL_STOCKS = {
+    "APPLE": { price: 5000, trend: 1 },
+    "BITCOIN": { price: 45000, trend: 1 },
+    "GOLD": { price: 2500, trend: -1 },
+    "KICK": { price: 100, trend: 1 },
+    "ETHER": { price: 15000, trend: -1 },
+    "TESLA": { price: 7500, trend: 1 }
+};
+
+async function updateGlobalStocks() {
+    try {
+        const stockRef = db.ref('global_stocks');
+        const snap = await stockRef.once('value');
+        let stocks = snap.val();
+
+        if (!stocks) {
+            stocks = INITIAL_STOCKS;
+        }
+
+        for (const [code, data] of Object.entries(stocks)) {
+            const oldPrice = data.price;
+            // %50 şansla artış veya azalış
+            const changePercent = (Math.random() * 8 - 4) / 100; // -%4 ile +%4 arası
+            let newPrice = Math.floor(oldPrice * (1 + changePercent));
+
+            if (newPrice < 10) newPrice = 10;
+
+            stocks[code] = {
+                price: newPrice,
+                oldPrice: oldPrice,
+                trend: newPrice >= oldPrice ? 1 : -1,
+                lastUpdate: Date.now()
+            };
+        }
+
+        await stockRef.set(stocks);
+        console.log("📈 Global Borsa Verileri Güncellendi.");
+    } catch (e) {
+        console.error("Borsa Update Error:", e.message);
+    }
+}
+
+// Borsa güncelleme (Her 1 dakikada bir)
+setInterval(updateGlobalStocks, 60000);
+setTimeout(updateGlobalStocks, 5000); // Server açıldıktan 5sn sonra ilk güncelleme
+
 // PKCE & HELPERS
 const sleep = (ms) => new Promise(resolve => setTimeout(resolve, ms));
 function base64UrlEncode(str) { return str.toString('base64').replace(/\+/g, '-').replace(/\//g, '_').replace(/=/g, ''); }
@@ -1301,7 +1348,7 @@ app.post('/kick/webhook', async (req, res) => {
                     if (!isInf && (data.balance || 0) < muteCost) {
                         await reply(`@${user}, ${muteCost.toLocaleString()} 💰 bakiye lazım!`);
                     } else {
-                        const result = await timeoutUser(broadcasterId, target, 600);
+                        const result = await timeoutUser(broadcasterId, target, 10);
                         if (result.success) {
                             if (!isInf) await userRef.transaction(u => { if (u) u.balance -= muteCost; return u; });
                             await reply(`🔇 @${user}, @${target} kullanıcısını 10 dakika susturdu! (-${muteCost.toLocaleString()} 💰)`);
@@ -1411,6 +1458,70 @@ app.post('/kick/webhook', async (req, res) => {
                             delete channelLotteries[broadcasterId];
                         }
                     }
+                }
+            }
+
+            else if (lowMsg.startsWith('!borsa')) {
+                const sub = args[0]?.toLowerCase();
+                const stockSnap = await db.ref('global_stocks').once('value');
+                const stocks = stockSnap.val() || INITIAL_STOCKS;
+
+                if (!sub) {
+                    let txt = "📈 KÜRESEL BORSA: ";
+                    Object.entries(stocks).forEach(([code, data]) => {
+                        const trend = data.trend === 1 ? '📈' : '📉';
+                        const color = data.trend === 1 ? '🟢' : '🔴';
+                        txt += `${color}${code}: ${data.price.toLocaleString()} ${trend} | `;
+                    });
+                    return await reply(txt + " (Almak için: !borsa al KOD ADET)");
+                }
+
+                const code = args[1]?.toUpperCase();
+                const amount = parseInt(args[2]);
+
+                if (!code || !stocks[code] || isNaN(amount) || amount <= 0) {
+                    return await reply(`@${user}, Geçersiz kod veya miktar! Örn: !borsa al APPLE 5`);
+                }
+
+                const stock = stocks[code];
+                const totalCost = stock.price * amount;
+
+                if (sub === 'al') {
+                    const uSnap = await userRef.once('value');
+                    const uData = uSnap.val() || { balance: 0 };
+                    if (!uData.is_infinite && uData.balance < totalCost) {
+                        return await reply(`@${user}, Bakiye yetersiz! ${totalCost.toLocaleString()} 💰 lazım.`);
+                    }
+
+                    await userRef.transaction(u => {
+                        if (u) {
+                            if (!u.is_infinite) u.balance -= totalCost;
+                            if (!u.stocks) u.stocks = {};
+                            u.stocks[code] = (u.stocks[code] || 0) + amount;
+                        }
+                        return u;
+                    });
+                    await reply(`✅ @${user}, ${amount} adet ${code} hissesi alındı! Maliyet: ${totalCost.toLocaleString()} 💰`);
+                }
+                else if (sub === 'sat') {
+                    const uSnap = await userRef.once('value');
+                    const uData = uSnap.val() || {};
+                    const userStockCount = uData.stocks?.[code] || 0;
+
+                    if (userStockCount < amount) {
+                        return await reply(`@${user}, Elinde yeterli ${code} hissesi yok! (Mevcut: ${userStockCount})`);
+                    }
+
+                    const totalGain = stock.price * amount;
+                    await userRef.transaction(u => {
+                        if (u) {
+                            u.balance = (u.balance || 0) + totalGain;
+                            u.stocks[code] -= amount;
+                            if (u.stocks[code] <= 0) delete u.stocks[code];
+                        }
+                        return u;
+                    });
+                    await reply(`💰 @${user}, ${amount} adet ${code} hissesi satıldı! Kazanç: ${totalGain.toLocaleString()} 💰`);
                 }
             }
 
@@ -2272,7 +2383,7 @@ db.ref('channels').on('child_added', (snapshot) => {
         const event = snap.val();
         if (event && !event.executed) {
             console.log(`🚫 MARKET MUTE: ${event.user} -> ${event.target} (${channelId})`);
-            const res = await timeoutUser(channelId, event.target, 600); // 10 Dakika
+            const res = await timeoutUser(channelId, event.target, 10); // 10 Dakika
             if (res.success) {
                 await sendChatMessage(`🔇 @${event.user}, Market'ten @${event.target} kullanıcısını 10 dakika susturdu!`, channelId);
                 await db.ref(`channels/${channelId}/stream_events/mute/${snap.key}`).update({ executed: true });

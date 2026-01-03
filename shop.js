@@ -36,10 +36,9 @@ const FREE_COMMANDS = [
     { cmd: "!söz", desc: "Rastgele anlamlı bir söz paylaşır" },
     { cmd: "!efkar", desc: "Efkar seviyesini ölçer" },
     { cmd: "!hava [şehir]", desc: "Hava durumunu öğrenir" },
-    { cmd: "!toxic", desc: "Toksiklik oranını ölçer" },
-    { cmd: "!karizma", desc: "Karizma oranını ölçer" },
-    { cmd: "!gay", desc: "Gaylik oranını ölçer" },
-    { cmd: "!keko", desc: "Kekoluk oranını ölçer" }
+    { cmd: "!borsa", desc: "Küresel borsa durumunu görür" },
+    { cmd: "!borsa al [kod] [adet]", desc: "Hisse senedi satın alır" },
+    { cmd: "!borsa sat [kod] [adet]", desc: "Hisse senedi satışı yapar" }
 ];
 
 // UI Elements
@@ -329,8 +328,94 @@ function switchTab(id) {
     event.currentTarget.classList.add('active');
 
     if (id === 'leaderboard') loadLeaderboard();
+    if (id === 'borsa') loadBorsa();
     if (id === 'quests') loadQuests();
     if (id === 'profile') loadProfile();
+}
+
+async function loadBorsa() {
+    const container = document.getElementById('borsa-items');
+    if (!container) return;
+    container.innerHTML = `<div class="loading-spinner"></div>`;
+
+    db.ref('global_stocks').on('value', snap => {
+        const stocks = snap.val() || {};
+        container.innerHTML = "";
+
+        Object.entries(stocks).forEach(([code, data]) => {
+            const trend = data.trend === 1 ? '📈' : '📉';
+            const color = data.trend === 1 ? '#05ea6a' : '#ff4d4d';
+            const sign = data.trend === 1 ? '+' : '';
+            const diff = data.oldPrice ? ((data.price - data.oldPrice) / data.oldPrice * 100).toFixed(2) : 0;
+
+            const card = document.createElement('div');
+            card.className = 'item-card';
+            card.innerHTML = `
+                <div style="display:flex; justify-content:space-between; align-items:center;">
+                    <span style="font-size:1.5rem;">🏦</span>
+                    <span style="color:${color}; font-weight:800; font-size:0.9rem;">${sign}${diff}% ${trend}</span>
+                </div>
+                <h3 style="margin:10px 0;">${code}</h3>
+                <div style="font-size:1.5rem; font-weight:800; color:white; margin-bottom:15px;">
+                    ${data.price.toLocaleString()} <span style="font-size:0.8rem; color:var(--primary);">💰</span>
+                </div>
+                <div style="display:grid; grid-template-columns: 1fr 1fr; gap:10px;">
+                    <button class="buy-btn" onclick="executeBorsaBuy('${code}', ${data.price})" style="background:#05ea6a; color:black; border:none; border-radius:8px; font-weight:bold; cursor:pointer; padding:10px;">AL</button>
+                    <button class="buy-btn" onclick="executeBorsaSell('${code}', ${data.price})" style="background:#ff4d4d; color:white; border:none; border-radius:8px; font-weight:bold; cursor:pointer; padding:10px;">SAT</button>
+                </div>
+            `;
+            container.appendChild(card);
+        });
+    });
+}
+
+async function executeBorsaBuy(code, price) {
+    if (!currentUser) return;
+    const amount = prompt(`${code} hissesinden kaç adet almak istersin?`);
+    if (!amount || isNaN(amount) || amount <= 0) return;
+
+    const total = price * parseInt(amount);
+    if (!confirm(`${amount} adet ${code} için ${total.toLocaleString()} 💰 ödenecek. Onaylıyor musun?`)) return;
+
+    db.ref('users/' + currentUser).once('value', async (snap) => {
+        const u = snap.val() || { balance: 0 };
+        if (!u.is_infinite && u.balance < total) return showToast("Bakiye yetersiz!", "error");
+
+        await db.ref('users/' + currentUser).transaction(user => {
+            if (user) {
+                if (!user.is_infinite) user.balance -= total;
+                if (!user.stocks) user.stocks = {};
+                user.stocks[code] = (user.stocks[code] || 0) + parseInt(amount);
+            }
+            return user;
+        });
+        showToast(`${amount} adet ${code} alındı!`, "success");
+    });
+}
+
+async function executeBorsaSell(code, price) {
+    if (!currentUser) return;
+    db.ref('users/' + currentUser).once('value', async (snap) => {
+        const u = snap.val() || {};
+        const owned = u.stocks?.[code] || 0;
+
+        if (owned <= 0) return showToast("Bu hisseden elinde yok!", "error");
+
+        const amount = prompt(`Kaç adet satmak istersin? (Mevcut: ${owned})`);
+        if (!amount || isNaN(amount) || amount <= 0) return;
+        if (parseInt(amount) > owned) return showToast("Elindekinden fazlasını satamazsın!", "error");
+
+        const total = price * parseInt(amount);
+        await db.ref('users/' + currentUser).transaction(user => {
+            if (user) {
+                user.balance = (user.balance || 0) + total;
+                user.stocks[code] -= parseInt(amount);
+                if (user.stocks[code] <= 0) delete user.stocks[code];
+            }
+            return user;
+        });
+        showToast(`${amount} adet ${code} satıldı! Kazanç: ${total.toLocaleString()} 💰`, "success");
+    });
 }
 
 let lbType = 'global';
@@ -495,6 +580,20 @@ async function loadProfile() {
                             <label>Düello Galibiyet</label>
                             <div class="v">${u.lifetime_d || 0}</div>
                         </div>
+                    </div>
+                </div>
+
+                <div class="portfolio-section" style="margin-top:20px; border-top:1px solid rgba(255,255,255,0.1); padding-top:20px;">
+                    <h3 style="margin-bottom:15px; font-size:1rem; opacity:0.8;">📂 Borsa Portföyüm</h3>
+                    <div id="user-portfolio" style="display:grid; grid-template-columns: repeat(2, 1fr); gap:10px;">
+                        ${u.stocks && Object.keys(u.stocks).length > 0 ?
+                Object.entries(u.stocks).map(([code, amt]) => `
+                                <div class="stat-mini" style="border:1px solid #05ea6a33; background:rgba(5, 234, 106, 0.05);">
+                                    <label>${code}</label>
+                                    <div class="v">${amt} Adet</div>
+                                </div>
+                            `).join('') : '<p style="grid-column: span 2; font-size: 0.8rem; color:#666;">Henüz hissedar değilsin.</p>'
+            }
                     </div>
                 </div>
             </div>

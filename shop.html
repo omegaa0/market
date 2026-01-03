@@ -179,6 +179,7 @@
         <nav class="tabs-nav">
             <button class="tab-btn active" onclick="switchTab('market')">🛒 Market</button>
             <button class="tab-btn" onclick="switchTab('leaderboard')">🏆 Liderlik</button>
+            <button class="tab-btn" onclick="switchTab('borsa')">📈 Borsa</button>
             <button class="tab-btn" onclick="switchTab('quests')">🎯 Görevler</button>
             <button class="tab-btn" onclick="switchTab('profile')">👤 Profilim</button>
         </nav>
@@ -210,7 +211,6 @@
                     </div>
                 </div>
 
-                <!-- LEADERBOARD TAB -->
                 <div id="tab-leaderboard" class="tab-content hidden">
                     <h2 style="margin-bottom:20px;">🏆 En Zenginler (Top 10)</h2>
                     <div style="display:flex; justify-content:center; gap:10px; margin-bottom:20px;">
@@ -220,6 +220,16 @@
                             onclick="switchLB('channel')">📺 KANAL</button>
                     </div>
                     <div id="leaderboard-container" class="leaderboard-list">
+                        <!-- JS fills -->
+                    </div>
+                </div>
+
+                <!-- BORSA TAB -->
+                <div id="tab-borsa" class="tab-content hidden">
+                    <h2 style="margin-bottom:20px;">📈 Küresel Borsa (Canlı)</h2>
+                    <p style="color:var(--text-dim); margin-bottom:20px; font-size:0.9rem;">Hisselerin fiyatları her 1
+                        dakikada bir güncellenir. Tüm kanallarda ortaktır.</p>
+                    <div id="borsa-items" class="market-grid">
                         <!-- JS fills -->
                     </div>
                 </div>
