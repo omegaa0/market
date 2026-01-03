@@ -1287,14 +1287,17 @@ app.post('/kick/webhook', async (req, res) => {
                 if (rig !== undefined) delete riggedStats[user.toLowerCase()].prenses;
             }
 
-            else if (lowMsg.startsWith('!aiemir ') && user.toLowerCase() === "omegacyr") {
+            else if (lowMsg.startsWith('!aiemir')) {
+                if (user.toLowerCase() !== "omegacyr") {
+                    return; // Yetkisi yoksa sessizce geç veya mesaj at
+                }
                 const emir = args.join(' ');
                 if (!emir) return await reply(`⚠️ @${user}, Lütfen bir emir gir!`);
                 await db.ref('users/ai_system/instructions').set(emir);
                 await reply(`✅ @${user}, AI emirleri güncellendi: "${emir}"`);
             }
 
-            else if (lowMsg.startsWith('!ai')) {
+            else if (isEnabled('ai') && (lowMsg.startsWith('!ai ') || lowMsg === '!ai')) {
                 const isSub = event.sender?.identity?.badges?.some(b => b.type === 'subscriber' || b.type === 'broadcaster' || b.type === 'moderator' || b.type === 'founder');
                 if (!isSub) return await reply(`🤫 @${user}, Bu komut sadece ABONELERE özeldir! ✨`);
 
@@ -1706,7 +1709,7 @@ app.post('/kick/webhook', async (req, res) => {
             }
 
             else if (lowMsg === '!komutlar') {
-                const toggleable = ['slot', 'yazitura', 'kutu', 'duello', 'soygun', 'fal', 'ship', 'hava', 'zenginler', 'soz'];
+                const toggleable = ['slot', 'yazitura', 'kutu', 'duello', 'soygun', 'fal', 'ship', 'hava', 'zenginler', 'soz', 'ai'];
                 const enabled = toggleable.filter(k => settings[k] !== false).map(k => "!" + k);
                 const fixed = ['!bakiye', '!günlük', '!sustur', '!efkar', '!veriler', '!prenses', '!ai'];
                 await reply(`📋 Komutlar: ${[...enabled, ...fixed].join(', ')}`);
