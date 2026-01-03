@@ -155,19 +155,26 @@ async function updateGlobalStocks() {
         }
 
         for (const [code, data] of Object.entries(stocks)) {
-            const oldPrice = data.price;
-            // %50 şansla artış veya azalış
-            // Anlık değişim: -%2 ile +%2 arası (Saniyede bir olduğu için daha makul)
-            const changePercent = (Math.random() * 4 - 2) / 100;
-            let newPrice = Math.floor(oldPrice * (1 + changePercent));
+            const oldPrice = data.price || INITIAL_STOCKS[code]?.price || 100;
+
+            // Daha agresif saniyelik hareket: -%1.5 ile +%1.5 arası
+            const changePercent = (Math.random() * 3 - 1.5) / 100;
+            let change = oldPrice * changePercent;
+
+            // Minimum 1 birim hareket sağla (eğer değişim 0 değilse)
+            if (Math.abs(change) < 0.5 && changePercent !== 0) {
+                change = changePercent > 0 ? 1 : -1;
+            }
+
+            let newPrice = Math.round(oldPrice + change);
 
             if (newPrice < 10) newPrice = 10;
-            if (newPrice > 1000000) newPrice = 1000000; // Milyon sınırı
+            if (newPrice > 1000000) newPrice = 1000000;
 
             stocks[code] = {
                 price: newPrice,
                 oldPrice: oldPrice,
-                trend: newPrice >= oldPrice ? 1 : -1,
+                trend: newPrice > oldPrice ? 1 : (newPrice < oldPrice ? -1 : (data.trend || 1)),
                 lastUpdate: Date.now()
             };
         }

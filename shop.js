@@ -383,7 +383,7 @@ async function loadBorsa() {
                     </span>
                 </div>
                 <h3 style="margin:5px 0; font-size:1.2rem;">${code}</h3>
-                <div style="font-size:1.7rem; font-weight:800; color:white; margin:15px 0;">
+                <div class="price-val" data-code="${code}" style="font-size:1.7rem; font-weight:800; color:white; margin:15px 0; transition: color 0.3s ease;">
                     ${(data.price || 0).toLocaleString()} <span style="font-size:0.9rem; color:var(--primary);">💰</span>
                 </div>
                 <div style="display:grid; grid-template-columns: 1fr 1fr; gap:10px;">
