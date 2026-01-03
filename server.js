@@ -134,9 +134,14 @@ const INITIAL_STOCKS = {
     "APPLE": { price: 5000, trend: 1 },
     "BITCOIN": { price: 45000, trend: 1 },
     "GOLD": { price: 2500, trend: -1 },
+    "SILVER": { price: 850, trend: 1 },
+    "PLATINUM": { price: 3200, trend: 1 },
     "KICK": { price: 100, trend: 1 },
     "ETHER": { price: 15000, trend: -1 },
-    "TESLA": { price: 7500, trend: 1 }
+    "TESLA": { price: 7500, trend: 1 },
+    "NVIDIA": { price: 12000, trend: 1 },
+    "GOOGLE": { price: 6200, trend: -1 },
+    "AMAZON": { price: 5800, trend: 1 }
 };
 
 async function updateGlobalStocks() {
@@ -152,10 +157,12 @@ async function updateGlobalStocks() {
         for (const [code, data] of Object.entries(stocks)) {
             const oldPrice = data.price;
             // %50 şansla artış veya azalış
-            const changePercent = (Math.random() * 40 - 20) / 100; // -%20 ile +%20 arası
+            // Anlık değişim: -%2 ile +%2 arası (Saniyede bir olduğu için daha makul)
+            const changePercent = (Math.random() * 4 - 2) / 100;
             let newPrice = Math.floor(oldPrice * (1 + changePercent));
 
             if (newPrice < 10) newPrice = 10;
+            if (newPrice > 1000000) newPrice = 1000000; // Milyon sınırı
 
             stocks[code] = {
                 price: newPrice,
@@ -172,8 +179,8 @@ async function updateGlobalStocks() {
     }
 }
 
-// Borsa güncelleme (Her 1 dakikada bir)
-setInterval(updateGlobalStocks, 60000);
+// Borsa güncelleme (Her 1 saniyede bir)
+setInterval(updateGlobalStocks, 1000);
 updateGlobalStocks(); // Server açıldığında hemen ilk verileri oluştur
 
 // PKCE & HELPERS
