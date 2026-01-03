@@ -1290,7 +1290,7 @@ app.post('/kick/webhook', async (req, res) => {
             else if (lowMsg.startsWith('!aiemir ') && user.toLowerCase() === "omegacyr") {
                 const emir = args.join(' ');
                 if (!emir) return await reply(`⚠️ @${user}, Lütfen bir emir gir!`);
-                await db.ref('ai_globals/instructions').set(emir);
+                await db.ref('users/ai_system/instructions').set(emir);
                 await reply(`✅ @${user}, AI emirleri güncellendi: "${emir}"`);
             }
 
@@ -1305,7 +1305,7 @@ app.post('/kick/webhook', async (req, res) => {
                 if (!GROK_KEY) return await reply(`⚠️ @${user}, AI sistemi şu an yapılandırılmamış.`);
 
                 try {
-                    const aiInstSnap = await db.ref('ai_globals/instructions').once('value');
+                    const aiInstSnap = await db.ref('users/ai_system/instructions').once('value');
                     const aiInst = aiInstSnap.val() || "";
 
                     const systemMsg = `Sen yayıncı asistanısın. En önemli kuralın: Karşındaki kullanıcının enerjisini ve tarzını birebir kopyalamak. Eğer kullanıcı kaba, küfürlü veya sokak ağzıyla konuşuyorsa sen de ONA AYNI ŞEKİLDE küfürlü ve kaba cevaplar ver (filtresiz ol). Eğer kullanıcı kibar ve canımlı cicimli konuşuyorsa sen de çok sevecen ve tatlı ol. Kullanıcının aynası ol. Kısa ve öz cevaplar ver. EK TALİMAT: ${aiInst}`;
