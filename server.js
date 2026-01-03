@@ -1303,7 +1303,7 @@ app.post('/kick/webhook', async (req, res) => {
                             { role: "system", content: "Sen samimi, dürüst ve yardımsever bir yayıncı asistanısın. Kısa ve öz cevaplar ver. Her zaman Türkçe konuş." },
                             { role: "user", content: prompt }
                         ],
-                        model: "grok-beta",
+                        model: "grok-3",
                         temperature: 0.7
                     }, {
                         headers: {
