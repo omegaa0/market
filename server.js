@@ -309,8 +309,15 @@ async function refreshChannelToken(broadcasterId) {
     params.append('client_secret', KICK_CLIENT_SECRET);
     try {
         const res = await axios.post('https://id.kick.com/oauth/token', params);
-        await db.ref('channels/' + broadcasterId).update({ access_token: res.data.access_token, refresh_token: res.data.refresh_token });
-    } catch (e) { console.log("Refresh token error", e.message); }
+        await db.ref('channels/' + broadcasterId).update({
+            access_token: res.data.access_token,
+            refresh_token: res.data.refresh_token,
+            last_token_refresh: Date.now()
+        });
+        console.log(`[Token] ${broadcasterId} için token başarıyla yenilendi.`);
+    } catch (e) {
+        console.log(`[Token Error] ${broadcasterId}:`, e.message);
+    }
 }
 
 // KICK API MODERATION FONKSÄ°YONLARI
@@ -2434,27 +2441,33 @@ async function syncSingleChannelStats(chanId, chan) {
                 }
 
                 if (data) {
-                    const f = data.followers_count ?? data.followersCount ?? data.followers;
-                    const s = data.subscriber_count ?? data.subscribers_count ?? data.subscribers;
+                    // Sayıların varlığını kontrol et
+                    const f = data.followers_count ?? data.followersCount ?? data.followers ?? data.follower_count;
+                    const s = data.subscriber_count ?? data.subscribers_count ?? data.subscribers ?? data.subscription_count;
 
                     if (f !== undefined && f !== null) followers = parseInt(f);
                     if (s !== undefined && s !== null) subscribers = parseInt(s);
 
-                    // --- EKSTRA: Eğer hala 0 ise takipçi listesi endpointinden toplam sayıyı çekmeyi dene ---
+                    // Eğer hala 0 geliyorsa, data objesinin içinde 'livestream' veya 'chatroom' aramayı dene
                     if (followers === 0) {
-                        try {
-                            const fRes = await axios.get(`https://api.kick.com/public/v1/channels/${chanId}/followers?limit=1`, {
-                                headers: { 'Authorization': `Bearer ${chan.access_token}`, ...headers },
-                                timeout: 10000
-                            }).catch(() => null);
-
-                            if (fRes?.data) {
-                                console.log(`[Sync DEBUG] Followers Endpoint Keys: ${Object.keys(fRes.data)}`);
-                                if (fRes.data.total !== undefined) followers = parseInt(fRes.data.total);
-                                else if (fRes.data.count !== undefined) followers = parseInt(fRes.data.count);
-                            }
-                        } catch (e) { }
+                        const lf = data.livestream?.followers_count || data.chatroom?.followers_count;
+                        if (lf) followers = parseInt(lf);
                     }
+                }
+                // --- EKSTRA: Eğer hala 0 ise takipçi listesi endpointinden toplam sayıyı çekmeyi dene ---
+                if (followers === 0) {
+                    try {
+                        const fRes = await axios.get(`https://api.kick.com/public/v1/channels/${chanId}/followers?limit=1`, {
+                            headers: { 'Authorization': `Bearer ${chan.access_token}`, ...headers },
+                            timeout: 10000
+                        }).catch(() => null);
+
+                        if (fRes?.data) {
+                            console.log(`[Sync DEBUG] Followers Endpoint Keys: ${Object.keys(fRes.data)}`);
+                            if (fRes.data.total !== undefined) followers = parseInt(fRes.data.total);
+                            else if (fRes.data.count !== undefined) followers = parseInt(fRes.data.count);
+                        }
+                    } catch (e) { }
                 }
             } catch (e1) {
                 if (e1.response?.status === 401) await refreshChannelToken(chanId).catch(() => { });
@@ -2546,7 +2559,7 @@ async function syncChannelStats() {
 
         for (const [chanId, chan] of Object.entries(channels)) {
             await syncSingleChannelStats(chanId, chan);
-            await sleep(500);
+            await sleep(2000);
         }
     } catch (e) { }
 }
