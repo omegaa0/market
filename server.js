@@ -530,7 +530,7 @@ app.post('/kick/webhook', async (req, res) => {
 
         if (eventName === "channel.subscription.new" || eventName === "channel.subscription.renewal") {
             const subUser = event.username;
-            if (subUser) {
+            if (subUser && subUser.toLowerCase() !== "botrix") {
                 // Goal Bar Update
                 await db.ref(`channels/${broadcasterId}/stats/subscribers`).transaction(val => (val || 0) + 1);
 
@@ -549,6 +549,7 @@ app.post('/kick/webhook', async (req, res) => {
 
         if (eventName === "channel.subscription.gifts") {
             const gifter = event.username;
+            if (gifter && gifter.toLowerCase() === "botrix") return;
             const count = parseInt(event.total) || 1;
             const totalReward = subReward * count;
             if (gifter) {
@@ -566,6 +567,8 @@ app.post('/kick/webhook', async (req, res) => {
         }
 
         if (eventName === "channel.followed") {
+            const follower = event.username || event.user_name;
+            if (follower && follower.toLowerCase() === "botrix") return;
             // Goal Bar Update
             await db.ref(`channels/${broadcasterId}/stats/followers`).transaction(val => (val || 0) + 1);
             return;
@@ -583,7 +586,7 @@ app.post('/kick/webhook', async (req, res) => {
         const rawMsg = event.content;
 
         if (!user || !rawMsg) return;
-        if (user.toLowerCase() === "aloskegangbot") return;
+        if (user.toLowerCase() === "aloskegangbot" || user.toLowerCase() === "botrix") return;
 
         const lowMsg = rawMsg.trim().toLowerCase();
         const args = rawMsg.trim().split(/\s+/).slice(1);
@@ -2011,9 +2014,21 @@ app.post('/admin-api/reset-overlay-key', authAdmin, async (req, res) => {
     res.json({ success: true });
 });
 
-app.post('/admin-api/test-fireworks', authAdmin, async (req, res) => {
+app.post('/dashboard-api/test-fireworks', authDashboard, async (req, res) => {
     const { channelId } = req.body;
     await db.ref(`channels/${channelId}/stream_events/fireworks`).push({ timestamp: Date.now(), played: false });
+    res.json({ success: true });
+});
+
+app.post('/dashboard-api/test-follow', authDashboard, async (req, res) => {
+    const { channelId } = req.body;
+    await db.ref(`channels/${channelId}/stats/followers`).transaction(val => (val || 0) + 1);
+    res.json({ success: true });
+});
+
+app.post('/dashboard-api/test-sub', authDashboard, async (req, res) => {
+    const { channelId } = req.body;
+    await db.ref(`channels/${channelId}/stats/subscribers`).transaction(val => (val || 0) + 1);
     res.json({ success: true });
 });
 
