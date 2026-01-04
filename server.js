@@ -2514,241 +2514,79 @@ async function syncSingleChannelStats(chanId, chan) {
     try {
         let followers = 0;
         let subscribers = 0;
-        const rawSlug = chan.slug || chan.username;
-        if (!rawSlug) return null;
-        const slug = rawSlug; // Casing'i koru
-        let currentSlug = slug;
+        const username = chan.username || chan.slug;
+        if (!username) return null;
 
         const currentStatsSnap = await db.ref(`channels/${chanId}/stats`).once('value');
         const currentStats = currentStatsSnap.val() || { followers: 0, subscribers: 0 };
 
-        const headers = {
-            'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/122.0.0.0 Safari/537.36',
-            'Accept': 'application/json',
-            'Accept-Language': 'tr-TR,tr;q=0.9,en-US;q=0.8,en;q=0.7',
-            'Referer': 'https://kick.com/',
-            'Origin': 'https://kick.com'
+        // İzlenmedeki gibi basit bir header yapısı kullanalım
+        const simpleHeaders = {
+            'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36'
         };
 
-        const fetchOfficial = async (token) => {
-            try {
-                const officialHeaders = {
-                    'Authorization': `Bearer ${token}`,
-                    'Accept': 'application/json',
-                    'User-Agent': 'KickChatBot/1.0'
-                };
+        console.log(`[Sync] ${username} için veri çekiliyor...`);
 
-                let d = null;
+        // 1. ÖNCELİK: V2 INTERNAL (Kullanıcının önerdiği, takipçi sayısı olan API)
+        try {
+            const v2Res = await axios.get(`https://kick.com/api/v2/channels/${username}`, {
+                headers: simpleHeaders,
+                timeout: 5000
+            });
+            if (v2Res.data) {
+                const f = v2Res.data.followers_count ?? v2Res.data.followersCount;
+                if (f !== undefined && f !== null) followers = parseInt(f);
 
-                // ADIM 1: Channels Endpoint (Slug ile)
-                try {
-                    const res = await axios.get(`https://api.kick.com/public/v1/channels?slug=${currentSlug}`, {
-                        headers: officialHeaders,
-                        timeout: 8000
-                    });
-                    // Dizi dönerse ilkini al, yoksa direkt objeyi
-                    d = res.data?.data;
-                    if (Array.isArray(d)) d = d[0];
-                    else if (!d) d = res.data;
-                } catch (e) {
-                    if (e.response?.status === 401) throw e; // Token yenilemek için yukarı fırlat
-                    console.log(`[Sync DEBUG] Channels API Fail (${currentSlug}): ${e.response?.status || e.message}`);
-                }
+                // V2 API'de subscriber bilgisi de olabilir (bazı endpointlerde)
+                const s = v2Res.data.subscriber_count ?? v2Res.data.subscribers_count;
+                if (s !== undefined && s !== null) subscribers = parseInt(s);
 
-                // ADIM 2: Users Endpoint (ID ile) - Çünkü ilk çağrıdan ID'yi öğrendik
-                // Slug ile users endpoint 404 verdiğine göre ID ile denemeliyiz.
-                if (d && d.broadcaster_user_id) {
-                    try {
-                        // Eğer takipçi sayısı zaten geldiyse gerek yok, ama gelmediyse sor
-                        if (!d.followers_count && !d.followersCount) {
-                            const uRes = await axios.get(`https://api.kick.com/public/v1/users/${d.broadcaster_user_id}`, {
-                                headers: officialHeaders,
-                                timeout: 8000
-                            });
-                            const uData = uRes.data?.data || uRes.data;
-                            if (uData) {
-                                console.log(`[Sync DEBUG] User Data FOUND via ID (${d.broadcaster_user_id})`);
-                                d = { ...d, ...uData };
-                            }
-                        }
-                    } catch (e) {
-                        console.log(`[Sync DEBUG] Users ID API Fail (${d.broadcaster_user_id}): ${e.response?.status || e.message}`);
-                    }
-                }
-
-                if (d) console.log(`[Sync DEBUG] Official Data Keys (${currentSlug}): ${Object.keys(d).join(',')}`);
-
-                // ADIM 3: Followers Endpoint (broadcaster_user_id ile)
-                if (d && d.broadcaster_user_id && (!d.followers_count && !d.followersCount)) {
-                    try {
-                        // Resmi API followers endpoint'i - ID ile
-                        const fRes = await axios.get(`https://api.kick.com/public/v1/channels/${d.broadcaster_user_id}/followers`, {
-                            headers: officialHeaders,
-                            timeout: 8000
-                        });
-
-                        // Response'u logla (debug için)
-                        console.log(`[Sync DEBUG] Followers Endpoint Response (${currentSlug}):`, JSON.stringify(fRes.data).substring(0, 200));
-
-                        if (fRes.data) {
-                            const fData = fRes.data.data || fRes.data;
-                            // Farklı response yapıları
-                            if (fData.total !== undefined) {
-                                d = { ...d, followers_count: fData.total };
-                                console.log(`[Sync SUCCESS] ${currentSlug} -> ${fData.total} takipçi (Followers API - total)`);
-                            } else if (fData.count !== undefined) {
-                                d = { ...d, followers_count: fData.count };
-                                console.log(`[Sync SUCCESS] ${currentSlug} -> ${fData.count} takipçi (Followers API - count)`);
-                            } else if (Array.isArray(fData)) {
-                                // Eğer liste dönüyorsa, sayısını al
-                                d = { ...d, followers_count: fData.length };
-                            }
-                        }
-                    } catch (e) {
-                        console.log(`[Sync DEBUG] Followers Endpoint Fail (${currentSlug}): ${e.response?.status || e.message}`);
-                    }
-                }
-
-                if (d) console.log(`[Sync DEBUG] Data Keys After All Tries (${currentSlug}): ${Object.keys(d).join(',')}`);
-                return d;
-
-            } catch (err) {
-                if (err.response?.status === 401) throw err;
-                console.log(`[Sync DEBUG] Official API General Fail: ${err.message}`);
-                return null;
-            }
-        };
-
-        // 1. ÖNCELİK: Resmi V1 API
-        if (chan.access_token) {
-            try {
-                let data = await fetchOfficial(chan.access_token);
-                if (data) {
-                    const processData = (d) => {
-                        if (Array.isArray(d)) d = d[0];
-                        if (d?.slug) currentSlug = d.slug;
-
-                        // DETAYLI LOG: Gelen değerleri göster
-                        console.log(`[Sync DEBUG] ${slug} Raw Values -> followers_count: ${d?.followers_count}, followersCount: ${d?.followersCount}, followers: ${d?.followers}`);
-
-                        const f = d?.followers_count ?? d?.followersCount ?? d?.followers ?? d?.follower_count;
-                        const s = d?.subscriber_count ?? d?.subscribers_count ?? d?.subscribers ?? d?.subscription_count;
-
-                        console.log(`[Sync DEBUG] ${slug} Parsed -> f: ${f}, s: ${s}`);
-
-                        if (f !== undefined && f !== null && f > 0) {
-                            followers = parseInt(f);
-                            console.log(`[Sync SUCCESS] ${slug} -> ${followers} takipçi (Resmi API)`);
-                        }
-                        if (s !== undefined && s !== null && s > 0) subscribers = parseInt(s);
-                        if (followers === 0 && d?.chatroom?.followers_count) followers = parseInt(d.chatroom.followers_count);
-                    };
-                    processData(data);
-                } else {
-                    console.log(`[Sync DEBUG] ${slug} için Resmi API veri döndürmedi.`);
-                }
-            } catch (e1) {
-                if (e1.response?.status === 401) {
-                    console.log(`[Sync] 401 Hatası! ${slug} için token yenileniyor...`);
-                    await refreshChannelToken(chanId).catch(() => { });
-                    const newChan = (await db.ref('channels/' + chanId).once('value')).val();
-                    if (newChan?.access_token) {
-                        const data2 = await fetchOfficial(newChan.access_token).catch(() => null);
-                        if (data2) {
-                            const d = Array.isArray(data2) ? data2[0] : data2;
-                            const f = d.followers_count ?? d.followersCount ?? d.followers;
-                            const s = d.subscriber_count ?? d.subscribers_count ?? d.subscribers;
-                            if (f !== undefined && f !== null) followers = parseInt(f);
-                            if (s !== undefined && s !== null) subscribers = parseInt(s);
-                        }
-                    }
+                if (followers > 0) {
+                    console.log(`[Sync SUCCESS] ${username} -> ${followers} takipçi (V2 Internal)`);
                 }
             }
+        } catch (e2) {
+            console.log(`[Sync DEBUG] V2 Internal Fail (${username}): ${e2.response?.status || e2.message}`);
         }
 
-        // 2. YEDEK: Dahili V1 API (Tarayıcı gibi davranarak Cloudflare bypass)
-        // Bu API'de takipçi sayısı "followersCount" olarak geliyor (camelCase)
-        if (followers === 0) {
+        // 2. YEDEK: RESMİ V1 API (Token ile)
+        if (followers === 0 && chan.access_token) {
             try {
-                // Tam tarayıcı başlıkları (Cloudflare bypass için kritik)
-                const browserHeaders = {
-                    'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/131.0.0.0 Safari/537.36',
-                    'Accept': 'application/json, text/plain, */*',
-                    'Accept-Language': 'tr-TR,tr;q=0.9,en-US;q=0.8,en;q=0.7',
-                    'Accept-Encoding': 'gzip, deflate, br',
-                    'Referer': 'https://kick.com/',
-                    'Origin': 'https://kick.com',
-                    'Sec-Ch-Ua': '"Google Chrome";v="131", "Chromium";v="131", "Not_A Brand";v="24"',
-                    'Sec-Ch-Ua-Mobile': '?0',
-                    'Sec-Ch-Ua-Platform': '"Windows"',
-                    'Sec-Fetch-Dest': 'empty',
-                    'Sec-Fetch-Mode': 'cors',
-                    'Sec-Fetch-Site': 'same-origin',
-                    'Connection': 'keep-alive',
-                    'Cache-Control': 'no-cache'
-                };
-
-                const v1Res = await axios.get(`https://kick.com/api/v1/channels/${currentSlug}`, {
-                    headers: browserHeaders,
-                    timeout: 15000
+                const v1Res = await axios.get(`https://api.kick.com/public/v1/channels?slug=${username}`, {
+                    headers: { 'Authorization': `Bearer ${chan.access_token}`, ...simpleHeaders },
+                    timeout: 10000
                 });
-
-                if (v1Res.data) {
-                    const d = v1Res.data;
-                    // Dahili V1 API: followersCount (camelCase)
-                    const f = d.followersCount ?? d.followers_count ?? d.followers;
-                    if (f !== undefined && f !== null) {
-                        followers = parseInt(f);
-                        console.log(`[Sync SUCCESS] ${currentSlug} -> followersCount: ${followers} (V1 Internal API)`);
-                    }
-                }
-            } catch (e1) {
-                console.log(`[Sync DEBUG] V1 Internal Fail for ${currentSlug}: ${e1.response?.status || e1.message}`);
-            }
-        }
-
-        // 2. ÖNCELİKLİ YEDEK: Dahili V2 API (Bu API followers_count veriyor)
-        if (followers === 0) {
-            try {
-                // Çok gerçekçi tarayıcı başlıkları
-                const v2Res = await axios.get(`https://kick.com/api/v2/channels/${currentSlug}`, {
-                    headers: {
-                        'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/131.0.0.0 Safari/537.36',
-                        'Accept': 'application/json, text/plain, */*',
-                        'Accept-Language': 'tr-TR,tr;q=0.9,en-US;q=0.8,en;q=0.7',
-                        'Accept-Encoding': 'gzip, deflate, br',
-                        'Referer': `https://kick.com/${currentSlug}`,
-                        'Origin': 'https://kick.com',
-                        'Sec-Ch-Ua': '"Google Chrome";v="131", "Chromium";v="131", "Not_A Brand";v="24"',
-                        'Sec-Ch-Ua-Mobile': '?0',
-                        'Sec-Ch-Ua-Platform': '"Windows"',
-                        'Sec-Fetch-Dest': 'empty',
-                        'Sec-Fetch-Mode': 'cors',
-                        'Sec-Fetch-Site': 'same-origin'
-                    },
-                    timeout: 15000
-                });
-                if (v2Res.data) {
-                    const d = v2Res.data;
-                    // V2 API: followers_count (snake_case!)
+                const d = v1Res.data?.data?.[0] || v1Res.data?.data || v1Res.data;
+                if (d) {
+                    // Not: Resmi API'de followers_count olmayabilir ama yedek olarak kalsın
                     const f = d.followers_count ?? d.followersCount;
-                    if (f !== undefined && f !== null && f > 0) {
-                        followers = parseInt(f);
-                        console.log(`[Sync SUCCESS] ${currentSlug} -> ${followers} takipçi (V2 API)`);
-                    }
+                    if (f !== undefined && f !== null && f > 0) followers = parseInt(f);
+
+                    const s = d.subscriber_count ?? d.subscribers_count;
+                    if (s !== undefined && s !== null && s > 0) subscribers = parseInt(s);
                 }
-            } catch (e2) {
-                console.log(`[Sync DEBUG] V2 API Fail for ${currentSlug}: ${e2.response?.status || e2.message}`);
+            } catch (e1) {
+                if (e1.response?.status === 401) await refreshChannelToken(chanId).catch(() => { });
             }
         }
 
-        // NOT: Takipçi sayısı artık webhook ile güncellenecek.
-        // API'ler Cloudflare tarafından engellendiği için burada 0 dönebilir.
-        // Mevcut veri korunacak.
+        // 3. YEDEK: V1 INTERNAL
+        if (followers === 0) {
+            try {
+                const iv1Res = await axios.get(`https://kick.com/api/v1/channels/${username}`, {
+                    headers: simpleHeaders,
+                    timeout: 8000
+                });
+                if (iv1Res.data) {
+                    const f = iv1Res.data.followersCount ?? iv1Res.data.followers_count;
+                    if (f !== undefined && f !== null && f > 0) followers = parseInt(f);
+                }
+            } catch (e) { }
+        }
 
-        // GÜVENLİK VE GÜNCELLEME
+        // GÜVENLİK KONTROLÜ
         if (followers === 0 && subscribers === 0) {
-            console.log(`[Sync] ${slug} için API'den veri alınamadı. Mevcut veriler korunuyor. (Webhook ile güncellenecek)`);
+            console.log(`[Sync] ${username} için hiçbir API'den veri alınamadı, mevcut veriler korunuyor.`);
             return currentStats;
         }
 
@@ -2758,7 +2596,7 @@ async function syncSingleChannelStats(chanId, chan) {
             last_sync: Date.now()
         };
 
-        console.log(`[Sync] ${slug} Güncellendi -> F: ${result.followers}, S: ${result.subscribers}`);
+        console.log(`[Sync] ${username} Güncellendi -> F: ${result.followers}, S: ${result.subscribers}`);
         await db.ref(`channels/${chanId}/stats`).update(result);
         return result;
     } catch (e) {
