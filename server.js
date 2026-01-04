@@ -277,8 +277,7 @@ async function subscribeToChat(token, broadcasterId) {
                 { name: "channel.subscription.new", version: 1 },
                 { name: "channel.subscription.renewal", version: 1 },
                 { name: "channel.subscription.gifts", version: 1 },
-                { name: "channel.followed", version: 1 },
-                { name: "channel.follow", version: 1 }
+                { name: "channel.followed", version: 1 }
             ],
             method: "webhook"
         }, { headers: { 'Authorization': `Bearer ${token}` } });
@@ -513,7 +512,8 @@ app.post('/kick/webhook', async (req, res) => {
             event.chatroom_id;
 
         if (!broadcasterId) {
-            // console.log("⚠️ Broadcaster ID bulunamadı. Payload keys:", Object.keys(payload));
+            console.log("⚠️ Broadcaster ID bulunamadı. Payload keys:", Object.keys(payload));
+            if (payload.data) console.log("⚠️ Event Data keys:", Object.keys(payload.data));
             return;
         }
         broadcasterId = String(broadcasterId);
@@ -521,6 +521,7 @@ app.post('/kick/webhook', async (req, res) => {
         // Olay Logu (Konsolda görmek için)
         if (payload.event && payload.event !== 'chat.message.sent') {
             console.log(`[Webhook] Yeni Olay: ${payload.event} (Kanal: ${broadcasterId})`);
+            console.log(`[Webhook DEBUG] Payload:`, JSON.stringify(payload, null, 2));
         }
 
         const channelRef = await db.ref('channels/' + broadcasterId).once('value');
@@ -1269,34 +1270,53 @@ app.post('/kick/webhook', async (req, res) => {
             else if (isEnabled('fal') && (lowMsg.startsWith('!burç') || lowMsg.startsWith('!burc'))) {
                 const signs = ['koc', 'boga', 'ikizler', 'yengec', 'aslan', 'basak', 'terazi', 'akrep', 'yay', 'oglak', 'kova', 'balik'];
                 let signInput = args[0]?.toLowerCase() || "";
-                let sign = signInput.replace(/ı/g, 'i').replace(/ö/g, 'o').replace(/ü/g, 'u')
-                    .replace(/ş/g, 's').replace(/ç/g, 'c').replace(/ğ/g, 'g');
+
+                // Karakter normallestirmeyi iyilestir (i/ı karisikligi ve digerleri)
+                let sign = signInput
+                    .replace(/ı/g, 'i')
+                    .replace(/ö/g, 'o')
+                    .replace(/ü/g, 'u')
+                    .replace(/ş/g, 's')
+                    .replace(/ç/g, 'c')
+                    .replace(/ğ/g, 'g')
+                    .replace(/[^a-z]/g, ''); // Sadece harf birak
 
                 if (!sign || !signs.includes(sign)) return await reply(`@${user}, Kullanım: !burç koç, aslan, balık...`);
 
                 try {
-                    // Daha stabil bir Vercel API endpoint'i deniyoruz
                     const res = await axios.get(`https://burc-yorumlari.vercel.app/get/${sign}`, {
                         timeout: 5000,
-                        headers: { 'User-Agent': 'Mozilla/5.0' }
+                        headers: {
+                            'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36',
+                            'Accept': 'application/json'
+                        }
                     }).catch(() => null);
 
                     let yorum = "";
                     if (res && res.data) {
                         const data = Array.isArray(res.data) ? res.data[0] : res.data;
-                        yorum = data.GunlukYorum || data.yorum || data.Yorum;
+                        // Olası tum veri alanlarını kontrol et
+                        yorum = data.GunlukYorum || data.yorum || data.Yorum || data.text || data.comment || "";
                     }
 
-                    if (yorum && yorum.length > 10) {
-                        // Fazla boşlukları temizle
+                    if (yorum && yorum.length > 5) {
                         yorum = yorum.replace(/\s+/g, ' ').trim();
+                        // Mesaj cok uzunsa kes (Kick sınırı)
+                        if (yorum.length > 400) yorum = yorum.substring(0, 397) + "...";
                         await reply(`✨ @${user} [${sign.toUpperCase()}]: ${yorum}`);
                     } else {
-                        const generic = ["Bugün yıldızlar senin için parlıyor! 🌟", "Maddi konularda şanslı bir gün. 💰", "Aşk hayatında sürprizler olabilir. ❤️", "Enerjin bugün çok yüksek! ⚡", "Dinlenmeye vakit ayırmalısın. 🛌"];
+                        // API bos donerse joker yorumlar
+                        const generic = [
+                            "Bugün yıldızlar senin için parlıyor! Kristal toplar enerjinin çok yüksek olduğunu söylüyor. 🌟",
+                            "Maddi konularda şanslı bir gün. Hiç beklemediğin bir yerden küçük bir kazanç kapısı açılabilir. 💰",
+                            "Aşk hayatında sürprizler olabilir. Kalbinin sesini dinle, doğru yolu o gösterecek. ❤️",
+                            "Gökyüzü bugün senin için hareketli! Beklediğin o haber nihayet yola çıkmış olabilir. ⚡",
+                            "Zihnin biraz yorgun olabilir, bugün kendine vakit ayırmak sana en büyük ödül olacak. 🛌"
+                        ];
                         await reply(`✨ @${user} [${sign.toUpperCase()}]: ${generic[Math.floor(Math.random() * generic.length)]}`);
                     }
-                } catch {
-                    await reply(`✨ @${user} [${sign.toUpperCase()}]: Yıldızlar şu an ulaşılamaz durumda, daha sonra dene! 🌌`);
+                } catch (err) {
+                    await reply(`✨ @${user} [${sign.toUpperCase()}]: Yıldızlar şu an çok parlak, net göremiyorum (Hata oluştu). Daha sonra tekrar dene! 🌌`);
                 }
             }
 
@@ -2119,9 +2139,9 @@ app.post('/dashboard-api/data', authDashboard, async (req, res) => {
     const statsSnap = await db.ref(`channels/${channelId}/stats`).once('value');
     let liveStats = statsSnap.val() || { followers: 0, subscribers: 0 };
 
-    // Eğer veri yoksa, 10 dakikadan eskiyse veya takipçi/abone 0 ise anlık güncelle
+    // Eğer veri yoksa veya 10 dakikadan eskiyse güncelle
     const tenMinsAgo = Date.now() - 600000;
-    if (!liveStats.last_sync || liveStats.last_sync < tenMinsAgo || (liveStats.followers === 0 && liveStats.subscribers === 0)) {
+    if (!liveStats.last_sync || liveStats.last_sync < tenMinsAgo) {
         const synced = await syncSingleChannelStats(channelId, channelData);
         if (synced) liveStats = synced;
     }
@@ -2379,8 +2399,10 @@ async function syncSingleChannelStats(chanId, chan) {
 
         const headers = {
             'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/122.0.0.0 Safari/537.36',
-            'Accept': 'application/json',
-            'Referer': 'https://kick.com/'
+            'Accept': 'application/json, text/plain, */*',
+            'Accept-Language': 'tr-TR,tr;q=0.9,en-US;q=0.8,en;q=0.7',
+            'Referer': 'https://kick.com/',
+            'Origin': 'https://kick.com'
         };
 
         // 1. ÖNCELİK: Resmi V1 API (Token varsa)
@@ -2388,7 +2410,7 @@ async function syncSingleChannelStats(chanId, chan) {
             try {
                 const v1Res = await axios.get(`https://api.kick.com/public/v1/channels?slug=${slug}`, {
                     headers: { 'Authorization': `Bearer ${chan.access_token}`, ...headers },
-                    timeout: 8000
+                    timeout: 10000
                 });
                 if (v1Res.data && v1Res.data.data) {
                     const d = Array.isArray(v1Res.data.data) ? v1Res.data.data[0] : v1Res.data.data;
@@ -2398,46 +2420,48 @@ async function syncSingleChannelStats(chanId, chan) {
                     }
                 }
             } catch (e1) {
+                // console.log(`[Sync] V1 Official Hatası (${slug}): ${e1.message}`);
                 if (e1.response?.status === 401) await refreshChannelToken(chanId).catch(() => { });
             }
         }
 
-        // 2. YEDEK: Public V1
+        // 2. YEDEK: Public V2 (Genelde en günceli budur)
         if (followers === 0) {
             try {
-                const iv1Res = await axios.get(`https://kick.com/api/v1/channels/${slug}`, { headers, timeout: 6000 });
-                if (iv1Res.data) {
-                    const d = iv1Res.data;
-                    followers = d.followers_count || d.followersCount || d.followers_count || 0;
-                    if (subscribers === 0) subscribers = d.subscriber_count || d.subscribers_count || 0;
-                }
-            } catch (e) { }
-        }
-
-        // 3. YEDEK: Public V2
-        if (followers === 0) {
-            try {
-                const v2Res = await axios.get(`https://kick.com/api/v2/channels/${slug}`, { headers, timeout: 6000 });
+                const v2Res = await axios.get(`https://kick.com/api/v2/channels/${slug}`, { headers, timeout: 8000 });
                 if (v2Res.data) {
                     const d = v2Res.data;
                     followers = d.followers_count || d.followersCount ||
                         (d.chatroom && (d.chatroom.followers_count || d.chatroom.followersCount)) || 0;
-                    if (subscribers === 0) subscribers = d.subscriber_count || d.subscribers_count || 0;
+                    subscribers = subscribers || d.subscriber_count || d.subscribers_count ||
+                        (d.subscription_config && d.subscription_config.subscriber_count) || 0;
+                }
+            } catch (e2) {
+                // console.log(`[Sync] V2 Public Hatası (${slug}): ${e2.message}`);
+            }
+        }
+
+        // 3. YEDEK: Public V1 (Eski tip)
+        if (followers === 0) {
+            try {
+                const iv1Res = await axios.get(`https://kick.com/api/v1/channels/${slug}`, { headers, timeout: 8000 });
+                if (iv1Res.data) {
+                    const d = iv1Res.data;
+                    followers = d.followers_count || d.followersCount || 0;
+                    subscribers = subscribers || d.subscriber_count || d.subscribers_count || 0;
                 }
             } catch (e) { }
         }
 
         // --- GÜVENLİK KONTROLÜ ---
-        // Eğer her iki değer de 0 geldiyse, muhtemelen Cloudflare engelledi veya kanal bulunamadı.
-        // Bu durumda DB'deki eski verileri (mesela 69) 0 ile ezmemek için işlemi iptal et.
-        if (followers === 0 && subscribers === 0) {
-            // console.log(`[Sync] Atlandı: ${slug} için veri çekilemedi (0 döndü).`);
-            return null;
-        }
-
-        // Bir değer geldi ama diğeri 0 ise (örn: Takipçi var ama Abone 0), 0 olanı DB'deki ile koru
         const currentStatsSnap = await db.ref(`channels/${chanId}/stats`).once('value');
-        const currentStats = currentStatsSnap.val() || {};
+        const currentStats = currentStatsSnap.val() || { followers: 0, subscribers: 0 };
+
+        // Eğer tüm kaynaklar 0 döndüyse, mevcut veriyi koru ve çık
+        if (followers === 0 && subscribers === 0) {
+            console.log(`[Sync] Başarısız: ${slug} için veri çekilemedi (Tüm kaynaklar 0), mevcut veriler korunuyor.`);
+            return currentStats;
+        }
 
         const result = {
             followers: parseInt(followers) || currentStats.followers || 0,
@@ -2445,7 +2469,7 @@ async function syncSingleChannelStats(chanId, chan) {
             last_sync: Date.now()
         };
 
-        console.log(`[Sync] ${slug} -> F: ${result.followers}, S: ${result.subscribers}`);
+        console.log(`[Sync] ${slug} Güncellendi -> F: ${result.followers}, S: ${result.subscribers}`);
         await db.ref(`channels/${chanId}/stats`).update(result);
         return result;
     } catch (e) {
@@ -2453,7 +2477,6 @@ async function syncSingleChannelStats(chanId, chan) {
         return null;
     }
 }
-
 
 async function syncChannelStats() {
     try {
