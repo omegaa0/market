@@ -564,6 +564,8 @@
                         class="fas fa-tasks"></i> Hedef Çubukları</button></li>
             <li class="nav-item"><button class="nav-btn" onclick="showSection('overlay', event)"><i
                         class="fas fa-desktop"></i> Yayın Overlay</button></li>
+            <li class="nav-item" style="margin-top: auto;"><button class="nav-btn" onclick="logout()"
+                    style="color: var(--danger);"><i class="fas fa-sign-out-alt"></i> Çıkış Yap</button></li>
         </ul>
     </nav>
 
@@ -1080,6 +1082,11 @@
             input.select();
             document.execCommand('copy');
             alert('Bağlantı kopyalandı!');
+        }
+        async function logout() {
+            if (confirm('Çıkış yapmak istediğine emin misin?')) {
+                window.location.href = '/';
+            }
         }
     </script>
 </body>

@@ -2362,67 +2362,75 @@ async function syncSingleChannelStats(chanId, chan) {
         const slug = chan.slug || chan.username;
         if (!slug) return null;
 
-        // 1. ÖNCELİK: Eğer Access Token varsa Resmi V1 API'den çek (En doğrusu)
+        const headers = {
+            'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/122.0.0.0 Safari/537.36',
+            'Accept': 'application/json',
+            'Referer': 'https://kick.com/'
+        };
+
+        // 1. ÖNCELİK: Resmi V1 API (Token varsa)
         if (chan.access_token) {
             try {
-                const v1Res = await axios.get(`https://api.kick.com/public/v1/channels?slug=${slug}`, {
-                    headers: { 'Authorization': `Bearer ${chan.access_token}` },
-                    timeout: 7000
+                const v1Res = await axios.get(`https://api.kick.com/public/v1/channels`, {
+                    headers: { 'Authorization': `Bearer ${chan.access_token}`, ...headers },
+                    timeout: 8000
                 });
-                if (v1Res.data && v1Res.data.data && v1Res.data.data[0]) {
-                    const d = v1Res.data.data[0];
-                    followers = d.followers_count || d.followersCount || d.followers_count || 0;
-                    subscribers = d.subscriber_count || 0;
+                if (v1Res.data && v1Res.data.data) {
+                    const d = Array.isArray(v1Res.data.data) ? v1Res.data.data[0] : v1Res.data.data;
+                    if (d) {
+                        followers = d.followers_count || d.followersCount || 0;
+                        subscribers = d.subscriber_count || d.subscribers_count || 0;
+                    }
                 }
             } catch (e1) {
-                if (e1.response?.status === 401) await refreshChannelToken(chanId);
+                if (e1.response?.status === 401) await refreshChannelToken(chanId).catch(() => { });
             }
         }
 
-        // 2. YEDEK: Eğer hala 0 ise Public V2 üzerinden dene
+        // 2. YEDEK: Public V1
         if (followers === 0) {
-            const v2Res = await axios.get(`https://kick.com/api/v2/channels/${slug}`, {
-                headers: { 'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36' },
-                timeout: 5000
-            }).catch(() => null);
-
-            if (v2Res && v2Res.data) {
-                const d = v2Res.data;
-                // Tüm olası follower alanlarını tara
-                followers = d.followers_count || d.followersCount ||
-                    (d.chatroom && (d.chatroom.followers_count || d.chatroom.followersCount)) ||
-                    (d.livestream && d.livestream.followers_count) || 0;
-
-                if (subscribers === 0) subscribers = d.subscriber_count || d.subscribers_count || 0;
-            }
+            try {
+                const iv1Res = await axios.get(`https://kick.com/api/v1/channels/${slug}`, { headers, timeout: 6000 });
+                if (iv1Res.data) {
+                    followers = iv1Res.data.followers_count || iv1Res.data.followersCount || 0;
+                    if (subscribers === 0) subscribers = iv1Res.data.subscribers_count || iv1Res.data.subscriber_count || 0;
+                }
+            } catch (e) { }
         }
 
-        // 3. SON ÇARE: Public V1 (Eski tip)
+        // 3. YEDEK: Public V2
         if (followers === 0) {
-            const iv1Res = await axios.get(`https://kick.com/api/v1/channels/${slug}`, {
-                headers: { 'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36' },
-                timeout: 5000
-            }).catch(() => null);
-            if (iv1Res && iv1Res.data) {
-                followers = iv1Res.data.followers_count || iv1Res.data.followersCount || 0;
-            }
+            try {
+                const v2Res = await axios.get(`https://kick.com/api/v2/channels/${slug}`, { headers, timeout: 6000 });
+                if (v2Res.data) {
+                    const d = v2Res.data;
+                    followers = d.followers_count || d.followersCount ||
+                        (d.chatroom && (d.chatroom.followers_count || d.chatroom.followersCount)) || 0;
+                    if (subscribers === 0) subscribers = d.subscriber_count || d.subscribers_count || 0;
+                }
+            } catch (e) { }
         }
 
-        console.log(`[Sync] ${chan.username} -> F: ${followers}, S: ${subscribers}`);
+        if (followers === 0 && subscribers === 0) {
+            console.log(`[Sync] Atlandı: ${slug} için veri çekilemedi (0 döndü). Mevcut veriler korunuyor.`);
+            return null;
+        }
 
         const result = {
-            followers,
-            subscribers,
+            followers: parseInt(followers) || 0,
+            subscribers: parseInt(subscribers) || 0,
             last_sync: Date.now()
         };
 
+        console.log(`[Sync] ${slug} -> F: ${followers}, S: ${subscribers}`);
         await db.ref(`channels/${chanId}/stats`).update(result);
         return result;
     } catch (e) {
-        console.error(`Sync Stats Error (${chan.username}):`, e.message);
+        console.error(`Sync Stats Final Error:`, e.message);
         return null;
     }
 }
+
 
 async function syncChannelStats() {
     try {
