@@ -2109,24 +2109,25 @@ app.post('/dashboard-api/data', authDashboard, async (req, res) => {
     const today = getTodayKey();
 
     Object.values(users).forEach(u => {
-        totalWatch += (u.lifetime_w || 0);
-        if (u.quests && u.quests[today]) {
-            totalMsgs += (u.quests[today].m || 0);
+        // Sadece bu kanala ait verileri topla (Firebase filtresi bazen tümünü dönebilir)
+        if (u.last_channel === channelId) {
+            totalWatch += (u.channel_watch_time?.[channelId] || 0);
+            totalMsgs += (u.channel_m?.[channelId] || 0);
         }
     });
 
     const statsSnap = await db.ref(`channels/${channelId}/stats`).once('value');
     let liveStats = statsSnap.val() || { followers: 0, subscribers: 0 };
 
-    // Eğer veri yoksa, 5 dakikadan eskiyse veya takipçi/abone 0 ise (hata payına karşı) anlık güncelle
-    const fiveMinsAgo = Date.now() - 300000;
-    if (!liveStats.last_sync || liveStats.last_sync < fiveMinsAgo || (liveStats.followers === 0 && liveStats.subscribers === 0)) {
+    // Eğer veri yoksa, 10 dakikadan eskiyse veya takipçi/abone 0 ise anlık güncelle
+    const tenMinsAgo = Date.now() - 600000;
+    if (!liveStats.last_sync || liveStats.last_sync < tenMinsAgo || (liveStats.followers === 0 && liveStats.subscribers === 0)) {
         const synced = await syncSingleChannelStats(channelId, channelData);
         if (synced) liveStats = synced;
     }
 
     channelData.stats = {
-        users: Object.keys(users).length,
+        users: Object.keys(users).filter(k => users[k].last_channel === channelId).length,
         msgs: totalMsgs,
         watch: totalWatch,
         followers: liveStats.followers || 0,
@@ -2266,27 +2267,14 @@ async function trackWatchTime() {
                     }
                 }
 
-                // 4. CHATTERS API + DB AKTİFLİK KONTROLÜ
+                // 4. CHATTERS API (Opsiyonel, sadece bilgi amaçlı logda kalsın)
                 const chattersRes = await axios.get(`https://kick.com/api/v2/channels/${chan.username}/chatters`, {
                     headers: { 'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36' },
                     timeout: 4000
                 }).catch(() => null);
 
-                const apiHasChatters = chattersRes && chattersRes.data && chattersRes.data.chatters &&
-                    (Object.values(chattersRes.data.chatters).some(list => Array.isArray(list) && list.length > 0));
-
-                const activeThreshold = Date.now() - 60000;
-                const dbRecentSnap = await db.ref('users').orderByChild('last_seen').startAt(activeThreshold).once('value');
-                const dbRecentUsers = dbRecentSnap.val() || {};
-                const dbHasChatters = Object.values(dbRecentUsers).some(u => u.last_channel === chanId);
-
-                const hasChatters = apiHasChatters || dbHasChatters;
-
-                // Eğer API "Offline" diyor ama chat'te bizzat insanlar varsa, kanalı CANLI kabul et
-                if (!isLive && hasChatters) {
-                    isLive = true;
-                    apiSource = "CHAT_ACTIVITY";
-                }
+                const hasChatters = !!(chattersRes && chattersRes.data && chattersRes.data.chatters &&
+                    (Object.values(chattersRes.data.chatters).some(list => Array.isArray(list) && list.length > 0)));
 
                 // DEBUG LOG
                 console.log(`[Watch] Kanal: ${chan.username}, Canlı mı: ${isLive ? 'EVET' : 'HAYIR'} (Kaynak: ${apiSource}, Chat Aktif: ${hasChatters ? 'Evet' : 'Hayır'})`);
@@ -2397,7 +2385,7 @@ async function syncSingleChannelStats(chanId, chan) {
         // 1. ÖNCELİK: Resmi V1 API (Token varsa)
         if (chan.access_token) {
             try {
-                const v1Res = await axios.get(`https://api.kick.com/public/v1/channels`, {
+                const v1Res = await axios.get(`https://api.kick.com/public/v1/channels?slug=${slug}`, {
                     headers: { 'Authorization': `Bearer ${chan.access_token}`, ...headers },
                     timeout: 8000
                 });
