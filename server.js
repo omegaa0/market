@@ -2528,104 +2528,67 @@ async function syncSingleChannelStats(chanId, chan) {
         const username = chan.username || chan.slug;
         if (!username) return null;
 
-        console.log(`[Sync] ${username} >> Deneme Başladı (ID: ${chanId})`);
         const currentStatsSnap = await db.ref(`channels/${chanId}/stats`).once('value');
         const currentStats = currentStatsSnap.val() || { followers: 0, subscribers: 0 };
+        console.log(`[Sync] ${username} >> Başladı...`);
 
-        const headers = {
-            'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36',
-            'Accept': 'application/json'
-        };
-
-        // YÖNTEM 1: RESMİ KANAL API (SLUG İLE)
-        if (chan.access_token && followers === 0) {
+        // SADECE RESMİ API (Çünkü Render IP'si sadece buraya izin veriyor)
+        if (chan.access_token) {
             try {
-                const res = await axios.get(`https://api.kick.com/public/v1/channels?slug=${username}`, {
-                    headers: { 'Authorization': `Bearer ${chan.access_token}`, ...headers },
-                    timeout: 5000
+                // trackWatchTime'ın kullandığı birebir aynı istek yapısı
+                const v1Res = await axios.get(`https://api.kick.com/public/v1/channels?slug=${username}`, {
+                    headers: { 'Authorization': `Bearer ${chan.access_token}` },
+                    timeout: 7000
                 });
-                const d = res.data?.data?.[0] || res.data?.data;
-                if (d) {
-                    followers = parseInt(d.followersCount ?? d.followers_count ?? d.followers ?? 0);
-                    subscribers = parseInt(d.subscriber_count ?? d.subscribers_count ?? 0);
-                    if (followers > 0) console.log(`[Sync] ${username} >> Yöntem 1 (Resmi Slug) Başarılı: ${followers}`);
+
+                if (v1Res.data && (v1Res.data.data || v1Res.data[0] || v1Res.data.id)) {
+                    const data = v1Res.data.data?.[0] || v1Res.data?.[0] || v1Res.data;
+
+                    // Derin tarama: Kick'in tüm ihtimallerini kontrol et
+                    const f = data.followersCount ?? data.followers_count ?? data.followers;
+                    const s = data.subscriber_count ?? data.subscribers_count ?? data.subscribers;
+
+                    if (f !== undefined && f !== null) followers = parseInt(f);
+                    if (s !== undefined && s !== null) subscribers = parseInt(s);
+
+                    if (followers > 0) {
+                        console.log(`[Sync SUCCESS] ${username} >> Takipçi Bulundu: ${followers}`);
+                    } else {
+                        // Eğer data geldiyse ama sayı bulamadıysak keyleri bas ki görelim
+                        console.log(`[Sync DEBUG] Veri Geldi Ama Sayı Yok. Keyler: ${Object.keys(data).join(', ')}`);
+                    }
                 }
-            } catch (e) {
-                console.log(`[Sync] ${username} >> Yöntem 1 Hata: ${e.response?.status || e.message}`);
+            } catch (e1) {
+                console.log(`[Sync ERROR] Resmi API Hatası: ${e1.response?.status || e1.message}`);
+                // Token hatası ise yenile
+                if (e1.response?.status === 401) {
+                    await refreshChannelToken(chanId).catch(() => { });
+                }
             }
         }
 
-        // YÖNTEM 2: RESMİ PROFIL API (USER)
-        if (chan.access_token && followers === 0) {
-            try {
-                const res = await axios.get('https://api.kick.com/public/v1/users', {
-                    headers: { 'Authorization': `Bearer ${chan.access_token}`, ...headers },
-                    timeout: 5000
-                });
-                const u = res.data?.data?.[0] || res.data?.data;
-                if (u) {
-                    followers = parseInt(u.followers_count ?? u.followersCount ?? u.followers ?? 0);
-                    if (followers > 0) console.log(`[Sync] ${username} >> Yöntem 2 (Resmi Profil) Başarılı: ${followers}`);
-                    else console.log(`[Sync DEBUG] Yöntem 2 Followers Yok. Keyler: ${Object.keys(u).join(',')}`);
-                }
-            } catch (e) {
-                console.log(`[Sync] ${username} >> Yöntem 2 Hata: ${e.response?.status || e.message}`);
-            }
-        }
-
-        // YÖNTEM 3: INTERNAL V2 (İzleme siteminde çalışan yapı)
-        if (followers === 0) {
-            try {
-                const res = await axios.get(`https://kick.com/api/v2/channels/${username}`, {
-                    headers, timeout: 5000
-                });
-                if (res.data) {
-                    followers = parseInt(res.data.followersCount ?? res.data.followers_count ?? res.data.followers ?? 0);
-                    subscribers = parseInt(res.data.subscriber_count ?? res.data.subscribers_count ?? 0);
-                    if (followers > 0) console.log(`[Sync] ${username} >> Yöntem 3 (Internal V2) Başarılı: ${followers}`);
-                }
-            } catch (e) {
-                console.log(`[Sync] ${username} >> Yöntem 3 Hata: ${e.response?.status || e.message}`);
-            }
-        }
-
-        // YÖNTEM 4: INTERNAL V1
-        if (followers === 0) {
-            try {
-                const res = await axios.get(`https://kick.com/api/v1/channels/${username}`, {
-                    headers, timeout: 5000
-                });
-                if (res.data) {
-                    followers = parseInt(res.data.followers_count ?? res.data.followersCount ?? 0);
-                    if (followers > 0) console.log(`[Sync] ${username} >> Yöntem 4 (Internal V1) Başarılı: ${followers}`);
-                }
-            } catch (e) {
-                console.log(`[Sync] ${username} >> Yöntem 4 Hata: ${e.response?.status || e.message}`);
-            }
-        }
-
-        // SONUÇ KAYIT
+        // VERİ SAKLAMA
         if (followers === 0 && subscribers === 0) {
-            console.log(`[Sync] ${username} >> HIÇBIR YÖNTEM ÇALIŞMADI. Eski veri korunuyor.`);
+            console.log(`[Sync] ${username} >> Veri güncellenemedi, mevcut veriler korunuyor.`);
             return currentStats;
         }
 
         const result = {
-            followers: followers || currentStats.followers,
-            subscribers: subscribers || currentStats.subscribers,
+            followers: (followers > 0) ? followers : currentStats.followers,
+            subscribers: (subscribers > 0) ? subscribers : currentStats.subscribers,
             last_sync: Date.now()
         };
 
-        if (result.followers !== currentStats.followers) {
-            console.log(`[Sync] ${username} >> GÜNCELLENDİ: ${result.followers} Takipçi`);
+        if (result.followers !== currentStats.followers || result.subscribers !== currentStats.subscribers) {
+            console.log(`[Sync] ${username} >> DB Güncelleniyor: ${result.followers} Takipçi`);
             await db.ref(`channels/${chanId}/stats`).update(result);
         } else {
-            console.log(`[Sync] ${username} >> Sayı aynı.`);
+            console.log(`[Sync] ${username} >> Değişiklik yok veya aynı veri geldi.`);
         }
 
         return result;
     } catch (e) {
-        console.error(`[Sync] ${chanId} Kritik Hata:`, e.message);
+        console.error(`[Sync FATAL] ${chanId}:`, e.message);
         return null;
     }
 }
