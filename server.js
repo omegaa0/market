@@ -2419,22 +2419,34 @@ async function syncSingleChannelStats(chanId, chan) {
 
         const fetchOfficial = async (token) => {
             try {
+                // Sadece yetki başlığı ile temiz git (api.kick.com başlık sevmez)
+                const officialHeaders = {
+                    'Authorization': `Bearer ${token}`,
+                    'Accept': 'application/json',
+                    'User-Agent': 'KickChatBot/1.0'
+                };
+
                 // 1A: ID Bazlı
                 const res = await axios.get(`https://api.kick.com/public/v1/channels/${chanId}`, {
-                    headers: { 'Authorization': `Bearer ${token}`, ...headers },
+                    headers: officialHeaders,
                     timeout: 10000
                 });
                 return res.data?.data || res.data;
             } catch (err) {
                 if (err.response?.status === 401) throw err;
+                console.log(`[Sync DEBUG] Official ID API Fail (${slug}): ${err.response?.status || err.message}`);
+
                 // 1B: Slug Bazlı
                 try {
                     const resSlug = await axios.get(`https://api.kick.com/public/v1/channels?slug=${currentSlug}`, {
-                        headers: { 'Authorization': `Bearer ${token}`, ...headers },
+                        headers: { 'Authorization': `Bearer ${token}`, 'Accept': 'application/json', 'User-Agent': 'KickChatBot/1.0' },
                         timeout: 10000
                     });
                     return resSlug.data?.data?.[0] || resSlug.data?.data || resSlug.data;
-                } catch (e) { return null; }
+                } catch (e) {
+                    console.log(`[Sync DEBUG] Official Slug API Fail (${slug}): ${e.response?.status || e.message}`);
+                    return null;
+                }
             }
         };
 
@@ -2442,19 +2454,21 @@ async function syncSingleChannelStats(chanId, chan) {
         if (chan.access_token) {
             try {
                 let data = await fetchOfficial(chan.access_token);
-                if (!data) throw new Error("No data"); // 401 değilse de refresh dışı kalmasın diye
-
-                const processData = (d) => {
-                    if (Array.isArray(d)) d = d[0];
-                    if (d?.slug) currentSlug = d.slug;
-                    const f = d?.followers_count ?? d?.followersCount ?? d?.followers ?? d?.follower_count;
-                    const s = d?.subscriber_count ?? d?.subscribers_count ?? d?.subscribers ?? d?.subscription_count;
-                    if (f !== undefined && f !== null) followers = parseInt(f);
-                    if (s !== undefined && s !== null) subscribers = parseInt(s);
-                    // Chatroom fallback
-                    if (followers === 0 && d?.chatroom?.followers_count) followers = parseInt(d.chatroom.followers_count);
-                };
-                processData(data);
+                if (data) {
+                    const processData = (d) => {
+                        if (Array.isArray(d)) d = d[0];
+                        if (d?.slug) currentSlug = d.slug;
+                        const f = d?.followers_count ?? d?.followersCount ?? d?.followers ?? d?.follower_count;
+                        const s = d?.subscriber_count ?? d?.subscribers_count ?? d?.subscribers ?? d?.subscription_count;
+                        if (f !== undefined && f !== null) followers = parseInt(f);
+                        if (s !== undefined && s !== null) subscribers = parseInt(s);
+                        if (followers === 0 && d?.chatroom?.followers_count) followers = parseInt(d.chatroom.followers_count);
+                        if (followers > 0) console.log(`[Sync Success] ${slug} verisi Resmi API'den alındı.`);
+                    };
+                    processData(data);
+                } else {
+                    console.log(`[Sync DEBUG] ${slug} için Resmi API veri döndürmedi.`);
+                }
             } catch (e1) {
                 if (e1.response?.status === 401) {
                     console.log(`[Sync] 401 Hatası! ${slug} için token yenileniyor...`);
