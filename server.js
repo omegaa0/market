@@ -2510,7 +2510,10 @@ async function syncSingleChannelStats(chanId, chan) {
         }
 
         // GÜVENLİK VE GÜNCELLEME
-        if (followers === 0 && subscribers === 0) return currentStats;
+        if (followers === 0 && subscribers === 0) {
+            console.log(`[Sync DEBUG] ${slug} için hiç veri bulunamadı (Tüm kaynaklar 0).`);
+            return currentStats;
+        }
 
         const result = {
             followers: (followers > 0) ? followers : currentStats.followers,
@@ -2528,15 +2531,22 @@ async function syncSingleChannelStats(chanId, chan) {
 }
 
 async function syncChannelStats() {
+    console.log(`[Sync] Tüm kanallar için senkronizasyon başlatıldı...`);
     try {
+        console.log(`[Sync] Veritabanından kanal listesi isteniyor...`);
         const channelsSnap = await db.ref('channels').once('value');
         const channels = channelsSnap.val() || {};
+        const count = Object.keys(channels).length;
+        console.log(`[Sync] ${count} kanal bulundu, işleniyor...`);
 
         for (const [chanId, chan] of Object.entries(channels)) {
+            console.log(`[Sync] Sıradaki kanal: ${chan.slug || chan.username} (${chanId})`);
             await syncSingleChannelStats(chanId, chan);
             await sleep(2000);
         }
-    } catch (e) { }
+    } catch (e) {
+        console.error(`[Sync FATAL] Genel senkronizasyon hatası:`, e.stack || e.message);
+    }
 }
 
 // Her 3 dakikada bir takipçi/abone sayılarını güncelle
