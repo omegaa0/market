@@ -2419,28 +2419,58 @@ async function syncSingleChannelStats(chanId, chan) {
 
         const fetchOfficial = async (token) => {
             try {
-                // 404'ü önlemek için slug üzerinden sorgu atıyoruz (Resmi API parametre sever)
                 const officialHeaders = {
                     'Authorization': `Bearer ${token}`,
                     'Accept': 'application/json',
                     'User-Agent': 'KickChatBot/1.0'
                 };
 
-                // Resmi V1 Sorgusu
-                const res = await axios.get(`https://api.kick.com/public/v1/channels?slug=${currentSlug}`, {
-                    headers: officialHeaders,
-                    timeout: 10000
-                });
+                let d = null;
 
-                // Veri dizi olarak dönebilir, ilk elemanı al
-                let d = res.data?.data;
-                if (Array.isArray(d)) d = d[0];
-                else if (!d) d = res.data; // Bazı durumlarda direkt objede olabilir
+                // ADIM 1: Channels Endpoint (Slug ile)
+                try {
+                    const res = await axios.get(`https://api.kick.com/public/v1/channels?slug=${currentSlug}`, {
+                        headers: officialHeaders,
+                        timeout: 8000
+                    });
+                    // Dizi dönerse ilkini al, yoksa direkt objeyi
+                    d = res.data?.data;
+                    if (Array.isArray(d)) d = d[0];
+                    else if (!d) d = res.data;
+                } catch (e) {
+                    if (e.response?.status === 401) throw e; // Token yenilemek için yukarı fırlat
+                    console.log(`[Sync DEBUG] Channels API Fail (${currentSlug}): ${e.response?.status || e.message}`);
+                }
 
+                // ADIM 2: Users Endpoint (Eğer üstteki boşsa veya takipçi yoksa)
+                // Bu endpoint genellikle profil bilgisini (ve takipçiyi) verir
+                if (!d || (!d.followers_count && !d.followersCount)) {
+                    try {
+                        const uRes = await axios.get(`https://api.kick.com/public/v1/users/${currentSlug}`, {
+                            headers: officialHeaders,
+                            timeout: 8000
+                        });
+                        const uData = uRes.data?.data || uRes.data;
+                        if (uData) {
+                            // Eğer önceki data varsa birleştir, yoksa bunu kullan
+                            if (d) {
+                                console.log(`[Sync DEBUG] Merging Channel + User Data for ${currentSlug}`);
+                                d = { ...d, ...uData };
+                            } else {
+                                d = uData;
+                            }
+                        }
+                    } catch (e) {
+                        console.log(`[Sync DEBUG] Users API Fail (${currentSlug}): ${e.response?.status || e.message}`);
+                    }
+                }
+
+                if (d) console.log(`[Sync DEBUG] Official Data Keys (${currentSlug}): ${Object.keys(d).join(',')}`);
                 return d;
+
             } catch (err) {
                 if (err.response?.status === 401) throw err;
-                console.log(`[Sync DEBUG] Official API Fail (${currentSlug}): ${err.response?.status || err.message}`);
+                console.log(`[Sync DEBUG] Official API General Fail: ${err.message}`);
                 return null;
             }
         };
