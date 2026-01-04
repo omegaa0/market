@@ -2520,64 +2520,76 @@ async function syncSingleChannelStats(chanId, chan) {
         const currentStatsSnap = await db.ref(`channels/${chanId}/stats`).once('value');
         const currentStats = currentStatsSnap.val() || { followers: 0, subscribers: 0 };
 
-        console.log(`[Sync] ${username} için GraphQL sorgusu başlatılıyor...`);
+        console.log(`[Sync] ${username} için RESMİ API üzerinden veri isteniyor...`);
 
-        // 1. ÖNCELİK: Kick GraphQL API (En sağlam ve güncel yöntem)
-        try {
-            const gqlQuery = {
-                query: `query GetChannel($slug: String!) {
-                    channel(slug: $slug) {
-                        followersCount
-                        subscription {
-                            subscribersCount
-                        }
+        // 1. ÖNCELİK: Resmi API (Bearer Token ile)
+        // api.kick.com Cloudflare engeline genellikle takılmaz.
+        if (chan.access_token) {
+            try {
+                const officialHeaders = {
+                    'Authorization': `Bearer ${chan.access_token}`,
+                    'Accept': 'application/json',
+                    'User-Agent': 'KickChatBot/1.0'
+                };
+
+                // Önce kanalı bul (broadcaster_user_id'yi garantilemek için)
+                const res = await axios.get(`https://api.kick.com/public/v1/channels?slug=${username.toLowerCase()}`, {
+                    headers: officialHeaders,
+                    timeout: 10000
+                });
+
+                const data = res.data?.data?.[0] || res.data?.data;
+
+                if (data && data.broadcaster_user_id) {
+                    const bId = data.broadcaster_user_id;
+
+                    // ŞİMDİ TAKİPÇİ SAYISI İÇİN KANAL DETAYINA GİT (broadcasterId ile)
+                    const detailRes = await axios.get(`https://api.kick.com/public/v1/channels/${bId}`, {
+                        headers: officialHeaders,
+                        timeout: 10000
+                    });
+
+                    const d = detailRes.data?.data || detailRes.data;
+
+                    // Veriyi ayıkla (Farklı isimlendirme olasılıklarına karşı)
+                    const f = d.followers_count ?? d.followersCount ?? d.followers ?? d.follower_count;
+                    const s = d.subscriber_count ?? d.subscribers_count ?? d.subscribers ?? d.subscription_count;
+
+                    if (f !== undefined && f !== null) followers = parseInt(f);
+                    if (s !== undefined && s !== null) subscribers = parseInt(s);
+
+                    if (followers > 0) {
+                        console.log(`[Sync SUCCESS] ${username} -> ${followers} takipçi (Resmi API)`);
                     }
-                }`,
-                variables: { slug: username.toLowerCase() }
-            };
-
-            const gqlRes = await axios.post('https://kick.com/graphql', gqlQuery, {
-                headers: {
-                    'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36',
-                    'Content-Type': 'application/json',
-                    'Accept': '*/*',
-                    'Origin': 'https://kick.com',
-                    'Referer': `https://kick.com/${username}`
-                },
-                timeout: 10000
-            });
-
-            if (gqlRes.data && gqlRes.data.data && gqlRes.data.data.channel) {
-                const chanData = gqlRes.data.data.channel;
-                if (chanData.followersCount !== undefined) {
-                    followers = parseInt(chanData.followersCount);
-                    console.log(`[Sync SUCCESS] ${username} -> ${followers} takipçi (GraphQL)`);
                 }
-                if (chanData.subscription && chanData.subscription.subscribersCount !== undefined) {
-                    subscribers = parseInt(chanData.subscription.subscribersCount);
+            } catch (e1) {
+                if (e1.response?.status === 401) {
+                    console.log(`[Sync] Token süresi geçmiş, yenileniyor...`);
+                    await refreshChannelToken(chanId).catch(() => { });
+                } else {
+                    console.log(`[Sync DEBUG] Resmi API Hatası (${username}): ${e1.response?.status || e1.message}`);
                 }
             }
-        } catch (egql) {
-            console.log(`[Sync DEBUG] GraphQL Fail (${username}): ${egql.response?.status || egql.message}`);
         }
 
-        // 2. YEDEK: V2 API (Eğer GraphQL hata verirse - Mevcut çalışan yapın)
+        // FALLBACK: Eğer hala 0 ise ve token yoksa GraphQL'den son bir şans dene 
+        // (GraphQL kalsın ama sadece yedek olarak arkada dursun)
         if (followers === 0) {
             try {
-                const v2Res = await axios.get(`https://kick.com/api/v2/channels/${username}`, {
-                    headers: { 'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36' },
-                    timeout: 5000
-                });
-                if (v2Res.data) {
-                    const f = v2Res.data.followers_count ?? v2Res.data.followersCount;
-                    if (f !== undefined && f > 0) followers = parseInt(f);
+                const gqlRes = await axios.post('https://kick.com/graphql', {
+                    query: `query GetChannel($slug: String!) { channel(slug: $slug) { followersCount } }`,
+                    variables: { slug: username.toLowerCase() }
+                }, { headers: { 'User-Agent': 'Mozilla/5.0' }, timeout: 5000 }).catch(() => null);
+
+                if (gqlRes?.data?.data?.channel?.followersCount) {
+                    followers = parseInt(gqlRes.data.data.channel.followersCount);
                 }
-            } catch (e2) { }
+            } catch (e) { }
         }
 
         // GÜVENLİK KONTROLÜ
         if (followers === 0 && subscribers === 0) {
-            console.log(`[Sync] ${username} için veri alınamadı, mevcut veriler korunuyor.`);
+            console.log(`[Sync] ${username} için resmi kanallardan veri alınamadı, mevcut veriler korunuyor.`);
             return currentStats;
         }
 
@@ -2591,7 +2603,7 @@ async function syncSingleChannelStats(chanId, chan) {
         await db.ref(`channels/${chanId}/stats`).update(result);
         return result;
     } catch (e) {
-        console.error(`Sync Stats Final Error:`, e.message);
+        console.error(`Sync Stats Final Error for ${chanId}:`, e.message);
         return null;
     }
 }
