@@ -2464,6 +2464,30 @@ async function syncSingleChannelStats(chanId, chan) {
                 }
 
                 if (d) console.log(`[Sync DEBUG] Official Data Keys (${currentSlug}): ${Object.keys(d).join(',')}`);
+
+                // EKSTRA YEDEK: KICKSTATS (Resmi API vermezse buraya sor)
+                if (!d || (!d.followers_count && !d.followersCount)) {
+                    try {
+                        // KickStats API genellikle 403 yemez
+                        const ksRes = await axios.get(`https://kickstats.com/api/v1/channel/${currentSlug}`, {
+                            headers: { 'User-Agent': 'Mozilla/5.0' },
+                            timeout: 5000
+                        });
+                        if (ksRes.data) {
+                            console.log(`[Sync] KickStats VERİSİ ALINDI: ${currentSlug}`);
+                            // Kickstats yapısına göre veriyi birleştir
+                            const ksData = ksRes.data;
+                            const combined = { ...d, ...ksData };
+                            // Kickstats followers ve subscribers alanlarını düz verir
+                            if (ksData.followers) combined.followers_count = ksData.followers;
+                            if (ksData.subscribers) combined.subscriber_count = ksData.subscribers;
+                            d = combined;
+                        }
+                    } catch (e) {
+                        console.log(`[Sync DEBUG] KickStats Fail (${currentSlug}): ${e.message}`);
+                    }
+                }
+
                 return d;
 
             } catch (err) {
