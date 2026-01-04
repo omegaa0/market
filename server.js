@@ -2419,34 +2419,29 @@ async function syncSingleChannelStats(chanId, chan) {
 
         const fetchOfficial = async (token) => {
             try {
-                // Sadece yetki başlığı ile temiz git (api.kick.com başlık sevmez)
+                // 404'ü önlemek için slug üzerinden sorgu atıyoruz (Resmi API parametre sever)
                 const officialHeaders = {
                     'Authorization': `Bearer ${token}`,
                     'Accept': 'application/json',
                     'User-Agent': 'KickChatBot/1.0'
                 };
 
-                // 1A: ID Bazlı
-                const res = await axios.get(`https://api.kick.com/public/v1/channels/${chanId}`, {
+                // Resmi V1 Sorgusu
+                const res = await axios.get(`https://api.kick.com/public/v1/channels?slug=${currentSlug}`, {
                     headers: officialHeaders,
                     timeout: 10000
                 });
-                return res.data?.data || res.data;
+
+                // Veri dizi olarak dönebilir, ilk elemanı al
+                let d = res.data?.data;
+                if (Array.isArray(d)) d = d[0];
+                else if (!d) d = res.data; // Bazı durumlarda direkt objede olabilir
+
+                return d;
             } catch (err) {
                 if (err.response?.status === 401) throw err;
-                console.log(`[Sync DEBUG] Official ID API Fail (${slug}): ${err.response?.status || err.message}`);
-
-                // 1B: Slug Bazlı
-                try {
-                    const resSlug = await axios.get(`https://api.kick.com/public/v1/channels?slug=${currentSlug}`, {
-                        headers: { 'Authorization': `Bearer ${token}`, 'Accept': 'application/json', 'User-Agent': 'KickChatBot/1.0' },
-                        timeout: 10000
-                    });
-                    return resSlug.data?.data?.[0] || resSlug.data?.data || resSlug.data;
-                } catch (e) {
-                    console.log(`[Sync DEBUG] Official Slug API Fail (${slug}): ${e.response?.status || e.message}`);
-                    return null;
-                }
+                console.log(`[Sync DEBUG] Official API Fail (${currentSlug}): ${err.response?.status || err.message}`);
+                return null;
             }
         };
 
