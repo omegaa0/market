@@ -2742,29 +2742,16 @@ async function syncSingleChannelStats(chanId, chan) {
                     }
                 }
             } catch (e2) {
-                console.log(`[Sync DEBUG] V2 Internal Fail for ${currentSlug}: ${e2.response?.status || e2.message}`);
             }
         }
 
-        // 4. SON ÇARE: Puppeteer ile Cloudflare Bypass (Gerçek tarayıcı)
-        if (followers === 0) {
-            try {
-                const puppeteerData = await fetchKickInternalAPI(currentSlug);
-                if (puppeteerData) {
-                    const f = puppeteerData.followersCount ?? puppeteerData.followers_count;
-                    if (f !== undefined && f !== null && f > 0) {
-                        followers = parseInt(f);
-                        console.log(`[Sync SUCCESS] ${currentSlug} -> ${followers} takipçi (Puppeteer)`);
-                    }
-                }
-            } catch (e) {
-                console.log(`[Sync DEBUG] Puppeteer Fail for ${currentSlug}: ${e.message}`);
-            }
-        }
+        // NOT: Takipçi sayısı artık webhook ile güncellenecek.
+        // API'ler Cloudflare tarafından engellendiği için burada 0 dönebilir.
+        // Mevcut veri korunacak.
 
         // GÜVENLİK VE GÜNCELLEME
         if (followers === 0 && subscribers === 0) {
-            console.log(`[Sync DEBUG] ${slug} için hiç veri bulunamadı (Tüm kaynaklar 0).`);
+            console.log(`[Sync] ${slug} için API'den veri alınamadı. Mevcut veriler korunuyor. (Webhook ile güncellenecek)`);
             return currentStats;
         }
 
