@@ -499,6 +499,7 @@
             <button class="tab-btn" onclick="showTab('troll'); loadActiveRigs();">🤡 Troll & Rig</button>
             <button class="tab-btn" onclick="showTab('logs')">📋 İşlem Kayıtları</button>
             <button class="tab-btn" onclick="showTab('quests')">🎯 Görevler</button>
+            <button class="tab-btn" onclick="showTab('stocks')">📈 Borsa</button>
             <button class="tab-btn" onclick="showTab('global')">⚙️ Duyuru</button>
         </div>
 
@@ -665,6 +666,33 @@
                     style="height:120px; resize:none; margin-top: 5px; text-align: left; padding: 10px;"
                     placeholder="Yazmaya başla..."></textarea>
                 <button class="btn" onclick="sendToChannel()">🚀 MESAJI GÖNDER</button>
+            </div>
+        </div>
+
+        <!-- STOCKS -->
+        <div id="stocks" class="section">
+            <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:20px;">
+                <h2 style="margin:0;">📈 Borsa Yönetimi</h2>
+                <div style="display:flex; gap:10px;">
+                    <input type="text" id="newStockCode" placeholder="Hisse Kodu (Örn: AMASYA)" class="inp"
+                        style="margin:0; width:200px;">
+                    <input type="number" id="newStockPrice" placeholder="Fiyat" class="inp"
+                        style="margin:0; width:100px;">
+                    <button class="btn" style="width: auto; padding: 0 20px;" onclick="addStock()">+ EKLE</button>
+                </div>
+            </div>
+            <div class="table-container">
+                <table>
+                    <thead>
+                        <tr>
+                            <th>Hisse</th>
+                            <th>Fiyat (💰)</th>
+                            <th>Trend</th>
+                            <th style="text-align:right">İşlemler</th>
+                        </tr>
+                    </thead>
+                    <tbody id="stock-list"></tbody>
+                </table>
             </div>
         </div>
 
@@ -851,6 +879,8 @@
                     if (!logInterval) logInterval = setInterval(loadLogs, 5000);
                 } else if (id === 'quests') {
                     loadAdminQuests();
+                } else if (id === 'stocks') {
+                    loadStocks();
                 } else {
                     if (logInterval) { clearInterval(logInterval); logInterval = null; }
                 }
@@ -1568,6 +1598,72 @@
                 const res = await fetch('/admin-api/send-message', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ key: sessionKey, channelId, message }) });
                 const d = await res.json();
                 if (d.success) { alert("Mesaj gönderildi!"); document.getElementById('channelMsg').value = ""; }
+            }
+
+            // STOCKS
+            async function loadStocks() {
+                const res = await fetch('/admin-api/stocks', {
+                    method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ key: sessionKey })
+                });
+                const stocks = await res.json();
+                const container = document.getElementById('stock-list');
+                container.innerHTML = "";
+
+                Object.entries(stocks).forEach(([code, data]) => {
+                    const tr = document.createElement('tr');
+                    tr.innerHTML = `
+                        <td><b>${code}</b></td>
+                        <td><input type="number" value="${data.price}" class="inp" style="width:100px; margin:0;" id="st-price-${code}"></td>
+                        <td>
+                            <select class="inp" style="width:100px; margin:0;" id="st-trend-${code}">
+                                <option value="1" ${data.trend === 1 ? 'selected' : ''}>📈 Yükseliş</option>
+                                <option value="-1" ${data.trend === -1 ? 'selected' : ''}>📉 Düşüş</option>
+                            </select>
+                        </td>
+                        <td style="text-align:right">
+                            <button class="btn btn-small" style="width:auto; padding:5px 15px; display:inline-block;" onclick="updateStock('${code}')">GÜNCELLE</button>
+                            <button class="btn btn-small btn-danger" style="width:auto; padding:5px 15px; display:inline-block;" onclick="deleteStock('${code}')">SİL</button>
+                        </td>
+                    `;
+                    container.appendChild(tr);
+                });
+            }
+
+            async function updateStock(code) {
+                const price = document.getElementById(`st-price-${code}`).value;
+                const trend = document.getElementById(`st-trend-${code}`).value;
+                const res = await fetch('/admin-api/stocks/update', {
+                    method: 'POST', headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({ key: sessionKey, code, price, trend })
+                });
+                if ((await res.json()).success) {
+                    alert(`${code} güncellendi!`);
+                    loadStocks();
+                }
+            }
+
+            async function addStock() {
+                const code = document.getElementById('newStockCode').value;
+                const price = document.getElementById('newStockPrice').value;
+                if (!code || !price) return alert("Eksik bilgi!");
+                const res = await fetch('/admin-api/stocks/add', {
+                    method: 'POST', headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({ key: sessionKey, code, price })
+                });
+                if ((await res.json()).success) {
+                    document.getElementById('newStockCode').value = "";
+                    document.getElementById('newStockPrice').value = "";
+                    loadStocks();
+                }
+            }
+
+            async function deleteStock(code) {
+                if (!confirm(`${code} hissesini silmek istediğine emin misin?`)) return;
+                const res = await fetch('/admin-api/stocks/delete', {
+                    method: 'POST', headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({ key: sessionKey, code })
+                });
+                if ((await res.json()).success) loadStocks();
             }
 
             // Auto login if possible (not implemented here but sessionKey could be in localStorage)

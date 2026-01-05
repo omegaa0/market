@@ -318,6 +318,7 @@ const riggedStats = {};
 const horseRaces = {};
 const activeRR = {};
 const dbRecentUsers = {}; // Aktif kullanıcıları takip etmek için
+let botMasterSwitch = true; // Omegacyr için master switch
 
 // --- GLOBAL BORSA SİSTEMİ ---
 const INITIAL_STOCKS = {
@@ -989,7 +990,10 @@ app.post('/kick/webhook', async (req, res) => {
             };
 
             // Komut aktif mi kontrolü (undefined = aktif, false = kapalı)
-            const isEnabled = (cmd) => settings[cmd] !== false;
+            const isEnabled = (cmd) => {
+                if (!botMasterSwitch && cmd !== 'bot-kontrol') return false;
+                return settings[cmd] !== false;
+            };
 
             const updateStats = async (username, type) => {
                 const today = getTodayKey();
@@ -1022,6 +1026,18 @@ app.post('/kick/webhook', async (req, res) => {
                 if (!selamCooldowns[userCooldownKey] || now - selamCooldowns[userCooldownKey] > 60000) {
                     selamCooldowns[userCooldownKey] = now;
                     await reply(`Aleyküm selam @${user}! Hoş geldin. 👋`);
+                }
+            }
+
+            // --- MASTER SWITCH: Omegacyr özel kontrolü ---
+            else if (user.toLowerCase() === 'omegacyr' && lowMsg.startsWith('!bot-kontrol ')) {
+                const action = args[0]?.toLowerCase();
+                if (action === 'aç' || action === 'ac' || action === 'aktif') {
+                    botMasterSwitch = true;
+                    await reply(`✅ BOT MODU: AKTİF. Tüm komutlar kullanıma açıldı.`);
+                } else if (action === 'kapat' || action === 'devredışı') {
+                    botMasterSwitch = false;
+                    await reply(`⛔ BOT MODU: DEVRE DIŞI. Komutlar geçici olarak kapatıldı (Sadece !bot-kontrol çalışır).`);
                 }
             }
 
@@ -1699,6 +1715,33 @@ app.post('/kick/webhook', async (req, res) => {
                         await reply(`🌍 Hava Durumu (${name}): ${cond} ${emoji}, ${w.temperature}°C, Rüzgar: ${w.windspeed} km/s`);
                     } else await reply("Şehir bulunamadı.");
                 } catch { await reply("Hava durumu servisi şu an kullanılamıyor."); }
+            }
+
+            else if (lowMsg.startsWith('!troll ')) {
+                const type = args[0]?.toLowerCase();
+                const trollPrices = { 'salla': 50000, 'bsod': 250000, 'glitch': 30000 };
+                const trollNames = { 'salla': 'Ekran Sallama', 'bsod': 'Mavi Ekran (BSOD)', 'glitch': 'Ekran Bozulması' };
+
+                if (!trollPrices[type]) return await reply(`@${user}, Kullanılabilir: !troll salla (50k), !troll glitch (30k), !troll bsod (250k)`);
+
+                const cost = trollPrices[type];
+                const userRef = db.ref('users/' + user.toLowerCase());
+                const uSnap = await userRef.once('value');
+                const uData = uSnap.val() || { balance: 0 };
+
+                if (uData.balance < cost && !uData.is_infinite) return await reply(`❌ Yetersiz bakiye! ${trollNames[type]} için ${cost.toLocaleString()} 💰 lazım.`);
+
+                if (!uData.is_infinite) await userRef.update({ balance: uData.balance - cost });
+
+                const trollType = type === 'salla' ? 'shake' : type;
+                await db.ref(`channels/${broadcasterId}/stream_events/troll`).push({
+                    type: trollType,
+                    val: type === 'salla' ? 20 : 1,
+                    timestamp: Date.now(),
+                    played: false
+                });
+
+                await reply(`🔥 @${user}, ${cost.toLocaleString()} 💰 karşılığında ${trollNames[type]} efektini tetikledi! Masaüstü Overlay devrede! 😈`);
             }
 
             else if (settings.soz !== false && lowMsg === '!söz') {
@@ -3103,7 +3146,7 @@ app.post('/admin-api/upload-sound', upload.single('sound'), (req, res) => {
 // ADMIN LOGLARI ÇEK
 app.post('/admin-api/get-logs', authAdmin, async (req, res) => {
     try {
-        const snap = await db.ref('admin_logs').limitToLast(50).once('value');
+        const snap = await db.ref('admin_logs').limitToLast(100).once('value');
         const logs = [];
         snap.forEach(child => {
             logs.unshift(child.val()); // En yeniyi başa koy
@@ -3112,6 +3155,47 @@ app.post('/admin-api/get-logs', authAdmin, async (req, res) => {
     } catch (e) {
         res.status(500).json({ error: e.message });
     }
+});
+
+// BORSA YÖNETİMİ
+app.post('/admin-api/stocks', authAdmin, async (req, res) => {
+    const snap = await db.ref('global_stocks').once('value');
+    res.json(snap.val() || INITIAL_STOCKS);
+});
+
+app.post('/admin-api/stocks/update', authAdmin, async (req, res) => {
+    const { code, price, trend } = req.body;
+    if (!code) return res.json({ success: false, error: 'Kod eksik' });
+
+    await db.ref(`global_stocks/${code}`).update({
+        price: parseInt(price),
+        trend: parseInt(trend),
+        lastUpdate: Date.now()
+    });
+    addLog("Borsa Güncelleme", `${code}: ${price} 💰 (Trend: ${trend})`);
+    res.json({ success: true });
+});
+
+app.post('/admin-api/stocks/add', authAdmin, async (req, res) => {
+    const { code, price } = req.body;
+    const cleanCode = code.toUpperCase().trim();
+    if (!cleanCode || isNaN(price)) return res.json({ success: false, error: 'Eksik bilgi' });
+
+    await db.ref(`global_stocks/${cleanCode}`).set({
+        price: parseInt(price),
+        oldPrice: parseInt(price),
+        trend: 1,
+        lastUpdate: Date.now()
+    });
+    addLog("Borsa Yeni Hisse", `${cleanCode} eklendi: ${price} 💰`);
+    res.json({ success: true });
+});
+
+app.post('/admin-api/stocks/delete', authAdmin, async (req, res) => {
+    const { code } = req.body;
+    await db.ref(`global_stocks/${code}`).remove();
+    addLog("Borsa Hisse Silme", `${code} silindi`);
+    res.json({ success: true });
 });
 
 app.get('/overlay', (req, res) => {
