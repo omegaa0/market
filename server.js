@@ -249,6 +249,7 @@ const riggedShips = {};
 const riggedStats = {};
 const horseRaces = {};
 const activeRR = {};
+const dbRecentUsers = {}; // Aktif kullanıcıları takip etmek için
 
 // --- GLOBAL BORSA SİSTEMİ ---
 const INITIAL_STOCKS = {
@@ -783,6 +784,9 @@ app.post('/kick/webhook', async (req, res) => {
         }, (err) => {
             if (err && err.message !== 'set') console.error("Webhook User Update Error:", err.message);
         }, false);
+
+        // Aktif kullanıcılar listesine ekle
+        dbRecentUsers[user.toLowerCase()] = { last_seen: Date.now(), last_channel: broadcasterId };
 
         // KICK ID KAYDET (Susturma işlemleri için)
         if (event.sender?.user_id) {
@@ -2435,8 +2439,8 @@ async function trackWatchTime() {
                         });
                         if (v1Res.data && v1Res.data.data && v1Res.data.data[0]) {
                             const d = v1Res.data.data[0];
-                            // Public V1 API 'stream' keyini kullanabilir
-                            isLive = d.is_live || !!d.livestream || (d.stream && d.stream !== null);
+                            // Sadece stream objesinin varlığı yetmez, içindeki is_live true olmalı
+                            isLive = d.is_live || !!d.livestream || (d.stream && d.stream.is_live === true);
                             apiSource = "V1_OFFICIAL";
                         }
                     } catch (e1) {
@@ -2453,7 +2457,7 @@ async function trackWatchTime() {
 
                     if (iv1Res && iv1Res.data) {
                         const d = iv1Res.data;
-                        isLive = d.is_live || !!d.livestream || (d.stream && d.stream !== null);
+                        isLive = d.is_live || !!d.livestream || (d.stream && d.stream.is_live === true);
                         if (isLive) apiSource = "V1_INTERNAL";
                     }
                 }
@@ -2598,9 +2602,11 @@ async function syncSingleChannelStats(chanId, chan) {
                     if (s !== undefined && s !== null) subscribers = parseInt(s);
 
                     // Eğer hala bulamadıysak alternative keys check
-                    if (followers === 0 && data.broadcaster) {
-                        const bf = data.broadcaster.followersCount ?? data.broadcaster.followers_count;
+                    if (followers === 0) {
+                        const bf = data.broadcaster?.followersCount ?? data.broadcaster?.followers_count ?? data.broadcaster?.followers;
                         if (bf) followers = parseInt(bf);
+                        else if (data.followers) followers = parseInt(data.followers);
+                        else if (data.followersCount) followers = parseInt(data.followersCount);
                     }
 
                     if (followers > 0) {
