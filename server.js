@@ -437,7 +437,7 @@ async function fetchKickGraphQL(slug) {
             return res.data.data.channel;
         }
     } catch (e) {
-        console.log(`[GraphQL] ${slug}: ${e.response?.status || e.message}`);
+        // Cloudflare engeli - sessiz hata
     }
     return null;
 }
@@ -453,7 +453,7 @@ async function fetchKickV2Channel(slug) {
         });
         return res.data;
     } catch (e) {
-        console.log(`[V2 API] ${slug}: ${e.response?.status || e.message}`);
+        // Cloudflare engeli - sessiz hata
     }
     return null;
 }
