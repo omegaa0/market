@@ -556,15 +556,21 @@ async function fetchKickV2Channel(slug) {
     return null;
 }
 
-// AI RESİM ÜRETME (Pollinations.ai - Ücretsiz)
+// AI RESİM ÜRETME (Flux Modeli - Grok/Flux Kalitesinde)
 async function generateAiImage(prompt, imageId) {
     try {
-        const encodedPrompt = encodeURIComponent(prompt);
-        const imageUrl = `https://image.pollinations.ai/prompt/${encodedPrompt}?width=512&height=512&nologo=true`;
+        // Promptu daha kaliteli sonuç vermesi için zenginleştiriyoruz
+        const qualityBoost = ", highly detailed, 4k resolution, cinematic lighting, masterpiece, photorealistic";
+        const enhancedPrompt = prompt + qualityBoost;
+        const encodedPrompt = encodeURIComponent(enhancedPrompt);
+
+        const seed = Math.floor(Math.random() * 1000000);
+        // model=flux, Grok-2'nin kullandığı motor ile aynı yüksek kaliteyi sağlar
+        const imageUrl = `https://image.pollinations.ai/prompt/${encodedPrompt}?width=1024&height=1024&nologo=true&model=flux&seed=${seed}`;
 
         const response = await axios.get(imageUrl, {
             responseType: 'arraybuffer',
-            timeout: 60000 // 60 saniye (resim üretimi zaman alabilir)
+            timeout: 90000 // Kaliteli modeller biraz daha yavaş olabilir
         });
 
         const filename = `${imageId}.png`;
@@ -581,7 +587,7 @@ async function generateAiImage(prompt, imageId) {
                 }
                 delete tempAiImages[imageId];
             } catch (e) { }
-        }, 120000); // 2 dakika
+        }, 120000);
 
         return filename;
     } catch (e) {
