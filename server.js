@@ -984,7 +984,7 @@ app.post('/kick/webhook', async (req, res) => {
             else if (lowMsg.startsWith('!airesim ')) {
                 if (!isAuthorized) return await reply(`@${user}, bu komutu sadece yayıncı ve moderatörler kullanabilir!`);
 
-                const prompt = message.substring(9).trim(); // "!airesim " = 9 karakter
+                const prompt = rawMsg.substring(9).trim(); // "!airesim " = 9 karakter
                 if (!prompt || prompt.length < 3) {
                     return await reply(`@${user}, kullanım: !airesim [resim açıklaması] - Örnek: !airesim güneş batarken deniz manzarası`);
                 }
