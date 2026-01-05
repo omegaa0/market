@@ -1441,21 +1441,158 @@ app.post('/kick/webhook', async (req, res) => {
                     "Bugün doğa ile iç içe vakit geçirmen enerjini yükseltecek. 🌳",
                     "Başarı basamaklarını azimle tırmanıyorsun, kimsenin seni durdurmasına izin verme. 🚀",
                     "Bugün aldığın bir haber moralini çok yükseltecek, kutlamaya hazır ol! 🎉",
-                    "İyimserliğini koru, evren senin için güzel şeyler hazırlıyor. ✨"
+                    "İyimserliğini koru, evren senin için güzel şeyler hazırlıyor. ✨",
+                    // YENİ FALLAR
+                    "Yakında tanışacağın biri hayatını değiştirecek, gözlerini dört aç. 👀",
+                    "Geçmişte yaptığın bir iyilik bugün karşılığını bulacak. 🎯",
+                    "Rüyalarında gördüğün şeyler gerçek olabilir, not al! 📝",
+                    "Bu hafta içinde beklenmedik bir para kazancı var. 🤑",
+                    "Kariyer değişikliği düşünüyorsan tam zamanı. 💼",
+                    "Bugün aldığın her karar doğru çıkacak, güven kendine! ✅",
+                    "Romantik bir sürprizle karşılaşabilirsin, kalbin hazır mı? 💘",
+                    "Stresli günler sona eriyor, huzurlu bir dönem başlıyor. 🌈",
+                    "Uzun süredir ertelediğin o işi bugün bitireceksin. ⏰",
+                    "Bir kaybın telafi edilecek, üzülme! 🙏",
+                    "Yeni bir yetenek keşfedeceksin, sınırlarını zorla. 🎭",
+                    "Bugün sana gelen ilk mesaj çok önemli olabilir. 📬",
+                    "Hayatındaki olumsuz insanlardan uzaklaşma vakti. 🚶",
+                    "Bir yarışma veya çekilişte şansın yaver gidebilir. 🎰",
+                    "Sağlık sorunların düzelmeye başlıyor, morali bozma. 💚",
+                    "Evrendeki enerjiler senin için çalışıyor. 🌌",
+                    "Beklenmedik bir yerden iş teklifi gelebilir. 📋",
+                    "Eski bir aşktan haber alabilirsin, şaşırma! 💔➡️❤️"
                 ];
                 await reply(`🔮 @${user}, Falın: ${list[Math.floor(Math.random() * list.length)]}`);
+            }
+
+            // MOTİVASYON SÖZÜ
+            else if (lowMsg === '!söz' || lowMsg === '!soz') {
+                const sozler = [
+                    "Başarı, her gün tekrarlanan küçük çabaların toplamıdır. 💪",
+                    "Yenilgi, son değildir. Vazgeçmek, sonun ta kendisidir. 🔥",
+                    "Düşmeyen yürümez, yürümeyen koşamaz. 🏃",
+                    "Hayaller görmekten korkma, korkunç olan hayal görmemektir. ✨",
+                    "Bugün yapabileceğini yarına bırakma. ⏰",
+                    "Başarının sırrı, başlamaktır. 🚀",
+                    "Zorluklara gülerek meydan oku. 😄",
+                    "Her şampiyon bir zamanlar pes etmemeyi seçen biriydi. 🏆",
+                    "Kendine inan, geri kalanı zaten gelecek. 🌟",
+                    "Fırtınalar güçlü kaptanları yetiştirir. ⛵",
+                    "Başarı tesadüf değildir. 🎯",
+                    "Elinden gelenin en iyisini yap, gerisini bırak. 🙌",
+                    "Küçük adımlar büyük yolculuklar başlatır. 👣",
+                    "Seni durduracak tek kişi, sensin. 🚫",
+                    "Dün geçti, yarın belirsiz, bugün bir hediye. 🎁",
+                    "Hata yapmak, hiç denememekten iyidir. ✅",
+                    "Evreni keşfetmeden önce kendi içini keşfet. 🧘",
+                    "Büyük başarılar büyük cesaretler ister. 🦁",
+                    "Azim, yeteneği yener. 💎",
+                    "Her son, yeni bir başlangıçtır. 🌅",
+                    "Kendini geliştirmek, en iyi yatırımdır. 📈",
+                    "Rüzgar esmeyince yelken açılmaz. 🌬️",
+                    "Pozitif düşün, pozitif yaşa. ➕",
+                    "Karanlık, yıldızların parlaması içindir. ⭐",
+                    "Asla pes etme, mucize bir adım ötede. 🌈"
+                ];
+                await reply(`📜 @${user}: ${sozler[Math.floor(Math.random() * sozler.length)]}`);
+            }
+
+            // SİHİRLİ 8 TOP
+            else if (lowMsg.startsWith('!8ball ') || lowMsg.startsWith('!8top ')) {
+                const cevaplar = [
+                    "Kesinlikle evet! ✅", "Evet. 👍", "Büyük ihtimalle evet. 🤔",
+                    "Belki... 🤷", "Emin değilim. 😶", "Tekrar sor. 🔄",
+                    "Hayır. 👎", "Kesinlikle hayır! ❌", "Şansını zorla! 🍀",
+                    "Görünüşe göre evet. 👀", "Şüpheli... 🕵️", "Olmaz! 🚫",
+                    "Buna güvenemem. 😬", "Olabilir, kim bilir? 🌀",
+                    "Yıldızlar olumlu diyor! ⭐", "Bugün değil. 📅",
+                    "Rüyalarında cevabı bulacaksın. 💭", "Kalbinin sesini dinle. ❤️"
+                ];
+                await reply(`🎱 @${user}: ${cevaplar[Math.floor(Math.random() * cevaplar.length)]}`);
+            }
+
+            // IQ TESTİ
+            else if (lowMsg === '!iq') {
+                const iq = Math.floor(Math.random() * 120) + 60; // 60-180 arası
+                let yorum = "";
+                if (iq >= 150) yorum = "Deha seviyesi! Einstein bile kıskanır! 🧠✨";
+                else if (iq >= 130) yorum = "Üstün zeka! Muhteşemsin! 🎓";
+                else if (iq >= 110) yorum = "Ortalamanın üstünde, helal! 📚";
+                else if (iq >= 90) yorum = "Normal zeka, gayet iyi! 👍";
+                else if (iq >= 70) yorum = "Biraz daha kitap oku... 📖";
+                else yorum = "Hmm... en azından dürüstüz! 😅";
+                await reply(`🧠 @${user}, IQ'n: ${iq} - ${yorum}`);
+            }
+
+            // ŞANS ÖLÇER
+            else if (lowMsg === '!şans' || lowMsg === '!sans') {
+                const sans = Math.floor(Math.random() * 101);
+                let emoji = "";
+                if (sans >= 90) emoji = "🍀🌟 EFSANE ŞANS!";
+                else if (sans >= 70) emoji = "🎯 Şanslı günündeysin!";
+                else if (sans >= 50) emoji = "😊 Fena değil!";
+                else if (sans >= 30) emoji = "😐 Orta seviye...";
+                else emoji = "💀 Bugün kumar oynama!";
+                await reply(`🎲 @${user}, bugün şansın: %${sans} ${emoji}`);
+            }
+
+            // KİŞİLİK ANALİZİ
+            else if (lowMsg === '!kişilik' || lowMsg === '!kisilik') {
+                const kisilikler = [
+                    "Sen bir lidersin! İnsanlar seni takip eder. 👑",
+                    "Sakin ve huzurlu bir ruhun var. 🧘",
+                    "Maceraperest ve cesursun! 🗺️",
+                    "Romantik ve duygusal birisin. 💕",
+                    "Pratik ve mantıklı düşünürsün. 🧮",
+                    "Yaratıcı ve sanatsal bir ruhun var. 🎨",
+                    "Sosyal bir kelebek, herkesle anlaşırsın! 🦋",
+                    "Gizemli ve derin düşünceli birisin. 🌙",
+                    "Komik ve eğlencelisin, herkesi güldürürsün! 😂",
+                    "Sadık ve güvenilir bir dostsun. 🤝",
+                    "Mükemmeliyetçi ve detaycısın. 🔍",
+                    "Karizmatik ve çekici birisin! ✨",
+                    "Bağımsız ve özgür ruhlusun. 🦅",
+                    "Şefkatli ve merhametlisin. 💚",
+                    "Hırslı ve kararlısın, hedeflerine ulaşırsın! 🎯"
+                ];
+                await reply(`🪞 @${user}, kişilik analizi: ${kisilikler[Math.floor(Math.random() * kisilikler.length)]}`);
+            }
+
+            // ZAR AT
+            else if (lowMsg === '!zar') {
+                const zar1 = Math.floor(Math.random() * 6) + 1;
+                const zar2 = Math.floor(Math.random() * 6) + 1;
+                const zarEmoji = ['⚀', '⚁', '⚂', '⚃', '⚄', '⚅'];
+                const bonus = zar1 === zar2 ? " 🎉 ÇİFT ATTI!" : "";
+                await reply(`🎲 @${user} zarları attı: ${zarEmoji[zar1 - 1]} ${zarEmoji[zar2 - 1]} (${zar1} + ${zar2} = ${zar1 + zar2})${bonus}`);
+            }
+
+            // HANGİSİ DAHA İYİ (karar ver)
+            else if (lowMsg.startsWith('!hangisi ') && lowMsg.includes(' mi ') && lowMsg.includes(' mı ')) {
+                const secenekler = rawMsg.substring(9).split(/\smi\s|\smı\s/i).map(s => s.trim()).filter(s => s);
+                if (secenekler.length >= 2) {
+                    const secilen = secenekler[Math.floor(Math.random() * secenekler.length)];
+                    await reply(`🤔 @${user}, kesinlikle "${secilen}" daha iyi!`);
+                }
             }
 
             else if (isEnabled('ship') && lowMsg.startsWith('!ship')) {
                 let target = args[0]?.replace('@', '');
                 const rig = riggedShips[user.toLowerCase()];
 
-                // Hedef yoksa rastgele birini seç (veritabanından)
+                // Hedef yoksa rastgele birini seç (SADECE SON 10 DK AKTİF OLANLARDAN)
                 if (!target && !rig) {
-                    const allUsers = await db.ref('users').limitToFirst(50).once('value');
-                    const userList = Object.keys(allUsers.val() || {}).filter(u => u !== user.toLowerCase());
-                    if (userList.length > 0) {
-                        target = userList[Math.floor(Math.random() * userList.length)];
+                    const tenMinsAgo = Date.now() - 600000;
+                    const activeUsers = Object.entries(dbRecentUsers)
+                        .filter(([username, data]) =>
+                            data.last_channel === broadcasterId &&
+                            data.last_seen > tenMinsAgo &&
+                            username !== user.toLowerCase()
+                        )
+                        .map(([username]) => username);
+
+                    if (activeUsers.length > 0) {
+                        target = activeUsers[Math.floor(Math.random() * activeUsers.length)];
                     } else {
                         target = "Gizli Hayran";
                     }
