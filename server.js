@@ -2121,6 +2121,55 @@ app.post('/kick/webhook', async (req, res) => {
                 await timeoutUser(broadcasterId, user, choice.time);
             }
 
+            else if (lowMsg.startsWith('!gönder') || lowMsg.startsWith('!transfer')) {
+                const target = args[0]?.replace('@', '').toLowerCase();
+                const amount = parseInt(args[1]);
+
+                if (!target || isNaN(amount) || amount <= 0) {
+                    return await reply(`💸 @${user}, Kullanım: !gönder @kullanıcı [miktar]`);
+                }
+
+                if (target === user.toLowerCase()) {
+                    return await reply(`🚫 @${user}, Kendine para gönderemezsin!`);
+                }
+
+                const snap = await userRef.once('value');
+                const data = snap.val() || { balance: 0 };
+
+                if (!data.is_infinite && data.balance < amount) {
+                    return await reply(`❌ @${user}, Bakiyen yetersiz! Mevcut: ${data.balance.toLocaleString()} 💰`);
+                }
+
+                const targetRef = db.ref('users/' + target);
+                const targetSnap = await targetRef.once('value');
+
+                if (!targetSnap.exists()) {
+                    return await reply(`⚠️ @${user}, @${target} adında bir kullanıcı veritabanında bulunamadı.`);
+                }
+
+                // %5 Vergi
+                const tax = Math.floor(amount * 0.05);
+                const finalAmount = amount - tax;
+
+                // İşlem: Gönderenden düş
+                if (!data.is_infinite) {
+                    await userRef.transaction(u => {
+                        if (u) u.balance = (u.balance || 0) - amount;
+                        return u;
+                    });
+                }
+
+                // İşlem: Alana ekle
+                await targetRef.transaction(u => {
+                    if (u) {
+                        u.balance = (u.balance || 0) + finalAmount;
+                    }
+                    return u;
+                });
+
+                await reply(`💸 @${user} -> @${target} kullanıcısına ${finalAmount.toLocaleString()} 💰 gönderdi! (%5 Vergi: ${tax.toLocaleString()} 💰 kesildi)`);
+            }
+
             // --- ADMIN / MOD ---
             else if (lowMsg.startsWith('!sustur')) {
                 const target = args[0]?.replace('@', '').toLowerCase();
