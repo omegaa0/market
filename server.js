@@ -2596,8 +2596,14 @@ async function trackWatchTime() {
                             }
                         }
                     } catch (e1) {
-                        if (e1.response?.status === 401) await refreshChannelToken(chanId);
+                        if (e1.response?.status === 401) {
+                            console.log(`[Token] ${chan.username} için 401 alındı, token yenileniyor...`);
+                            await refreshChannelToken(chanId);
+                        }
                     }
+                } else if (!isLive && !chan.access_token) {
+                    // Token yok, logla
+                    console.log(`[Token] ${chan.username} için access_token yok!`);
                 }
 
                 // 3. V1 INTERNAL API
