@@ -927,10 +927,46 @@
                 renderToggles(s);
                 renderSounds(s.custom_sounds || {});
                 document.getElementById('loading-overlay').style.display = 'none';
+
+                // Client-side V2 API ile gerçek takipçi sayısını al (Cloudflare engellemez)
+                fetchLiveStats(data.username);
             } catch (e) {
                 console.error(e);
                 alert("Oturum süresi dolmuş.");
                 window.location.href = "/";
+            }
+        }
+
+        // KICK V2 API'den gerçek takipçi sayısını al (tarayıcıdan)
+        async function fetchLiveStats(username) {
+            try {
+                const res = await fetch(`https://kick.com/api/v2/channels/${username}`);
+                if (!res.ok) return;
+
+                const data = await res.json();
+                const followers = data.followers_count || 0;
+                const subscribers = data.subscriber_badges?.length || 0;
+
+                // Dashboard'ı güncelle
+                if (followers > 0) {
+                    document.getElementById('stat-followers').innerText = followers.toLocaleString();
+                }
+
+                // Sunucuya gönder (Firebase güncellenir)
+                await fetch('/dashboard-api/sync-stats', {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({
+                        channelId,
+                        key: loginKey,
+                        followers,
+                        subscribers
+                    })
+                });
+
+                console.log(`✅ Gerçek takipçi sayısı alındı: ${followers}`);
+            } catch (e) {
+                console.log('V2 API erişilemedi:', e.message);
             }
         }
 

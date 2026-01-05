@@ -389,6 +389,36 @@ function generatePKCE() {
 }
 
 // ---------------------------------------------------------
+// CLIENT-SIDE STATS SYNC (Cloudflare Bypass)
+// ---------------------------------------------------------
+app.post('/dashboard-api/sync-stats', async (req, res) => {
+    try {
+        const { channelId, key, followers, subscribers } = req.body;
+        if (!channelId || !key) return res.json({ success: false, error: 'Missing params' });
+
+        // Key doğrulama
+        const chanSnap = await db.ref('channels/' + channelId).once('value');
+        const chan = chanSnap.val();
+        if (!chan || chan.overlay_key !== key) {
+            return res.json({ success: false, error: 'Invalid key' });
+        }
+
+        // Stats güncelle
+        const updates = { last_client_sync: Date.now() };
+        if (followers > 0) updates.followers = followers;
+        if (subscribers > 0) updates.subscribers = subscribers;
+
+        await db.ref(`channels/${channelId}/stats`).update(updates);
+        console.log(`[Client Sync] ${chan.username}: ${followers} takipçi, ${subscribers} abone`);
+
+        res.json({ success: true });
+    } catch (e) {
+        console.error('[Client Sync Error]:', e.message);
+        res.json({ success: false, error: e.message });
+    }
+});
+
+// ---------------------------------------------------------
 // 2. AUTH & CALLBACK (MULTI-TENANT)
 // ---------------------------------------------------------
 app.get('/login', async (req, res) => {
