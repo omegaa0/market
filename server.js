@@ -2594,114 +2594,46 @@ setInterval(trackWatchTime, 60000);
 
 async function syncSingleChannelStats(chanId, chan) {
     try {
-        let followers = 0;
-        let subscribers = 0;
         const username = chan.username || chan.slug;
         if (!username) return null;
 
         const currentStatsSnap = await db.ref(`channels/${chanId}/stats`).once('value');
         const currentStats = currentStatsSnap.val() || { followers: 0, subscribers: 0 };
-        console.log(`[Sync] ${username} >> Başladı...`);
 
-        // 1. ÖNCE GRAPHQL (En güncel ve kesin veriyi bu verir)
-        const gqlData = await fetchKickGraphQL(username);
-        if (gqlData) {
-            if (gqlData.followersCount) followers = parseInt(gqlData.followersCount);
-            if (followers > 0) {
-                console.log(`[Sync SUCCESS-GQL] ${username} >> Takipçi: ${followers}`);
-            }
-        }
-
-        // 2. V2 INTERNAL API (Takipçi sayısı burada var)
-        if (followers === 0) {
-            const v2Data = await fetchKickV2Channel(username);
-            if (v2Data) {
-                const f = v2Data.followers_count ?? v2Data.followersCount ?? v2Data.followers;
-                if (f) followers = parseInt(f);
-                if (followers > 0) console.log(`[Sync SUCCESS-V2] ${username} >> Takipçi: ${followers}`);
-                else console.log(`[Sync DEBUG] V2 API Keys: ${Object.keys(v2Data).join(', ')}`);
-            }
-        }
-
-        // 3. INTERNAL V1 API (Son Çare)
-        if (followers === 0) {
+        // Cloudflare tarafından engelleniyor, webhook'lara güveniyoruz
+        // Sadece token'ı kontrol et ve gerekirse yenile
+        if (chan.access_token) {
             try {
-                const iv1Res = await axios.get(`https://kick.com/api/v1/channels/${username}`, {
-                    headers: { 'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36' },
+                await axios.get(`https://api.kick.com/public/v1/channels?slug=${username}`, {
+                    headers: { 'Authorization': `Bearer ${chan.access_token}` },
                     timeout: 5000
                 });
-
-                if (iv1Res && iv1Res.data) {
-                    const d = iv1Res.data;
-                    const f = d.followers_count ?? d.followersCount ?? d.followers;
-                    const s = d.subscriber_badges?.length ?? 0;
-                    if (f) followers = parseInt(f);
-                    if (s) subscribers = parseInt(s);
-                    if (followers > 0) console.log(`[Sync SUCCESS-V1INT] ${username} >> Takipçi: ${followers}`);
-                    else console.log(`[Sync DEBUG] V1 Internal Keys: ${Object.keys(d).join(', ')}`);
-                }
             } catch (e) {
-                console.log(`[Sync] V1 Internal API hatası: ${e.response?.status || e.message}`);
+                if (e.response?.status === 401) {
+                    console.log(`[Token] ${username} için token yenileniyor...`);
+                    await refreshChannelToken(chanId).catch(() => { });
+                }
             }
         }
 
-        // 3. RESMİ PUBLIC V1 API (Sadece token yenileme için kontrol)
-        if (followers === 0 && chan.access_token) {
-            try {
-                const v1Res = await axios.get(`https://api.kick.com/public/v1/channels?slug=${username}`, {
-                    headers: { 'Authorization': `Bearer ${chan.access_token}` },
-                    timeout: 7000
-                });
-                // Public API takipçi sayısı vermiyor, sadece token kontrolü
-                console.log(`[Sync] Public V1 erişimi başarılı (takçi sayısı bu endpoint'te yok)`);
-            } catch (e1) {
-                if (e1.response?.status === 401) await refreshChannelToken(chanId).catch(() => { });
-            }
-        }
-
-        // VERİ SAKLAMA
-        if (followers === 0 && subscribers === 0) {
-            console.log(`[Sync] ${username} >> Veri güncellenemedi, mevcut veriler korunuyor.`);
-            return currentStats;
-        }
-
-        const result = {
-            followers: (followers > 0) ? followers : currentStats.followers,
-            subscribers: (subscribers > 0) ? subscribers : currentStats.subscribers,
-            last_sync: Date.now()
-        };
-
-        if (result.followers !== currentStats.followers || result.subscribers !== currentStats.subscribers) {
-            console.log(`[Sync] ${username} >> DB Güncelleniyor: ${result.followers} Takipçi`);
-            await db.ref(`channels/${chanId}/stats`).update(result);
-        } else {
-            console.log(`[Sync] ${username} >> Değişiklik yok veya aynı veri geldi.`);
-        }
-
-        return result;
+        // Mevcut verileri döndür (webhook'lar güncelleyecek)
+        return currentStats;
     } catch (e) {
-        console.error(`[Sync FATAL] ${chanId}:`, e.message);
         return null;
     }
 }
 
 async function syncChannelStats() {
-    console.log(`[Sync] Tüm kanallar için senkronizasyon başlatıldı...`);
+    // Token kontrolü için sessiz sync (webhook'lar asıl veriyi güncelliyor)
     try {
-        console.log(`[Sync] Veritabanından kanal listesi isteniyor...`);
         const channelsSnap = await db.ref('channels').once('value');
         const channels = channelsSnap.val() || {};
-        const count = Object.keys(channels).length;
-        console.log(`[Sync] ${count} kanal bulundu, işleniyor...`);
 
         for (const [chanId, chan] of Object.entries(channels)) {
-            console.log(`[Sync] Sıradaki kanal: ${chan.slug || chan.username} (${chanId})`);
             await syncSingleChannelStats(chanId, chan);
             await sleep(2000);
         }
-    } catch (e) {
-        console.error(`[Sync FATAL] Genel senkronizasyon hatası:`, e.stack || e.message);
-    }
+    } catch (e) { }
 }
 
 // Senkronizasyon intervali uygulama sonunda app.listen içinde yönetiliyor.
