@@ -404,6 +404,43 @@ async function sendChatMessage(content, broadcasterId) {
     }
 }
 
+async function fetchKickGraphQL(slug) {
+    try {
+        const query = `
+            query GetChannel($slug: String!) {
+                channel(slug: $slug) {
+                    followersCount
+                    subscriptionPackages {
+                        id
+                    }
+                    livestream {
+                        id
+                        is_live
+                        viewer_count
+                    }
+                }
+            }
+        `;
+        const res = await axios.post('https://kick.com/api/internal/v1/graphql', {
+            query,
+            variables: { slug: slug.toLowerCase() }
+        }, {
+            headers: {
+                'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36',
+                'Content-Type': 'application/json'
+            },
+            timeout: 5000
+        });
+
+        if (res.data && res.data.data && res.data.data.channel) {
+            return res.data.data.channel;
+        }
+    } catch (e) {
+        // console.log(`[GraphQL Error] ${slug}:`, e.message);
+    }
+    return null;
+}
+
 async function refreshChannelToken(broadcasterId) {
     const snap = await db.ref('channels/' + broadcasterId).once('value');
     if (!snap.val()) return;
@@ -2398,7 +2435,8 @@ async function trackWatchTime() {
                         });
                         if (v1Res.data && v1Res.data.data && v1Res.data.data[0]) {
                             const d = v1Res.data.data[0];
-                            isLive = d.is_live || !!d.livestream;
+                            // Public V1 API 'stream' keyini kullanabilir
+                            isLive = d.is_live || !!d.livestream || (d.stream && d.stream !== null);
                             apiSource = "V1_OFFICIAL";
                         }
                     } catch (e1) {
@@ -2413,13 +2451,21 @@ async function trackWatchTime() {
                         timeout: 5000
                     }).catch(() => null);
 
-                    if (iv1Res && iv1Res.data && (iv1Res.data.is_live || iv1Res.data.livestream)) {
-                        isLive = true;
-                        apiSource = "V1_INTERNAL";
+                    if (iv1Res && iv1Res.data) {
+                        const d = iv1Res.data;
+                        isLive = d.is_live || !!d.livestream || (d.stream && d.stream !== null);
+                        if (isLive) apiSource = "V1_INTERNAL";
                     }
                 }
 
-                // 4. CHATTERS API (Opsiyonel, sadece bilgi amaçlı logda kalsın)
+                // 4. EĞER HALA BULAMADIKSA GRAPHQL DENE
+                if (!isLive) {
+                    const gqlData = await fetchKickGraphQL(chan.username);
+                    if (gqlData && gqlData.livestream && gqlData.livestream.is_live) {
+                        isLive = true;
+                        apiSource = "GRAPHQL";
+                    }
+                }
                 const chattersRes = await axios.get(`https://kick.com/api/v2/channels/${chan.username}/chatters`, {
                     headers: { 'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36' },
                     timeout: 4000
@@ -2545,26 +2591,60 @@ async function syncSingleChannelStats(chanId, chan) {
                     const data = v1Res.data.data?.[0] || v1Res.data?.[0] || v1Res.data;
 
                     // Derin tarama: Kick'in tüm ihtimallerini kontrol et
-                    const f = data.followersCount ?? data.followers_count ?? data.followers;
-                    const s = data.subscriber_count ?? data.subscribers_count ?? data.subscribers;
+                    const f = data.followersCount ?? data.followers_count ?? data.followers ?? data.follower_count;
+                    const s = data.subscriber_count ?? data.subscribers_count ?? data.subscribers ?? data.sub_count;
 
                     if (f !== undefined && f !== null) followers = parseInt(f);
                     if (s !== undefined && s !== null) subscribers = parseInt(s);
+
+                    // Eğer hala bulamadıysak alternative keys check
+                    if (followers === 0 && data.broadcaster) {
+                        const bf = data.broadcaster.followersCount ?? data.broadcaster.followers_count;
+                        if (bf) followers = parseInt(bf);
+                    }
 
                     if (followers > 0) {
                         console.log(`[Sync SUCCESS] ${username} >> Takipçi Bulundu: ${followers}`);
                     } else {
                         // Eğer data geldiyse ama sayı bulamadıysak keyleri bas ki görelim
                         console.log(`[Sync DEBUG] Veri Geldi Ama Sayı Yok. Keyler: ${Object.keys(data).join(', ')}`);
+                        // DEBUG: Eğer livestream/stream varsa oradan bir şeyler çekebilir miyiz?
+                        if (data.stream) console.log(`[Sync DEBUG] Stream Keys: ${Object.keys(data.stream).join(', ')}`);
                     }
                 }
             } catch (e1) {
                 console.log(`[Sync ERROR] Resmi API Hatası: ${e1.response?.status || e1.message}`);
-                // Token hatası ise yenile
-                if (e1.response?.status === 401) {
-                    await refreshChannelToken(chanId).catch(() => { });
-                }
+                if (e1.response?.status === 401) await refreshChannelToken(chanId).catch(() => { });
             }
+        }
+
+        // 2. ALTERNATİF: GRAPHQL (Eğer resmi API sonuç vermediyse)
+        if (followers === 0) {
+            const gqlData = await fetchKickGraphQL(username);
+            if (gqlData) {
+                if (gqlData.followersCount) followers = parseInt(gqlData.followersCount);
+                // Not: Sub count GraphQL'de direkt olmayabilir ama bazen subscriptionPackages vs var
+                console.log(`[Sync GraphQL] ${username} >> Follower: ${followers}`);
+            }
+        }
+
+        // 3. ALTERNATİF: INTERNAL API (Son Çare)
+        if (followers === 0) {
+            try {
+                const iv1Res = await axios.get(`https://kick.com/api/v1/channels/${username}`, {
+                    headers: { 'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36' },
+                    timeout: 5000
+                }).catch(() => null);
+
+                if (iv1Res && iv1Res.data) {
+                    const d = iv1Res.data;
+                    const f = d.followersCount ?? d.followers_count ?? d.followers;
+                    const s = d.subscriber_count ?? d.subscribers_count ?? d.subscribers;
+                    if (f) followers = parseInt(f);
+                    if (s) subscribers = parseInt(s);
+                    if (followers > 0) console.log(`[Sync INTERNAL] ${username} >> Follower: ${followers}`);
+                }
+            } catch (e) { }
         }
 
         // VERİ SAKLAMA
