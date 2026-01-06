@@ -8,6 +8,7 @@
     <link href="https://fonts.googleapis.com/css2?family=Outfit:wght@300;400;500;600;700;800&display=swap"
         rel="stylesheet">
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+    <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
     <style>
         :root {
             --bg: #0b0c10;
@@ -536,6 +537,62 @@
             border-radius: 50%;
             cursor: pointer;
         }
+
+        /* NEW WIDGETS */
+        .dashboard-row {
+            display: grid;
+            grid-template-columns: 1.5fr 1fr;
+            gap: 25px;
+            margin-bottom: 40px;
+        }
+
+        .activity-list {
+            list-style: none;
+        }
+
+        .activity-item {
+            display: flex;
+            align-items: center;
+            gap: 15px;
+            padding: 15px;
+            background: rgba(255, 255, 255, 0.02);
+            border-radius: 15px;
+            margin-bottom: 10px;
+            transition: 0.3s;
+        }
+
+        .activity-item:hover {
+            background: rgba(255, 255, 255, 0.05);
+        }
+
+        .activity-avatar {
+            width: 40px;
+            height: 40px;
+            background: var(--gradient);
+            border-radius: 50%;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            font-weight: 800;
+            color: var(--bg);
+            font-size: 0.9rem;
+        }
+
+        .activity-details b {
+            display: block;
+            font-size: 1rem;
+        }
+
+        .activity-details span {
+            font-size: 0.8rem;
+            color: var(--muted);
+        }
+
+        .chart-container {
+            height: 300px;
+            width: 100%;
+            margin-top: 20px;
+        }
     </style>
 </head>
 
@@ -564,6 +621,8 @@
                         class="fas fa-tasks"></i> Hedef Çubukları</button></li>
             <li class="nav-item"><button class="nav-btn" onclick="showSection('overlay', event)"><i
                         class="fas fa-desktop"></i> Yayın Overlay</button></li>
+            <li class="nav-item"><button class="nav-btn" onclick="showSection('security', event)"><i
+                        class="fas fa-shield-alt"></i> Güvenlik</button></li>
             <li class="nav-item" style="margin-top: auto;"><button class="nav-btn" onclick="logout()"
                     style="color: var(--danger);"><i class="fas fa-sign-out-alt"></i> Çıkış Yap</button></li>
         </ul>
@@ -627,11 +686,36 @@
                 </div>
             </div>
 
-            <div class="content-card">
-                <h3><i class="fas fa-bullseye" style="color:var(--primary)"></i> Kanal Özeti</h3>
-                <p style="color:var(--muted); font-size:0.95rem; line-height:1.6;">Yukarıdaki veriler sadece senin
-                    kanalında aktif olan kullanıcılardan toplanan gerçek zamanlı verilerdir. Botun senin kanalındaki
-                    etkileşimi bu tablodan takip edilebilir.</p>
+            <div class="dashboard-row">
+                <div class="content-card">
+                    <h3><i class="fas fa-chart-line"></i> Takipçi Gelişimi</h3>
+                    <div class="chart-container">
+                        <canvas id="followersChart"></canvas>
+                    </div>
+                </div>
+                <div class="content-card">
+                    <h3><i class="fas fa-star" style="color:#f1c40f"></i> Son Katılanlar</h3>
+                    <div class="activity-list" id="recent-joiners-list">
+                        <!-- JS -->
+                        <div style="text-align:center; padding:20px; color:var(--muted);">Henüz veri yok.</div>
+                    </div>
+                </div>
+            </div>
+
+            <div class="dashboard-row">
+                <div class="content-card">
+                    <h3><i class="fas fa-chart-area"></i> Abonelik Gelişimi</h3>
+                    <div class="chart-container">
+                        <canvas id="subscribersChart"></canvas>
+                    </div>
+                </div>
+                <div class="content-card">
+                    <h3><i class="fas fa-gift" style="color:#ff00ff"></i> En Çok Hediye Edenler</h3>
+                    <div class="activity-list" id="top-gifters-list">
+                        <!-- JS -->
+                        <div style="text-align:center; padding:20px; color:var(--muted);">Henüz veri yok.</div>
+                    </div>
+                </div>
             </div>
         </div>
 
@@ -841,6 +925,30 @@
             </div>
         </div>
 
+        <!-- SECURITY / GÜVENLİK -->
+        <div id="security" class="section">
+            <div class="content-card" style="border-color: var(--danger);">
+                <h3><i class="fas fa-shield-alt" style="color:var(--danger)"></i> Overlay Güvenliği</h3>
+                <p style="margin-bottom: 25px; color: var(--muted); font-size: 0.95rem;">Eğer overlay linkleriniz
+                    başkalarının eline geçtiyse veya bir güvenlik sızıntısı olduğunu düşünüyorsanız aşağıdaki butonu
+                    kullanarak tüm overlay anahtarlarınızı sıfırlayabilirsiniz. <b>DİKKAT:</b> Bu işlemden sonra eski
+                    linkleriniz OBS üzerinde çalışmayacaktır, yeni linkleri kopyalayıp güncellemeniz gerekecektir.</p>
+                <button class="btn btn-primary" style="background: var(--danger); border-color: var(--danger);"
+                    onclick="resetOverlayKey()">
+                    <i class="fas fa-sync-alt"></i> TÜM OVERLAY LİNKLERİNİ SIFIRLA
+                </button>
+            </div>
+
+            <div class="content-card">
+                <h3><i class="fas fa-info-circle"></i> Güvenlik Bilgilendirmesi</h3>
+                <ul style="color: var(--muted); padding-left: 20px; line-height: 1.8;">
+                    <li>Dashboard giriş anahtarınızı asla kimseyle paylaşmayın.</li>
+                    <li>OBS üzerinde overlay eklerken linki yayına göstermemeye dikkat edin.</li>
+                    <li>Beklenmedik bir overlay davranışı görürseniz hemen sıfırlama yapın.</li>
+                </ul>
+            </div>
+        </div>
+
         <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 20px;">
             <div class="content-card">
                 <h3><i class="fas fa-vial"></i> Test</h3>
@@ -926,6 +1034,8 @@
 
                 renderToggles(s);
                 renderSounds(s.custom_sounds || {});
+                renderActivity(data.stats);
+                renderCharts(data.stats.history || {});
                 document.getElementById('loading-overlay').style.display = 'none';
 
                 // Client-side V2 API ile gerçek takipçi sayısını al (Cloudflare engellemez)
@@ -1021,6 +1131,116 @@
                         </div>
                     </div>`;
             });
+        }
+
+        function renderActivity(stats) {
+            // Recent Joiners
+            const joinersList = document.getElementById('recent-joiners-list');
+            const joiners = stats.recent_joiners || [];
+            if (joiners.length === 0) {
+                joinersList.innerHTML = '<div style="text-align:center; padding:20px; color:var(--muted);">Henüz veri yok.</div>';
+            } else {
+                joinersList.innerHTML = joiners.map(u => `
+                    <div class="activity-item">
+                        <div class="activity-avatar">${u.user[0].toUpperCase()}</div>
+                        <div class="activity-details">
+                            <b>@${u.user}</b>
+                            <span>${u.type === 'subscriber' ? '💎 Abone Oldu' : '👤 Takip Etti'} • ${formatTime(u.timestamp)}</span>
+                        </div>
+                    </div>
+                `).join('');
+            }
+
+            // Top Gifters
+            const giftersList = document.getElementById('top-gifters-list');
+            const gifters = stats.top_gifters || [];
+            if (gifters.length === 0) {
+                giftersList.innerHTML = '<div style="text-align:center; padding:20px; color:var(--muted);">Henüz veri yok.</div>';
+            } else {
+                giftersList.innerHTML = gifters.map(u => `
+                    <div class="activity-item">
+                        <div class="activity-avatar" style="background: linear-gradient(135deg, #ff00ff, #7000ff);">${u.user[0].toUpperCase()}</div>
+                        <div class="activity-details">
+                            <b>@${u.user}</b>
+                            <span>🎁 ${u.count} Adet Abonelik Hediye Etti!</span>
+                        </div>
+                    </div>
+                `).join('');
+            }
+        }
+
+        let followChart, subChart;
+        function renderCharts(history) {
+            const labels = Object.keys(history).sort();
+            const followData = labels.map(l => history[l].followers || 0);
+            const subData = labels.map(l => history[l].subscribers || 0);
+
+            if (followChart) followChart.destroy();
+            if (subChart) subChart.destroy();
+
+            const commonOptions = {
+                responsive: true,
+                maintainAspectRatio: false,
+                scales: {
+                    y: { beginAtZero: false, grid: { color: 'rgba(255,255,255,0.05)' }, border: { display: false } },
+                    x: { grid: { display: false }, border: { display: false } }
+                },
+                plugins: { legend: { display: false } },
+                elements: { line: { tension: 0.4 } }
+            };
+
+            followChart = new Chart(document.getElementById('followersChart'), {
+                type: 'line',
+                data: {
+                    labels,
+                    datasets: [{
+                        label: 'Takipçi',
+                        data: followData,
+                        borderColor: '#66fcf1',
+                        backgroundColor: 'rgba(102, 252, 241, 0.1)',
+                        fill: true
+                    }]
+                },
+                options: commonOptions
+            });
+
+            subChart = new Chart(document.getElementById('subscribersChart'), {
+                type: 'line',
+                data: {
+                    labels,
+                    datasets: [{
+                        label: 'Abone',
+                        data: subData,
+                        borderColor: '#ff00ff',
+                        backgroundColor: 'rgba(255, 0, 255, 0.1)',
+                        fill: true
+                    }]
+                },
+                options: commonOptions
+            });
+        }
+
+        function formatTime(ts) {
+            const diff = Date.now() - ts;
+            if (diff < 60000) return 'Az önce';
+            if (diff < 3600000) return Math.floor(diff / 60000) + ' dk önce';
+            if (diff < 86400000) return Math.floor(diff / 3600000) + ' sa önce';
+            return new Date(ts).toLocaleDateString();
+        }
+
+        async function resetOverlayKey() {
+            if (!confirm('TÜM OVERLAY LİNKLERİ SIFIRLANACAK! OBS üzerindeki linkleri güncellemeniz gerekecek. Emin misiniz?')) return;
+
+            const res = await fetch('/dashboard-api/reset-overlay-key', {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({ channelId, key: loginKey })
+            });
+            const data = await res.json();
+            if (data.success) {
+                alert('Tüm overlay anahtarları sıfırlandı! Sayfa yenileniyor...');
+                location.reload();
+            }
         }
 
         async function editSound(name, key, val) {

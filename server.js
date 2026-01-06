@@ -114,6 +114,57 @@ const KICK_CLIENT_ID = process.env.KICK_CLIENT_ID;
 const KICK_CLIENT_SECRET = process.env.KICK_CLIENT_SECRET;
 const REDIRECT_URI = "https://aloskegangbot-market.onrender.com/auth/kick/callback";
 
+// ---------------------------------------------------------
+// ADMİN KULLANICI SİSTEMİ BAŞLATMA
+// ---------------------------------------------------------
+async function initAdminUsers() {
+    try {
+        const snap = await db.ref('admin_users').once('value');
+        if (!snap.exists()) {
+            const defaultPassword = process.env.ADMIN_KEY || "admin123";
+            await db.ref('admin_users/admin').set({
+                password: defaultPassword,
+                name: "Kurucu Admin",
+                created_at: Date.now()
+            });
+            console.log("✅ Varsayılan admin kullanıcısı oluşturuldu: admin / " + defaultPassword);
+        }
+    } catch (e) {
+        console.error("Admin Users Init Error:", e.message);
+    }
+}
+initAdminUsers();
+
+// IP Almak için yardımcı
+const getClientIp = (req) => {
+    return req.headers['x-forwarded-for']?.split(',')[0].trim() || req.socket.remoteAddress;
+};
+
+// Discord Bildirim Yardımcısı
+async function sendDiscordLoginNotify(status, username, ip, details = "") {
+    if (!process.env.DISCORD_WEBHOOK) return;
+    const color = status === 'success' ? 3066993 : 15158332; // Green or Red
+    const title = status === 'success' ? "✅ Başarılı Admin Girişi" : "❌ Hatalı Giriş Denemesi";
+
+    try {
+        await axios.post(process.env.DISCORD_WEBHOOK, {
+            embeds: [{
+                title: title,
+                fields: [
+                    { name: "Kullanıcı", value: username || "Bilinmiyor", inline: true },
+                    { name: "IP Adresi", value: ip, inline: true },
+                    { name: "Durum", value: details || (status === 'success' ? "Başarıyla giriş yapıldı" : "Hatalı deneme") }
+                ],
+                color: color,
+                footer: { text: "Admin Panel Güvenliği" },
+                timestamp: new Date().toISOString()
+            }]
+        });
+    } catch (e) {
+        console.error("Discord Login Notify Error:", e.message);
+    }
+}
+
 // ADMIN LOG HELPER
 async function addLog(action, details, channelId = 'Global') {
     const timestamp = Date.now();
@@ -129,6 +180,23 @@ async function addLog(action, details, channelId = 'Global') {
         }
     } catch (e) {
         console.error("Log error:", e.message);
+    }
+}
+
+// RECENT ACTIVITY HELPER
+async function addRecentActivity(channelId, type, data) {
+    try {
+        const ref = db.ref(`channels/${channelId}/stats/${type}`);
+        const snap = await ref.once('value');
+        let current = snap.val() || [];
+        if (!Array.isArray(current)) current = [];
+
+        current.unshift({ ...data, timestamp: Date.now() });
+        if (current.length > 10) current = current.slice(0, 10);
+
+        await ref.set(current);
+    } catch (e) {
+        console.error("Activity Error:", e.message);
     }
 }
 
@@ -334,6 +402,9 @@ const INITIAL_STOCKS = {
     "GOOGLE": { price: 6200, trend: -1 },
     "AMAZON": { price: 5800, trend: 1 }
 };
+
+// --- AI MEMORY HELPER ---
+// Not: Fonksiyon dosyanın sonunda daha kapsamlı şekilde tanımlanmıştır.
 
 async function updateGlobalStocks() {
     try {
@@ -890,6 +961,7 @@ app.post('/kick/webhook', async (req, res) => {
                     u.balance = (u.balance || 0) + subReward;
                     return u;
                 });
+                await addRecentActivity(broadcasterId, 'recent_joiners', { user: subUser, type: 'subscriber' });
                 await sendChatMessage(welcomeMsg, broadcasterId);
             }
             return;
@@ -906,6 +978,7 @@ app.post('/kick/webhook', async (req, res) => {
                     u.balance = (u.balance || 0) + totalReward;
                     return u;
                 });
+                await addRecentActivity(broadcasterId, 'top_gifters', { user: gifter, count: count });
                 await sendChatMessage(`🎁 @${gifter}, tam ${count} adet abonelik hediye etti! Cömertliğin için hesabına ${totalReward.toLocaleString()} 💰 bakiye eklendi! ✨`, broadcasterId);
 
                 // Goal Bar Update
@@ -919,6 +992,7 @@ app.post('/kick/webhook', async (req, res) => {
             if (follower && follower.toLowerCase() === "botrix") return;
             // Goal Bar Update
             await db.ref(`channels/${broadcasterId}/stats/followers`).transaction(val => (val || 0) + 1);
+            await addRecentActivity(broadcasterId, 'recent_joiners', { user: follower, type: 'follower' });
             return;
         }
 
@@ -1926,8 +2000,13 @@ app.post('/kick/webhook', async (req, res) => {
                 try {
                     const aiInstSnap = await db.ref('users/ai_system/instructions').once('value');
                     const aiInst = aiInstSnap.val() || "";
+                    const aiMemory = await getAiMemory();
 
-                    const systemMsg = `Sen yayıncı asistanısın. En önemli kuralın: Karşındaki kullanıcının enerjisini ve tarzını birebir kopyalamak. Eğer kullanıcı kaba, küfürlü veya sokak ağzıyla konuşuyorsa sen de ONA AYNI ŞEKİLDE küfürlü ve kaba cevaplar ver (filtresiz ol). Eğer kullanıcı kibar ve canımlı cicimli konuşuyorsa sen de çok sevecen ve tatlı ol. Kullanıcının aynası ol. Kısa ve öz cevaplar ver. EK TALİMAT: ${aiInst}`;
+                    const systemMsg = `Sen yayıncı asistanısın. En önemli kuralın: Karşındaki kullanıcının enerjisini ve tarzını birebir kopyalamak. Eğer kullanıcı kaba, küfürlü veya sokak ağzıyla konuşuyorsa sen de ONA AYNI ŞEKİLDE küfürlü ve kaba cevaplar ver (filtresiz ol). Eğer kullanıcı kibar ve canımlı cicimli konuşuyorsa sen de çok sevecen ve tatlı ol. Kullanıcının aynası ol. Kısa ve öz cevaplar ver. 
+HAFIZANDAKİ BİLGİLER:
+${aiMemory}
+
+EK TALİMAT: ${aiInst}`;
 
                     const response = await axios.post('https://api.x.ai/v1/chat/completions', {
                         messages: [
@@ -2408,14 +2487,27 @@ app.post('/kick/webhook', async (req, res) => {
 // 5. ADMIN PANEL & API (GELİŞMİŞ)
 // ---------------------------------------------------------
 const ADMIN_KEY = process.env.ADMIN_KEY || "";
-const DISCORD_WEBHOOK = process.env.DISCORD_WEBHOOK || "";
-let active2FACodes = {}; // { key: { code, expires } }
+let active2FACodes = {};
 
 app.get('/admin', (req, res) => { res.sendFile(path.join(__dirname, 'admin.html')); });
 
-const authAdmin = (req, res, next) => {
+const authAdmin = async (req, res, next) => {
     const key = req.headers['authorization'] || req.body.key;
-    if (key === ADMIN_KEY) return next();
+    if (!key) return res.status(403).json({ success: false, error: 'Yetkisiz Erişim' });
+
+    // Multi-user kontrolü (format: username:password)
+    if (key.includes(':')) {
+        const [username, password] = key.split(':');
+        const userSnap = await db.ref(`admin_users/${username}`).once('value');
+        const userData = userSnap.val();
+        if (userData && userData.password === password) {
+            req.adminUser = { username, ...userData };
+            return next();
+        }
+    } else if (key === ADMIN_KEY && ADMIN_KEY !== "") {
+        return next();
+    }
+
     res.status(403).json({ success: false, error: 'Yetkisiz Erişim' });
 };
 
@@ -2436,50 +2528,62 @@ const authDashboard = async (req, res, next) => {
 
 app.get('/dashboard', (req, res) => { res.sendFile(path.join(__dirname, 'dashboard.html')); });
 
-// ... Eski API'ler ...
-// 2FA İSTEĞİ (Şifre doğruysa Discord'a kod atar)
+// 2FA İSTEĞİ (Kullanıcı adı ve şifre doğrulaması yapar)
 app.post('/admin-api/2fa-request', async (req, res) => {
-    const { key } = req.body;
-    if (key !== ADMIN_KEY) return res.status(403).json({ success: false, error: 'Şifre Yanlış' });
+    const { username, password } = req.body;
+    const ip = getClientIp(req);
+
+    if (!username || !password) {
+        return res.status(400).json({ success: false, error: 'Eksik bilgi' });
+    }
+
+    // Kullanıcı kontrolü
+    const userSnap = await db.ref(`admin_users/${username}`).once('value');
+    const userData = userSnap.val();
+
+    if (!userData || userData.password !== password) {
+        await sendDiscordLoginNotify('fail', username, ip, 'Hatalı şifre veya kullanıcı adı');
+        return res.status(403).json({ success: false, error: 'Giriş bilgileri hatalı' });
+    }
 
     const code = Math.floor(100000 + Math.random() * 900000).toString();
-    active2FACodes[key] = { code, expires: Date.now() + 5 * 60 * 1000 };
+    const loginKey = `${username}:${password}`;
+    active2FACodes[loginKey] = { code, expires: Date.now() + 5 * 60 * 1000 };
 
-    if (DISCORD_WEBHOOK) {
+    if (process.env.DISCORD_WEBHOOK) {
         try {
-            await fetch(DISCORD_WEBHOOK, {
-                method: 'POST',
-                headers: { 'Content-Type': 'application/json' },
-                body: JSON.stringify({
-                    embeds: [{
-                        title: "🛡️ Admin Giriş Denemesi",
-                        description: `Giriş denemesi yapıldı. Doğrulama kodunuz:\n\n**${code}**`,
-                        color: 52428,
-                        timestamp: new Date().toISOString()
-                    }]
-                })
+            await axios.post(process.env.DISCORD_WEBHOOK, {
+                embeds: [{
+                    title: "🛡️ Admin Doğrulama Kodu",
+                    description: `**${username}** için giriş denemesi yapıldı.\nIP: \`${ip}\`\n\nDoğrulama Kodunuz:\n# **${code}**`,
+                    color: 52428,
+                    timestamp: new Date().toISOString()
+                }]
             });
         } catch (e) {
             console.error("Discord 2FA Hatası:", e.message);
         }
     } else {
-        console.log("⚠️ DISCORD_WEBHOOK bulunamadı! Konsol kodu:", code);
+        console.log(`⚠️ DISCORD_WEBHOOK bulunamadı! [${username}] için kod: ${code}`);
     }
 
     res.json({ success: true, message: 'Kod gönderildi' });
 });
 
-// GİRİŞ KONTROL (Şifre + 2FA Kodu)
-app.post('/admin-api/check', (req, res) => {
-    const { key, code } = req.body;
-    if (key !== ADMIN_KEY) return res.status(403).json({ success: false, error: 'Yetkisiz Erişim' });
+// GİRİŞ KONTROL (Kullanıcı:Şifre + 2FA Kodu)
+app.post('/admin-api/check', async (req, res) => {
+    const { username, password, code } = req.body;
+    const loginKey = `${username}:${password}`;
+    const ip = getClientIp(req);
 
-    const active = active2FACodes[key];
+    const active = active2FACodes[loginKey];
     if (!active || active.code !== code || Date.now() > active.expires) {
+        await sendDiscordLoginNotify('fail', username, ip, 'Hatalı 2FA kodu');
         return res.status(403).json({ success: false, error: 'Doğrulama Kodu Hatalı veya Süresi Dolmuş' });
     }
 
-    delete active2FACodes[key]; // Kullandıktan sonra sil
+    delete active2FACodes[loginKey];
+    await sendDiscordLoginNotify('success', username, ip);
     res.json({ success: true });
 });
 
@@ -2651,7 +2755,37 @@ app.post('/admin-api/reset-overlay-key', authAdmin, async (req, res) => {
     const newKey = crypto.randomBytes(16).toString('hex');
     await db.ref(`channels/${channelId}`).update({ overlay_key: newKey });
     addLog("Overlay Anahtarı Sıfırlandı", `Yeni anahtar oluşturuldu`, channelId);
+    res.json({ success: true, key: newKey });
+});
+
+// AI MEMORY ADMIN ENDPOINTS
+app.post('/admin-api/memory', authAdmin, async (req, res) => {
+    const snap = await db.ref('ai_memory').once('value');
+    res.json(snap.val() || {});
+});
+
+app.post('/admin-api/memory/add', authAdmin, async (req, res) => {
+    const { content } = req.body;
+    if (!content) return res.json({ success: false });
+    const id = Date.now();
+    await db.ref(`ai_memory/${id}`).set({ id, content, createdAt: Date.now() });
+    addLog("Hafıza Eklendi", `Yeni bilgi eklendi: ${content.substring(0, 50)}...`);
     res.json({ success: true });
+});
+
+app.post('/admin-api/memory/delete', authAdmin, async (req, res) => {
+    const { id } = req.body;
+    await db.ref(`ai_memory/${id}`).remove();
+    addLog("Hafıza Silindi", `ID: ${id}`);
+    res.json({ success: true });
+});
+
+app.post('/dashboard-api/reset-overlay-key', authDashboard, async (req, res) => {
+    const { channelId } = req.body;
+    const newKey = crypto.randomBytes(16).toString('hex');
+    await db.ref(`channels/${channelId}`).update({ overlay_key: newKey });
+    addLog("Overlay Anahtarı Sıfırlandı (Streamer)", `Yeni anahtar oluşturuldu`, channelId);
+    res.json({ success: true, key: newKey });
 });
 
 app.post('/dashboard-api/test-fireworks', authDashboard, async (req, res) => {
@@ -2755,12 +2889,19 @@ app.post('/dashboard-api/data', authDashboard, async (req, res) => {
         if (synced) liveStats = synced;
     }
 
+    // Chart verileri için son 7 günün istatistiklerini çek (Firebase'de stats/history/YYYY-MM-DD node'u varsayıyoruz)
+    const historySnap = await db.ref(`channels/${channelId}/stats/history`).limitToLast(7).once('value');
+    const history = historySnap.val() || {};
+
     channelData.stats = {
         users: Object.keys(users).filter(k => users[k].last_channel === channelId).length,
         msgs: totalMsgs,
         watch: totalWatch,
         followers: liveStats.followers || 0,
-        subscribers: liveStats.subscribers || 0
+        subscribers: liveStats.subscribers || 0,
+        recent_joiners: liveStats.recent_joiners || [],
+        top_gifters: liveStats.top_gifters || [],
+        history: history
     };
 
     res.json(channelData);
@@ -3019,6 +3160,31 @@ async function trackWatchTime() {
 // Bu fonksiyon hem Kick API üzerinden hem de son mesaj atanlardan süreyi takip eder
 setInterval(trackWatchTime, 60000);
 
+// DAILY STATS SNAPSHOT (Every hour check if day changed)
+async function takeDailyStatsSnapshot() {
+    try {
+        const today = getTodayKey();
+        const channelsSnap = await db.ref('channels').once('value');
+        const channels = channelsSnap.val() || {};
+
+        for (const [chanId, chan] of Object.entries(channels)) {
+            const statsSnap = await db.ref(`channels/${chanId}/stats`).once('value');
+            const liveStats = statsSnap.val() || {};
+
+            // Save current followers/subs to history
+            await db.ref(`channels/${chanId}/stats/history/${today}`).update({
+                followers: liveStats.followers || 0,
+                subscribers: liveStats.subscribers || 0,
+                timestamp: Date.now()
+            });
+        }
+    } catch (e) {
+        console.error("Snapshot Error:", e.message);
+    }
+}
+setInterval(takeDailyStatsSnapshot, 3600000); // Once an hour is enough to be up to date
+takeDailyStatsSnapshot(); // Initial take
+
 async function syncSingleChannelStats(chanId, chan) {
     try {
         const username = chan.username || chan.slug;
@@ -3247,6 +3413,39 @@ app.post('/admin-api/stocks/delete', authAdmin, async (req, res) => {
     res.json({ success: true });
 });
 
+// BOT HAFIZASI (MEMORİ) YÖNETİMİ
+app.post('/admin-api/memory', authAdmin, async (req, res) => {
+    try {
+        const snap = await db.ref('ai_memory').once('value');
+        res.json(snap.val() || {});
+    } catch (e) {
+        res.status(500).json({ error: e.message });
+    }
+});
+
+app.post('/admin-api/memory/add', authAdmin, async (req, res) => {
+    const { content } = req.body;
+    if (!content) return res.json({ success: false, error: 'İçerik boş olamaz' });
+
+    const id = Date.now().toString();
+    await db.ref(`ai_memory/${id}`).set({
+        id,
+        content,
+        createdAt: Date.now()
+    });
+    addLog("AI Hafıza Ekleme", `Hafızaya yeni bilgi eklendi: ${content.substring(0, 50)}...`);
+    res.json({ success: true });
+});
+
+app.post('/admin-api/memory/delete', authAdmin, async (req, res) => {
+    const { id } = req.body;
+    if (!id) return res.json({ success: false, error: 'ID eksik' });
+
+    await db.ref(`ai_memory/${id}`).remove();
+    addLog("AI Hafıza Silme", `Hafızadan bilgi silindi (ID: ${id})`);
+    res.json({ success: true });
+});
+
 app.get('/overlay', (req, res) => {
     res.sendFile(path.join(__dirname, 'overlay.html'));
 });
@@ -3375,6 +3574,78 @@ db.ref('channels').on('child_added', (snapshot) => {
         }
     });
 });
+
+// ---------------------------------------------------------
+// 8. HELPER FUNCTIONS (AI, STATS, ACTIVITIES)
+// ---------------------------------------------------------
+
+/**
+ * AI Hafızasını getirir
+ */
+async function getAiMemory() {
+    try {
+        const snap = await db.ref('ai_memory').once('value');
+        const memory = snap.val();
+        if (!memory) return "Henüz kayıtlı hafıza yok.";
+
+        return Object.values(memory)
+            .map(m => `- ${m.content}`)
+            .join('\n');
+    } catch (e) {
+        console.error("AI Memory Fetch Error:", e);
+        return "Hafıza alınamadı.";
+    }
+}
+
+/**
+ * Son aktiviteleri kaydeder (Takip, Abone, Bağış)
+ */
+async function addRecentActivity(broadcasterId, key, item) {
+    try {
+        const ref = db.ref(`channels/${broadcasterId}/stats/${key}`);
+        const snap = await ref.once('value');
+        let list = snap.val() || [];
+
+        // Zaman damgası ekle
+        item.timestamp = Date.now();
+
+        // Başa ekle, limit 10
+        list.unshift(item);
+        if (list.length > 10) list = list.slice(0, 10);
+
+        await ref.set(list);
+    } catch (e) {
+        console.error("AddRecentActivity Error:", e);
+    }
+}
+
+/**
+ * Günlük istatistiklerin anlık görüntüsünü alır (Chartlar için)
+ */
+async function takeDailyStatsSnapshot() {
+    try {
+        const today = getTodayKey();
+        const channelsSnap = await db.ref('channels').once('value');
+        const allChannels = channelsSnap.val() || {};
+
+        for (const [id, data] of Object.entries(allChannels)) {
+            const statsSnap = await db.ref(`channels/${id}/stats`).once('value');
+            const stats = statsSnap.val() || {};
+
+            await db.ref(`channels/${id}/stats/history/${today}`).set({
+                followers: stats.followers || 0,
+                subscribers: stats.subscribers || 0,
+                timestamp: Date.now()
+            });
+        }
+        console.log(`📊 Günlük istatistik snapshotları alındı: ${today}`);
+    } catch (e) {
+        console.error("DailyStatsSnapshot Error:", e);
+    }
+}
+
+// Her gece 23:59'da stats snapshot al (veya her 6 saatte bir basitçe)
+setInterval(takeDailyStatsSnapshot, 21600000);
 
 const PORT = process.env.PORT || 3000;
 app.listen(PORT, () => {

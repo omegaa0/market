@@ -463,7 +463,9 @@
             <h2>🛡️ ADMIN KONTROL</h2>
 
             <div id="auth-step-1">
-                <input type="password" id="adminKey" class="inp" placeholder="Admin Şifresi"
+                <input type="text" id="adminUser" class="inp" placeholder="Kullanıcı Adı"
+                    onkeypress="if(event.key==='Enter') request2FA()">
+                <input type="password" id="adminKey" class="inp" placeholder="Şifre"
                     onkeypress="if(event.key==='Enter') request2FA()">
                 <button class="btn" onclick="request2FA()">İLERLE</button>
             </div>
@@ -500,6 +502,7 @@
             <button class="tab-btn" onclick="showTab('logs')">📋 İşlem Kayıtları</button>
             <button class="tab-btn" onclick="showTab('quests')">🎯 Görevler</button>
             <button class="tab-btn" onclick="showTab('stocks')">📈 Borsa</button>
+            <button class="tab-btn" onclick="showTab('memory'); loadMemory();">🧠 Bot Hafızası</button>
             <button class="tab-btn" onclick="showTab('global')">⚙️ Duyuru</button>
         </div>
 
@@ -669,6 +672,34 @@
             </div>
         </div>
 
+        <!-- MEMORY -->
+        <div id="memory" class="section">
+            <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:20px;">
+                <h2 style="margin:0;">🧠 Bot Hafızası (Genel Bilgiler)</h2>
+                <div style="display:flex; gap:10px; flex:1; max-width:600px; margin-left: 20px;">
+                    <input type="text" id="newMemoryContent" placeholder="Botun hatırlaması gereken bir şey yaz..."
+                        class="inp" style="margin:0;">
+                    <button class="btn" style="width: auto; padding: 0 20px;" onclick="addMemory()">+ EKLE</button>
+                </div>
+            </div>
+            <div class="table-container">
+                <table>
+                    <thead>
+                        <tr>
+                            <th>Bilgi İçeriği</th>
+                            <th>Eklenme Tarihi</th>
+                            <th style="text-align:right">İşlemler</th>
+                        </tr>
+                    </thead>
+                    <tbody id="memory-list">
+                        <tr>
+                            <td colspan="3" style="text-align:center; color:var(--muted);">Yükleniyor...</td>
+                        </tr>
+                    </tbody>
+                </table>
+            </div>
+        </div>
+
         <!-- STOCKS -->
         <div id="stocks" class="section">
             <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:20px;">
@@ -765,10 +796,13 @@
             let logInterval = null;
 
             async function request2FA() {
-                const key = document.getElementById('adminKey').value;
-                if (!key) return;
+                const username = document.getElementById('adminUser').value;
+                const password = document.getElementById('adminKey').value;
+                if (!username || !password) return;
+
                 const res = await fetch('/admin-api/2fa-request', {
-                    method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ key })
+                    method: 'POST', headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({ username, password })
                 });
                 const data = await res.json();
                 if (data.success) {
@@ -777,7 +811,7 @@
                     document.getElementById('error-log').innerText = "";
                     setTimeout(() => document.getElementById('admin2FA').focus(), 100);
                 } else {
-                    document.getElementById('error-log').innerText = data.error || "Şifre Yanlış!";
+                    document.getElementById('error-log').innerText = data.error || "Giriş Bilgileri Yanlış!";
                 }
             }
 
@@ -788,17 +822,20 @@
             }
 
             async function verify2FA() {
-                const key = document.getElementById('adminKey').value;
+                const username = document.getElementById('adminUser').value;
+                const password = document.getElementById('adminKey').value;
                 const code = document.getElementById('admin2FA').value;
                 if (!code) return;
 
                 try {
                     const res = await fetch('/admin-api/check', {
-                        method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ key, code })
+                        method: 'POST',
+                        headers: { 'Content-Type': 'application/json' },
+                        body: JSON.stringify({ username, password, code })
                     });
                     const data = await res.json();
                     if (data.success) {
-                        sessionKey = key;
+                        sessionKey = `${username}:${password}`;
                         document.getElementById('login-overlay').style.opacity = '0';
                         setTimeout(() => document.getElementById('login-overlay').style.display = 'none', 500);
                         document.getElementById('admin-panel').style.display = 'block';
@@ -1664,6 +1701,65 @@
                     body: JSON.stringify({ key: sessionKey, code })
                 });
                 if ((await res.json()).success) loadStocks();
+            }
+
+            // MEMORY
+            async function loadMemory() {
+                const res = await fetch('/admin-api/memory', {
+                    method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ key: sessionKey })
+                });
+                const memory = await res.json();
+                const container = document.getElementById('memory-list');
+                container.innerHTML = "";
+
+                const entries = Object.values(memory).sort((a, b) => b.createdAt - a.createdAt);
+
+                if (entries.length === 0) {
+                    container.innerHTML = '<tr><td colspan="3" style="text-align:center; color:var(--muted);">Henüz hafızada bilgi yok.</td></tr>';
+                    return;
+                }
+
+                entries.forEach(entry => {
+                    const tr = document.createElement('tr');
+                    tr.innerHTML = `
+                        <td style="font-size:0.95rem; line-height:1.4;">${entry.content}</td>
+                        <td style="color:var(--muted); font-size:0.8rem;">${new Date(entry.createdAt).toLocaleString()}</td>
+                        <td style="text-align:right">
+                            <button class="btn btn-small btn-danger" style="width:auto; padding:5px 15px; display:inline-block;" onclick="deleteMemory('${entry.id}')">SİL</button>
+                        </td>
+                    `;
+                    container.appendChild(tr);
+                });
+            }
+
+            async function addMemory() {
+                const content = document.getElementById('newMemoryContent').value;
+                if (!content) return alert("İçerik boş olamaz!");
+                const res = await fetch('/admin-api/memory/add', {
+                    method: 'POST', headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({ key: sessionKey, content })
+                });
+                if ((await res.json()).success) {
+                    document.getElementById('newMemoryContent').value = "";
+                    loadMemory();
+                    showToast("Bilgi hafızaya kaydedildi! 🧠");
+                }
+            }
+
+            async function deleteMemory(id) {
+                if (!confirm("Bu bilgiyi hafızadan silmek istediğine emin misin?")) return;
+                const res = await fetch('/admin-api/memory/delete', {
+                    method: 'POST', headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({ key: sessionKey, id })
+                });
+                if ((await res.json()).success) loadMemory();
+            }
+
+            function showToast(msg) {
+                const t = document.getElementById('toast');
+                t.innerText = msg;
+                t.style.display = 'block';
+                setTimeout(() => t.style.display = 'none', 3000);
             }
 
             // Auto login if possible (not implemented here but sessionKey could be in localStorage)
