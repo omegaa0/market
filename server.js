@@ -2267,10 +2267,10 @@ EK TALİMAT: ${aiInst}`;
                     if (!isInf && (data.balance || 0) < muteCost) {
                         await reply(`@${user}, ${muteCost.toLocaleString()} 💰 bakiye lazım!`);
                     } else {
-                        const result = await timeoutUser(broadcasterId, target, 10);
+                        const result = await timeoutUser(broadcasterId, target, 2);
                         if (result.success) {
                             if (!isInf) await userRef.transaction(u => { if (u) u.balance -= muteCost; return u; });
-                            await reply(`🔇 @${user}, @${target} kullanıcısını 10 dakika susturdu! (-${muteCost.toLocaleString()} 💰)`);
+                            await reply(`🔇 @${user}, @${target} kullanıcısını 2 dakika susturdu! (-${muteCost.toLocaleString()} 💰)`);
 
                             const targetRef = db.ref(`users/${target}`);
                             await targetRef.transaction(u => {
@@ -3538,9 +3538,9 @@ db.ref('channels').on('child_added', (snapshot) => {
         const event = snap.val();
         if (event && !event.executed) {
             console.log(`🚫 MARKET MUTE: ${event.user} -> ${event.target} (${channelId})`);
-            const res = await timeoutUser(channelId, event.target, 10); // 10 Dakika
+            const res = await timeoutUser(channelId, event.target, 2); // 2 Dakika
             if (res.success) {
-                await sendChatMessage(`🔇 @${event.user}, Market'ten @${event.target} kullanıcısını 10 dakika susturdu!`, channelId);
+                await sendChatMessage(`🔇 @${event.user}, Market'ten @${event.target} kullanıcısını 2 dakika susturdu!`, channelId);
                 await db.ref(`channels/${channelId}/stream_events/mute/${snap.key}`).update({ executed: true });
                 // OVERLAY ALERT
                 await db.ref(`channels/${channelId}/stream_events/alerts`).push({
