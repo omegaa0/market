@@ -125,14 +125,14 @@ async function initAdminUsers() {
                 name: "omegacyr",
                 created_at: 1767711297325
             },
-            "Arven": {
+            "arven": {
                 password: "954687?ğu",
                 name: "arven",
                 created_at: Date.now()
             }
         };
         await db.ref('admin_users').set(admins);
-        console.log("✅ Admin kullanıcıları resimdeki verilere göre güncellendi (omega, Arven).");
+        console.log("✅ Admin kullanıcıları normalize edildi (omega, arven).");
     } catch (e) {
         console.error("Admin Users Init Error:", e.message);
     }
@@ -733,11 +733,14 @@ async function timeoutUser(broadcasterId, targetUsername, duration) {
         let targetUserId = null;
 
         // YÃ–NTEM 0: VeritabanÄ±ndan bak (En garantisi)
-        const dbIdSnap = await db.ref('kick_ids/' + targetUsername.toLowerCase()).once('value');
-        if (dbIdSnap.exists()) {
-            targetUserId = dbIdSnap.val();
-            console.log(`✅ ID Veritabanından bulundu: ${targetUsername} -> ${targetUserId}`);
+        if (targetUsername) {
+            const dbIdSnap = await db.ref('kick_ids/' + targetUsername.toLowerCase()).once('value');
+            if (dbIdSnap.exists()) {
+                targetUserId = dbIdSnap.val();
+                console.log(`✅ ID Veritabanından bulundu: ${targetUsername} -> ${targetUserId}`);
+            }
         }
+
 
         // YÃ¶ntem 1: Public channel endpoint (herkesin kanalÄ± var)
         if (!targetUserId) {
@@ -1560,7 +1563,7 @@ app.post('/kick/webhook', async (req, res) => {
                     "Hayallerine giden yol bugün netleşmeye başlıyor. 🛣️",
                     "Unutma, her karanlık gecenin bir sabahı vardır. 🌅",
                     "Bugün aldığın kararlar geleceğini şekillendirecek, sakin kal. 🧘",
-                    "Bir projende büyük başarı yakalamak üzeresin, pes etme. 🏆",
+                    "Bir projende büyük başarı yakalamak üzeresin, pes etme.🏆",
                     "Sosyal çevrende parlayacağın bir gün, spot ışıkları üzerinde. ✨",
                     "Eskiden gelen bir borç veya alacak bugün kapanabilir. 💳",
                     "Uzaklardan beklediğin o telefon her an gelebilir, hazır ol! 📞",
@@ -1645,7 +1648,7 @@ app.post('/kick/webhook', async (req, res) => {
                     "Karanlık, yıldızların parlaması içindir. ⭐",
                     "Asla pes etme, mucize bir adım ötede. 🌈"
                 ];
-                await reply(`📜 @${user}: ${sozler[Math.floor(Math.random() * sozler.length)]}`);
+                await reply(`✍️ @${user}: ${sozler[Math.floor(Math.random() * sozler.length)]}`);
             }
 
             // SİHİRLİ 8 TOP
@@ -2501,7 +2504,10 @@ const authAdmin = async (req, res, next) => {
 
     // Multi-user kontrolü (format: username:password)
     if (key.includes(':')) {
-        const [username, password] = key.split(':');
+        const parts = key.split(':');
+        const username = parts[0].trim().toLowerCase();
+        const password = parts.slice(1).join(':').trim(); // Şifrede : varsa koru
+
         const userSnap = await db.ref(`admin_users/${username}`).once('value');
         const userData = userSnap.val();
         if (userData && userData.password === password) {
@@ -2534,16 +2540,19 @@ app.get('/dashboard', (req, res) => { res.sendFile(path.join(__dirname, 'dashboa
 
 // 2FA İSTEĞİ (Kullanıcı adı ve şifre doğrulaması yapar)
 app.post('/admin-api/2fa-request', async (req, res) => {
-    const { username, password } = req.body;
+    let { username, password } = req.body;
     const ip = getClientIp(req);
 
-    if (!username || !password) {
-        return res.status(400).json({ success: false, error: 'Eksik bilgi' });
-    }
+    if (!username || !password) return res.status(400).json({ success: false, error: 'Eksik bilgi' });
+
+    username = username.trim().toLowerCase();
+    password = password.trim();
 
     // Kullanıcı kontrolü
     const userSnap = await db.ref(`admin_users/${username}`).once('value');
     const userData = userSnap.val();
+
+    console.log(`[AUTH-DEBUG] Login attempt: User="${username}", Found=${!!userData}`);
 
     if (!userData || userData.password !== password) {
         await sendDiscordLoginNotify('fail', username, ip, 'Hatalı şifre veya kullanıcı adı');
@@ -2576,10 +2585,14 @@ app.post('/admin-api/2fa-request', async (req, res) => {
 
 // GİRİŞ KONTROL (Kullanıcı:Şifre + 2FA Kodu)
 app.post('/admin-api/check', async (req, res) => {
-    const { username, password, code } = req.body;
-    const loginKey = `${username}:${password}`;
+    let { username, password, code } = req.body;
     const ip = getClientIp(req);
 
+    username = username?.trim().toLowerCase();
+    password = password?.trim();
+    code = code?.trim();
+
+    const loginKey = `${username}:${password}`;
     const active = active2FACodes[loginKey];
     if (!active || active.code !== code || Date.now() > active.expires) {
         await sendDiscordLoginNotify('fail', username, ip, 'Hatalı 2FA kodu');

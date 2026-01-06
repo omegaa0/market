@@ -796,8 +796,8 @@
             let logInterval = null;
 
             async function request2FA() {
-                const username = document.getElementById('adminUser').value;
-                const password = document.getElementById('adminKey').value;
+                const username = document.getElementById('adminUser').value.trim();
+                const password = document.getElementById('adminKey').value.trim();
                 if (!username || !password) return;
 
                 const res = await fetch('/admin-api/2fa-request', {
