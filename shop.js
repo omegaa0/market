@@ -768,6 +768,7 @@ function renderEmlakMap() {
         dot.className = 'city-dot';
         dot.style.left = `${city.x}%`;
         dot.style.top = `${city.y}%`;
+        dot.style.transform = "translate(-50%, -50%)"; // Hizalama garantisi
 
         dot.addEventListener('mouseenter', () => {
             const toast = document.getElementById('city-info-toast');
@@ -810,6 +811,23 @@ async function loadCityProperties(cityId, cityName) {
         const props = await res.json();
 
         list.innerHTML = "";
+
+        if (!props || props.length === 0) {
+            list.innerHTML = `
+                <div style="text-align:center; padding:30px 10px; background: rgba(255, 0, 0, 0.05); border: 1px dashed rgba(255, 0, 0, 0.3); border-radius: 15px;">
+                    <i class="fas fa-lock" style="font-size: 2.5rem; color: #ff4d4d; margin-bottom: 15px;"></i>
+                    <h4 style="color: white; margin-bottom: 10px;">Veri Erişim Engellendi</h4>
+                    <p style="font-size: 0.8rem; color: #aaa; line-height: 1.5;">
+                        Şehir verileri sunucudan boş döndü. Bu durum genellikle <b>Firebase Security Rules</b> ayarlarından kaynaklanır.
+                    </p>
+                    <div style="margin-top: 15px; padding: 10px; background: #000; border-radius: 8px; font-family: monospace; font-size: 0.7rem; color: #00ff88; text-align: left;">
+                        Rules -> real_estate_market: { ".read": true, ".write": true }
+                    </div>
+                </div>
+            `;
+            return;
+        }
+
         props.forEach(p => {
             const item = document.createElement('div');
             item.style.padding = "15px";

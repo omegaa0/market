@@ -245,13 +245,13 @@
                     <div class="emlak-container" style="display: grid; grid-template-columns: 2fr 1.2fr; gap: 20px;">
                         <!-- Harita Alanı -->
                         <div class="map-wrapper glass-panel"
-                            style="position:relative; padding: 20px; overflow: hidden; background: rgba(0,0,0,0.5); min-height: 400px; display: flex; align-items: center; justify-content: center;">
+                            style="position:relative; padding: 10px; overflow: hidden; background: #080808; min-height: 450px; display: flex; align-items: center; justify-content: center; border-radius: 20px; border: 1px solid #1a1a1a;">
                             <div id="turkey-map"
-                                style="width: 100%; max-width: 800px; aspect-ratio: 1000 / 480; position: relative; overflow: visible; background: rgba(255,255,255,0.02); border-radius: 10px;">
-                                <!-- SVG Harita -->
+                                style="width: 100%; max-width: 850px; position: relative; margin: 0 auto;">
+                                <!-- SVG Harita (Neon Yeşil Stil) -->
                                 <img src="https://upload.wikimedia.org/wikipedia/commons/1/13/Turkey_provinces_blank.svg"
                                     alt="Turkey Map"
-                                    style="width: 100%; height: 100%; object-fit: contain; pointer-events: none; opacity: 0.3; filter: invert(1) brightness(1.5) drop-shadow(0 0 8px rgba(0,255,136,0.3)); transition: 0.3s;">
+                                    style="width: 100%; height: auto; display: block; opacity: 0.5; filter: invert(48%) sepia(79%) saturate(2476%) hue-rotate(114deg) brightness(118%) contrast(119%);">
                                 <div id="map-overlay"
                                     style="position:absolute; top:0; left:0; width:100%; height:100%; pointer-events: auto;">
                                     <!-- İnteraktif Şehir Noktaları (JS tarafından doldurulacak) -->
@@ -259,8 +259,8 @@
                             </div>
                             <!-- Şehir Bilgi Kartı (Hover) -->
                             <div id="city-info-toast"
-                                style="position:absolute; top:20px; right:20px; background: rgba(0,255,136,0.1); color: var(--primary); padding: 8px 15px; border-radius: 10px; border: 1px solid var(--primary); font-weight: 800; font-size: 0.9rem; pointer-events: none; display:none; backdrop-filter: blur(5px); box-shadow: 0 0 20px rgba(0,255,136,0.2); z-index: 10;">
-                                <i class="fas fa-map-marker-alt"></i> <span>Şehir</span>
+                                style="position:absolute; top:20px; right:20px; background: rgba(0,255,136,0.15); color: #00ff88; padding: 10px 20px; border-radius: 12px; border: 1px solid #00ff88; font-weight: 800; font-size: 1rem; pointer-events: none; display:none; backdrop-filter: blur(10px); box-shadow: 0 0 30px rgba(0,255,136,0.2); z-index: 100;">
+                                <i class="fas fa-map-marker-alt"></i> <span style="margin-left:8px;">Şehir</span>
                             </div>
                         </div>
 
