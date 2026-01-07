@@ -434,3 +434,60 @@ header {
     font-size: 1.2rem;
     font-weight: 800;
 }
+
+.city-dot {
+    position: absolute;
+    width: 12px;
+    height: 12px;
+    background: var(--primary);
+    border-radius: 50%;
+    cursor: pointer;
+    box-shadow: 0 0 10px var(--primary);
+    transition: all 0.3s cubic-bezier(0.175, 0.885, 0.32, 1.275);
+    border: 2px solid rgba(0, 0, 0, 0.6);
+    z-index: 5;
+    pointer-events: auto;
+    transform: translate(-50%, -50%);
+}
+
+.city-dot:hover {
+    transform: translate(-50%, -50%) scale(1.6);
+    background: white !important;
+    box-shadow: 0 0 20px white !important;
+    z-index: 10;
+}
+
+.city-dot.active {
+    background: white !important;
+    box-shadow: 0 0 20px white !important;
+    border-color: var(--primary) !important;
+}
+
+.city-dot::after {
+    content: '';
+    position: absolute;
+    top: 50%;
+    left: 50%;
+    width: 100%;
+    height: 100%;
+    border-radius: 50%;
+    background: var(--primary);
+    transform: translate(-50%, -50%);
+    animation: city-pulse 2s infinite;
+    z-index: -1;
+    opacity: 0.6;
+}
+
+@keyframes city-pulse {
+    0% {
+        width: 100%;
+        height: 100%;
+        opacity: 0.6;
+    }
+
+    100% {
+        width: 300%;
+        height: 300%;
+        opacity: 0;
+    }
+}

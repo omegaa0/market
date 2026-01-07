@@ -407,37 +407,44 @@ const INITIAL_STOCKS = {
     "AMAZON": { price: 5800, trend: 1 }
 };
 
-// --- EMLAK SİSTEMİ VERİLERİ ---
-const CITY_PROPERTIES = {
-    "ISTANBUL": [
-        { id: "ist_1", name: "Karaköy Butik Otel", price: 250000, income: 8000 },
-        { id: "ist_2", name: "Maslak Plaza Katı", price: 500000, income: 15000 },
-        { id: "ist_3", name: "Sultanahmet Hediyelik Eşya", price: 120000, income: 4500 }
-    ],
-    "ANKARA": [
-        { id: "ank_1", name: "Çankaya Elçilik Yanı Ofis", price: 300000, income: 9500 },
-        { id: "ank_2", name: "Kızılay Simit Sarayı", price: 80000, income: 3500 },
-        { id: "ank_3", name: "Bilkent Teknopark Şirketi", price: 450000, income: 12000 }
-    ],
-    "IZMIR": [
-        { id: "izm_1", name: "Alsancak Cafe", price: 200000, income: 7000 },
-        { id: "izm_2", name: "Kordon Boyu Restoran", price: 350000, income: 11000 },
-        { id: "izm_3", name: "Çeşme Butik Beach", price: 600000, income: 18000 }
-    ],
-    "BURSA": [
-        { id: "bur_1", name: "Uludağ Kayak Oteli", price: 400000, income: 13000 },
-        { id: "bur_2", name: "Kapalıçarşı İpekçi", price: 100000, income: 4000 }
-    ],
-    "ANTALYA": [
-        { id: "ant_1", name: "Lara Plaj İşletmesi", price: 550000, income: 16500 },
-        { id: "ant_2", name: "Kaleiçi Pansiyon", price: 180000, income: 6500 }
-    ],
-    "GENERIC": [
-        { id: "gen_1", name: "Yerel Bakkal", price: 50000, income: 3000 },
-        { id: "gen_2", name: "İlçe Eczanesi", price: 150000, income: 6000 },
-        { id: "gen_3", name: "Şehir Hastanesi Kantini", price: 300000, income: 10000 }
-    ]
-};
+// --- EMLAK SİSTEMİ (GLOBAL PAZAR) ---
+const REAL_ESTATE_TYPES = [
+    { name: "Küçük Esnaf Dükkanı", minPrice: 250000, maxPrice: 450000, minInc: 5000, maxInc: 10000, type: "low" },
+    { name: "Pide Salonu", minPrice: 400000, maxPrice: 750000, minInc: 8000, maxInc: 15000, type: "low" },
+    { name: "Bakkal Amca", minPrice: 150000, minInc: 3000, maxInc: 7000, type: "low" },
+    { name: "Lüks Rezidans Katı", minPrice: 2500000, maxPrice: 5000000, minInc: 45000, maxInc: 85000, type: "med" },
+    { name: "İş Merkezi", minPrice: 8000000, maxPrice: 15000000, minInc: 120000, maxInc: 250000, type: "med" },
+    { name: "Butik Otel", minPrice: 12000000, maxPrice: 25000000, minInc: 180000, maxInc: 350000, type: "med" },
+    { name: "Alışveriş Merkezi", minPrice: 75000000, maxPrice: 150000000, minInc: 1200000, maxInc: 2500000, type: "high" },
+    { name: "Havalimanı Terminali", minPrice: 250000000, maxPrice: 500000000, minInc: 4500000, maxInc: 9000000, type: "high" },
+    { name: "Şehir Limanı", minPrice: 150000000, maxPrice: 350000000, minInc: 2500000, maxInc: 6500000, type: "high" }
+];
+
+async function getCityMarket(cityId) {
+    const marketRef = db.ref(`real_estate_market/${cityId}`);
+    const snap = await marketRef.once('value');
+    let data = snap.val();
+
+    if (!data) {
+        // Rastgele 3 yapı oluştur (Düşük, Orta, Yüksek)
+        const low = REAL_ESTATE_TYPES.filter(t => t.type === 'low')[Math.floor(Math.random() * 3)];
+        const med = REAL_ESTATE_TYPES.filter(t => t.type === 'med')[Math.floor(Math.random() * 3)];
+        const high = REAL_ESTATE_TYPES.filter(t => t.type === 'high')[Math.floor(Math.random() * 3)];
+
+        const generate = (tpl, suffix) => ({
+            id: `${cityId.toLowerCase()}_${suffix}`,
+            name: `${cityId} ${tpl.name}`,
+            price: Math.floor(tpl.minPrice + Math.random() * (tpl.maxPrice ? (tpl.maxPrice - tpl.minPrice) : tpl.minPrice * 0.5)),
+            income: Math.floor(tpl.minInc + Math.random() * (tpl.maxInc - tpl.minInc)),
+            owner: null,
+            type: tpl.type
+        });
+
+        data = [generate(low, 1), generate(med, 2), generate(high, 3)];
+        await marketRef.set(data);
+    }
+    return data;
+}
 
 // --- AI MEMORY HELPER ---
 // Not: Fonksiyon dosyanın sonunda daha kapsamlı şekilde tanımlanmıştır.
@@ -627,9 +634,9 @@ app.get('/auth/kick/callback', async (req, res) => {
 });
 
 // --- EMLAK API ENDPOİNTLERİ ---
-app.get('/api/real-estate/properties/:cityId', (req, res) => {
+app.get('/api/real-estate/properties/:cityId', async (req, res) => {
     const cityId = req.params.cityId.toUpperCase();
-    const props = CITY_PROPERTIES[cityId] || CITY_PROPERTIES["GENERIC"];
+    const props = await getCityMarket(cityId);
     res.json(props);
 });
 
@@ -638,32 +645,52 @@ app.post('/api/real-estate/buy', async (req, res) => {
     if (!username || !cityId || !propertyId) return res.json({ success: false, error: "Eksik bilgi!" });
 
     try {
-        const userRef = db.ref(`users/${username.toLowerCase()}`);
-        const snap = await userRef.once('value');
-        const user = snap.val();
-
+        const user = (await db.ref(`users/${username.toLowerCase()}`).once('value')).val();
         if (!user) return res.json({ success: false, error: "Kullanıcı bulunamadı!" });
 
-        const cityProps = CITY_PROPERTIES[cityId.toUpperCase()] || CITY_PROPERTIES["GENERIC"];
-        const prop = cityProps.find(p => p.id === propertyId);
+        const marketRef = db.ref(`real_estate_market/${cityId.toUpperCase()}`);
+        const marketSnap = await marketRef.once('value');
+        let cityMarket = marketSnap.val();
+        if (!cityMarket) cityMarket = await getCityMarket(cityId.toUpperCase());
 
-        if (!prop) return res.json({ success: false, error: "Mülk bulunamadı!" });
+        const propIndex = cityMarket.findIndex(p => p.id === propertyId);
+        if (propIndex === -1) return res.json({ success: false, error: "Mülk bulunamadı!" });
 
+        const prop = cityMarket[propIndex];
+
+        // 1. Durum Kontrolü: Mülk satılmış mı?
+        if (prop.owner) return res.json({ success: false, error: `Bu mülk zaten @${prop.owner} tarafından satın alınmış!` });
+
+        // 2. Bakiye Kontrolü
         if (!user.is_infinite && (user.balance || 0) < prop.price) {
             return res.json({ success: false, error: "Yetersiz bakiye!" });
         }
 
-        // Mülkü ekle ve bakiyeyi düş
+        // 3. Global Pazarda Evi Kilitle (Atomik Yazım)
+        let purchaseSuccess = false;
+        await marketRef.transaction(currentMarket => {
+            if (currentMarket && currentMarket[propIndex] && !currentMarket[propIndex].owner) {
+                currentMarket[propIndex].owner = username.toLowerCase();
+                purchaseSuccess = true;
+                return currentMarket;
+            }
+            return; // Transaction'ı durdur
+        });
+
+        if (!purchaseSuccess) return res.json({ success: false, error: "Mülk az önce başkası tarafından alındı veya bir hata oluştu!" });
+
+        // 4. Kullanıcı Verilerini Güncelle
+        const userRef = db.ref(`users/${username.toLowerCase()}`);
         await userRef.transaction(u => {
             if (u) {
-                if (!u.is_infinite) u.balance -= prop.price;
+                if (!u.is_infinite) u.balance = (u.balance || 0) - prop.price;
                 if (!u.properties) u.properties = [];
                 u.properties.push({ ...prop, city: cityId, boughtAt: Date.now() });
             }
             return u;
         });
 
-        res.json({ success: true, message: `${prop.name} satın alındı!` });
+        res.json({ success: true, message: `${prop.name} başarıyla satın alındı!` });
     } catch (e) {
         res.json({ success: false, error: e.message });
     }

@@ -765,36 +765,24 @@ function renderEmlakMap() {
 
     EMLAK_CITIES.forEach(city => {
         const dot = document.createElement('div');
-        dot.style.position = "absolute";
+        dot.className = 'city-dot';
         dot.style.left = `${city.x}%`;
         dot.style.top = `${city.y}%`;
-        dot.style.width = "18px";
-        dot.style.height = "18px";
-        dot.style.background = "var(--primary)";
-        dot.style.borderRadius = "50%";
-        dot.style.cursor = "pointer";
-        dot.style.boxShadow = "0 0 15px var(--primary)";
-        dot.style.transition = "all 0.3s";
-        dot.style.border = "3px solid rgba(0,0,0,0.5)";
-        dot.style.zIndex = "5";
-        dot.style.pointerEvents = "auto";
 
         dot.addEventListener('mouseenter', () => {
-            dot.style.transform = "scale(1.5)";
             const toast = document.getElementById('city-info-toast');
-            toast.innerText = city.name;
-            toast.style.display = "block";
+            toast.querySelector('span').innerText = city.name.toUpperCase();
+            toast.style.display = "flex";
         });
 
         dot.addEventListener('mouseleave', () => {
-            dot.style.transform = "scale(1)";
             const toast = document.getElementById('city-info-toast');
             toast.style.display = "none";
         });
 
         dot.addEventListener('click', () => {
-            document.querySelectorAll('#map-overlay div').forEach(d => d.style.borderColor = "rgba(0,0,0,0.5)");
-            dot.style.borderColor = "white";
+            document.querySelectorAll('.city-dot').forEach(d => d.classList.remove('active'));
+            dot.classList.add('active');
             loadCityProperties(city.id, city.name);
         });
 
@@ -825,19 +813,24 @@ async function loadCityProperties(cityId, cityName) {
         props.forEach(p => {
             const item = document.createElement('div');
             item.style.padding = "15px";
-            item.style.background = "rgba(255,255,255,0.05)";
+            item.style.background = p.owner ? "rgba(255,100,100,0.05)" : "rgba(255,255,255,0.05)";
             item.style.borderRadius = "12px";
-            item.style.border = "1px solid var(--glass-border)";
+            item.style.border = p.owner ? "1px solid rgba(255,0,0,0.2)" : "1px solid var(--glass-border)";
             item.style.transition = "all 0.3s";
+            item.style.opacity = p.owner ? "0.7" : "1";
+
+            const btnHtml = p.owner
+                ? `<span style="color:var(--danger); font-weight:800; font-size:0.8rem;">🔒 SATILDI (@${p.owner})</span>`
+                : `<button class="buy-btn" onclick="executePropertyBuy('${cityId}', '${p.id}', ${p.price}, '${cityName}')" style="padding: 6px 15px; font-size: 0.8rem; width: auto; margin:0;">SATIN AL</button>`;
 
             item.innerHTML = `
                 <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:8px;">
                     <span style="font-weight:800; color:white;">${p.name}</span>
-                    <span style="color:var(--primary); font-size:0.8rem; font-weight:800;">+${p.income.toLocaleString()} 💰 / Gün</span>
+                    <span style="color:var(--primary); font-size:0.8rem; font-weight:800;">+${p.income.toLocaleString()} 💰 / Sa</span>
                 </div>
                 <div style="display:flex; justify-content:space-between; align-items:center;">
                     <span style="color:#aaa; font-size:0.9rem;">Fiyat: ${p.price.toLocaleString()} 💰</span>
-                    <button class="buy-btn" onclick="executePropertyBuy('${cityId}', '${p.id}', ${p.price})" style="padding: 6px 15px; font-size: 0.8rem; width: auto; margin:0;">SATIN AL</button>
+                    ${btnHtml}
                 </div>
             `;
             list.appendChild(item);
@@ -847,7 +840,7 @@ async function loadCityProperties(cityId, cityName) {
     }
 }
 
-async function executePropertyBuy(cityId, propId, price) {
+async function executePropertyBuy(cityId, propId, price, cityName) {
     if (!currentUser) return showToast("Giriş yapmalısın!", "error");
 
     if (!confirm(`${price.toLocaleString()} 💰 karşılığında bu mülkü satın almak istediğine emin misin?`)) return;
@@ -866,6 +859,7 @@ async function executePropertyBuy(cityId, propId, price) {
         if (data.success) {
             showToast(data.message, "success");
             loadProfile(); // Bakiyeyi güncellemek için
+            loadCityProperties(cityId, cityName); // Listeyi yenile
         } else {
             showToast(data.error, "error");
         }
