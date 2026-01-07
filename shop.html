@@ -247,13 +247,13 @@
                         <div class="map-wrapper glass-panel"
                             style="position:relative; padding: 20px; overflow: hidden; background: rgba(0,0,0,0.5); min-height: 400px; display: flex; align-items: center; justify-content: center;">
                             <div id="turkey-map"
-                                style="width: 100%; max-width: 800px; position: relative; overflow: visible;">
+                                style="width: 100%; max-width: 800px; aspect-ratio: 1000 / 480; position: relative; overflow: visible; background: rgba(255,255,255,0.02); border-radius: 10px;">
                                 <!-- SVG Harita -->
                                 <img src="https://upload.wikimedia.org/wikipedia/commons/1/13/Turkey_provinces_blank.svg"
                                     alt="Turkey Map"
-                                    style="width: 100%; height: auto; pointer-events: none; opacity: 0.25; filter: invert(1) brightness(1.5) drop-shadow(0 0 5px rgba(0,255,136,0.2)); transition: 0.3s;">
+                                    style="width: 100%; height: 100%; object-fit: contain; pointer-events: none; opacity: 0.3; filter: invert(1) brightness(1.5) drop-shadow(0 0 8px rgba(0,255,136,0.3)); transition: 0.3s;">
                                 <div id="map-overlay"
-                                    style="position:absolute; top:0; left:0; width:100%; height:100%; pointer-events: none;">
+                                    style="position:absolute; top:0; left:0; width:100%; height:100%; pointer-events: auto;">
                                     <!-- İnteraktif Şehir Noktaları (JS tarafından doldurulacak) -->
                                 </div>
                             </div>

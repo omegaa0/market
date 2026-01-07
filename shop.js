@@ -836,7 +836,16 @@ async function loadCityProperties(cityId, cityName) {
             list.appendChild(item);
         });
     } catch (e) {
-        list.innerHTML = `<p style="color:var(--danger);">Hata: Veriler yüklenemedi.</p>`;
+        list.innerHTML = `
+            <div style="text-align:center; padding:20px; color:var(--danger);">
+                <i class="fas fa-exclamation-triangle" style="font-size:2rem; margin-bottom:10px;"></i>
+                <p>Veriler yüklenemedi!</p>
+                <p style="font-size:0.7rem; color:#888; margin-top:10px;">
+                    Hata: ${e.message}<br><br>
+                    <b>Çözüm:</b> Firebase konsolundan 'real_estate_market' düğümü için Security Rules ayarlarını güncelleyin veya botun yetkilerini kontrol edin.
+                </p>
+            </div>
+        `;
     }
 }
 

@@ -421,29 +421,34 @@ const REAL_ESTATE_TYPES = [
 ];
 
 async function getCityMarket(cityId) {
-    const marketRef = db.ref(`real_estate_market/${cityId}`);
-    const snap = await marketRef.once('value');
-    let data = snap.val();
+    try {
+        const marketRef = db.ref(`real_estate_market/${cityId}`);
+        const snap = await marketRef.once('value');
+        let data = snap.val();
 
-    if (!data) {
-        // Rastgele 3 yapı oluştur (Düşük, Orta, Yüksek)
-        const low = REAL_ESTATE_TYPES.filter(t => t.type === 'low')[Math.floor(Math.random() * 3)];
-        const med = REAL_ESTATE_TYPES.filter(t => t.type === 'med')[Math.floor(Math.random() * 3)];
-        const high = REAL_ESTATE_TYPES.filter(t => t.type === 'high')[Math.floor(Math.random() * 3)];
+        if (!data) {
+            // Rastgele 3 yapı oluştur (Düşük, Orta, Yüksek)
+            const low = REAL_ESTATE_TYPES.filter(t => t.type === 'low')[Math.floor(Math.random() * 3)];
+            const med = REAL_ESTATE_TYPES.filter(t => t.type === 'med')[Math.floor(Math.random() * 3)];
+            const high = REAL_ESTATE_TYPES.filter(t => t.type === 'high')[Math.floor(Math.random() * 3)];
 
-        const generate = (tpl, suffix) => ({
-            id: `${cityId.toLowerCase()}_${suffix}`,
-            name: `${cityId} ${tpl.name}`,
-            price: Math.floor(tpl.minPrice + Math.random() * (tpl.maxPrice ? (tpl.maxPrice - tpl.minPrice) : tpl.minPrice * 0.5)),
-            income: Math.floor(tpl.minInc + Math.random() * (tpl.maxInc - tpl.minInc)),
-            owner: null,
-            type: tpl.type
-        });
+            const generate = (tpl, suffix) => ({
+                id: `${cityId.toLowerCase()}_${suffix}`,
+                name: `${cityId} ${tpl.name}`,
+                price: Math.floor(tpl.minPrice + Math.random() * (tpl.maxPrice ? (tpl.maxPrice - tpl.minPrice) : tpl.minPrice * 0.5)),
+                income: Math.floor(tpl.minInc + Math.random() * (tpl.maxInc - tpl.minInc)),
+                owner: null,
+                type: tpl.type
+            });
 
-        data = [generate(low, 1), generate(med, 2), generate(high, 3)];
-        await marketRef.set(data);
+            data = [generate(low, 1), generate(med, 2), generate(high, 3)];
+            await marketRef.set(data);
+        }
+        return data;
+    } catch (e) {
+        console.error(`City Market Error (${cityId}):`, e.message);
+        return []; // Hata durumunda boş döndür ki çökmesin
     }
-    return data;
 }
 
 // --- AI MEMORY HELPER ---
