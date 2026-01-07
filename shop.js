@@ -792,17 +792,12 @@ function renderEmlakMap() {
 }
 
 async function loadCityProperties(cityId, cityName) {
-    const header = document.getElementById('selected-city-header');
-    const list = document.getElementById('property-list');
+    const list = document.getElementById('city-properties-list');
+    if (!list) return;
 
-    header.innerHTML = `
-        <h3 style="color: var(--primary); display: flex; align-items: center; gap: 10px;">
-            <i class="fas fa-city"></i> ${cityName}
-        </h3>
-        <p style="font-size: 0.8rem; color: var(--text-dim); border-bottom: 1px solid var(--glass-border); padding-bottom: 10px;">
-            Bu şehirdeki satılık mülkler listeleniyor. Gelirler sitemizde her saat başı otomatik dağıtılır.
-        </p>
-    `;
+    // Başlığı güncelle
+    const cityTitle = document.getElementById('city-title');
+    if (cityTitle) cityTitle.innerText = cityName;
 
     list.innerHTML = `<div class="loader" style="margin: 20px auto;"></div>`;
 
