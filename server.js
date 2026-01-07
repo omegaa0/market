@@ -3760,30 +3760,35 @@ app.post('/admin-api/update-admin-perms', authAdmin, async (req, res) => {
 });
 
 app.post('/admin-api/create-admin', authAdmin, async (req, res) => {
-    if (req.adminUser?.username !== 'omegacyr') return res.status(403).json({ error: 'Bu işlem için MASTER yetkisi gerekiyor.' });
+    try {
+        if (req.adminUser?.username !== 'omegacyr') return res.status(403).json({ error: 'Bu işlem için MASTER yetkisi gerekiyor.' });
 
-    const { username, password } = req.body;
-    if (!username || !password) return res.status(400).json({ error: 'Kullanıcı adı ve şifre gereklidir.' });
+        const { username, password } = req.body;
+        if (!username || !password) return res.status(400).json({ error: 'Kullanıcı adı ve şifre gereklidir.' });
 
-    const cleanUser = username.toLowerCase().trim();
-    if (cleanUser === "") return res.status(400).json({ error: 'Geçersiz kullanıcı adı.' });
+        const cleanUser = username.toLowerCase().trim();
+        if (cleanUser === "") return res.status(400).json({ error: 'Geçersiz kullanıcı adı.' });
 
-    const adminRef = db.ref(`admin_users/${cleanUser}`);
-    const snap = await adminRef.once('value');
-    if (snap.exists()) return res.status(400).json({ error: 'Bu kullanıcı adı zaten kullanımda.' });
+        const adminRef = db.ref(`admin_users/${cleanUser}`);
+        const snap = await adminRef.once('value');
+        if (snap.exists()) return res.status(400).json({ error: 'Bu kullanıcı adı zaten kullanımda.' });
 
-    await adminRef.set({
-        password: password,
-        name: cleanUser,
-        created_at: Date.now(),
-        permissions: {
-            channels: false, users: false, troll: false, logs: false,
-            quests: false, stocks: false, memory: false, global: false
-        }
-    });
+        await adminRef.set({
+            password: password,
+            name: cleanUser,
+            created_at: Date.now(),
+            permissions: {
+                channels: false, users: false, troll: false, logs: false,
+                quests: false, stocks: false, memory: false, global: false
+            }
+        });
 
-    addLog("Admin Kaydı", `Yeni admin eklendi: ${cleanUser}`, "Global");
-    res.json({ success: true });
+        addLog("Admin Kaydı", `Yeni admin eklendi: ${cleanUser}`, "Global");
+        res.json({ success: true });
+    } catch (e) {
+        console.error("Create Admin Error:", e);
+        res.status(500).json({ error: 'Veritabanı hatası: ' + e.message });
+    }
 });
 
 // Dashboard için ana route
