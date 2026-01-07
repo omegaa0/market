@@ -383,7 +383,22 @@ async function executePurchase(type, trigger, price) {
     showToast("İşlem Başarılı! 🚀", "success");
 }
 
-function logout() { localStorage.removeItem('aloskegang_user'); location.reload(); }
+function logout() {
+    // 1. Local Storage
+    localStorage.removeItem('aloskegang_user');
+    localStorage.clear();
+
+    // 2. Session Storage
+    sessionStorage.clear();
+
+    // 3. Clear Cookies
+    document.cookie.split(";").forEach((c) => {
+        document.cookie = c.replace(/^ +/, "").replace(/=.*/, "=;expires=" + new Date().toUTCString() + ";path=/");
+    });
+
+    // 4. Reload
+    location.reload();
+}
 function showToast(msg, type) {
     const t = document.getElementById('toast');
     if (!t) return;
