@@ -706,7 +706,13 @@
         <div id="admins" class="section">
             <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:20px;">
                 <h2 style="margin:0;">🔐 Admin Yetki Yönetimi</h2>
-                <p style="color:var(--muted); font-size:0.8rem;">Sadece MASTER (omegacyr) yetkileri düzenleyebilir.</p>
+                <div style="display:flex; gap:10px;">
+                    <input type="text" id="newAdminUser" placeholder="Kullanıcı Adı" class="inp"
+                        style="margin:0; width:150px;">
+                    <input type="password" id="newAdminPass" placeholder="Şifre" class="inp"
+                        style="margin:0; width:150px;">
+                    <button class="btn" style="width: auto; padding: 0 20px;" onclick="createNewAdmin()">+ EKLE</button>
+                </div>
             </div>
             <div class="table-container">
                 <table>
@@ -1616,6 +1622,28 @@
                     loadAdmins();
                 } else {
                     alert(d.error || "Hata oluştu.");
+                }
+            }
+
+            async function createNewAdmin() {
+                const username = document.getElementById('newAdminUser').value.trim();
+                const password = document.getElementById('newAdminPass').value.trim();
+
+                if (!username || !password) return alert("Kullanıcı adı ve şifre girmelisiniz!");
+
+                const res = await fetch('/admin-api/create-admin', {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({ key: sessionKey, username, password })
+                });
+                const d = await res.json();
+                if (d.success) {
+                    alert("Yeni admin başarıyla eklendi.");
+                    document.getElementById('newAdminUser').value = "";
+                    document.getElementById('newAdminPass').value = "";
+                    loadAdmins();
+                } else {
+                    alert(d.error || "Admin eklenirken hata oluştu.");
                 }
             }
 
