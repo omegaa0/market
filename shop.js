@@ -143,8 +143,19 @@ function startAuth() {
 
     db.ref('pending_auth/' + user).set({ code, timestamp: Date.now() })
         .then(() => {
-            console.log(`[Shop] Auth code saved for ${user}: ${code}`);
-            showToast("Kod veritabanına kaydedildi! Şimdi chat'e yazabilirsin.", "success");
+            console.log(`[Shop] Auth code WRITE commanded for ${user}: ${code}`);
+
+            // VERIFICATION READ
+            db.ref('pending_auth/' + user).once('value').then(snap => {
+                const val = snap.val();
+                console.log(`[Shop] Auth code READ BACK for ${user}:`, val);
+                if (!val) {
+                    showToast("HATA: Kod veritabanına yazılamadı! (Read-back failed)", "error");
+                    alert(`KRİTİK HATA: '${user}' için veritabanına yazma başarısız oldu. Lütfen konsolu kontrol et.`);
+                } else {
+                    showToast(`Kod Kaydedildi: ${user} -> ${code}`, "success");
+                }
+            });
 
             // Onay bekleyen dinleyiciyi kur
             db.ref('auth_success/' + user).off(); // Eski varsa temizle
