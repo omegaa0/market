@@ -408,23 +408,24 @@ const INITIAL_STOCKS = {
 };
 
 // --- EMLAK SİSTEMİ (GLOBAL PAZAR) ---
+const MARKET_VERSION = "v3";
 const REAL_ESTATE_TYPES = [
-    { name: "Küçük Esnaf Dükkanı", minPrice: 250000, maxPrice: 450000, minInc: 3000, maxInc: 5000, type: "low" },
-    { name: "Pide Salonu", minPrice: 400000, maxPrice: 750000, minInc: 4500, maxInc: 7000, type: "low" },
-    { name: "Bakkal Amca", minPrice: 150000, minInc: 2000, maxInc: 4000, type: "low" },
-    { name: "Eczane", minPrice: 600000, maxPrice: 1200000, minInc: 6000, maxInc: 9000, type: "low" },
-    { name: "Lüks Rezidans Katı", minPrice: 2500000, maxPrice: 5000000, minInc: 12000, maxInc: 15000, type: "med" },
-    { name: "İş Merkezi", minPrice: 8000000, maxPrice: 15000000, minInc: 15000, maxInc: 18000, type: "med" },
-    { name: "Butik Otel", minPrice: 12000000, maxPrice: 25000000, minInc: 18000, maxInc: 25000, type: "med" },
-    { name: "Gece Kulübü", minPrice: 5000000, maxPrice: 10000000, minInc: 12000, maxInc: 22000, type: "med" },
-    { name: "Alışveriş Merkezi", minPrice: 75000000, maxPrice: 150000000, minInc: 45000, maxInc: 75000, type: "high" },
-    { name: "Havalimanı Terminali", minPrice: 250000000, maxPrice: 500000000, minInc: 150000, maxInc: 350000, type: "high" },
-    { name: "Şehir Limanı", minPrice: 150000000, maxPrice: 350000000, minInc: 100000, maxInc: 250000, type: "high" }
+    { name: "Küçük Esnaf Dükkanı", minPrice: 250000, maxPrice: 450000, minInc: 3000, maxInc: 4500, type: "low" },
+    { name: "Pide Salonu", minPrice: 400000, maxPrice: 750000, minInc: 4000, maxInc: 6000, type: "low" },
+    { name: "Bakkal Amca", minPrice: 150000, minInc: 3000, maxInc: 4000, type: "low" },
+    { name: "Eczane", minPrice: 600000, maxPrice: 1200000, minInc: 5000, maxInc: 7000, type: "low" },
+    { name: "Lüks Rezidans Katı", minPrice: 2500000, maxPrice: 5000000, minInc: 7500, maxInc: 10000, type: "med" },
+    { name: "İş Merkezi", minPrice: 8000000, maxPrice: 15000000, minInc: 9000, maxInc: 12000, type: "med" },
+    { name: "Butik Otel", minPrice: 12000000, maxPrice: 25000000, minInc: 10000, maxInc: 13000, type: "med" },
+    { name: "Gece Kulübü", minPrice: 5000000, maxPrice: 10000000, minInc: 11000, maxInc: 15000, type: "med" },
+    { name: "Alışveriş Merkezi", minPrice: 75000000, maxPrice: 150000000, minInc: 15000, maxInc: 18000, type: "high" },
+    { name: "Havalimanı Terminali", minPrice: 250000000, maxPrice: 500000000, minInc: 18000, maxInc: 22000, type: "high" },
+    { name: "Şehir Limanı", minPrice: 150000000, maxPrice: 350000000, minInc: 16000, maxInc: 20000, type: "high" }
 ];
 
 async function getCityMarket(cityId) {
     try {
-        const marketRef = db.ref(`real_estate_market/${cityId}`);
+        const marketRef = db.ref(`real_estate_market_${MARKET_VERSION}/${cityId}`);
         const snap = await marketRef.once('value');
         let data = snap.val();
 
@@ -655,7 +656,7 @@ app.post('/api/real-estate/buy', async (req, res) => {
         const user = (await db.ref(`users/${username.toLowerCase()}`).once('value')).val();
         if (!user) return res.json({ success: false, error: "Kullanıcı bulunamadı!" });
 
-        const marketRef = db.ref(`real_estate_market/${cityId.toUpperCase()}`);
+        const marketRef = db.ref(`real_estate_market_${MARKET_VERSION}/${cityId.toUpperCase()}`);
         const marketSnap = await marketRef.once('value');
         let cityMarket = marketSnap.val();
         if (!cityMarket) cityMarket = await getCityMarket(cityId.toUpperCase());

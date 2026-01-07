@@ -849,7 +849,7 @@ async function loadCityProperties(cityId, cityName) {
                     </div>
                     <div style="flex:1;">
                         <div style="font-weight:900; color:white; font-size:1.1rem; margin-bottom:2px;">${p.name}</div>
-                        <div style="color:var(--primary); font-size:1rem; font-weight:900;">+${(p.income / 24).toLocaleString()} 💰 <span style="font-weight:400; font-size:0.7rem; color:#888;">/ Saat</span></div>
+                        <div style="color:var(--primary); font-size:1rem; font-weight:900;">+${p.income.toLocaleString()} 💰 <span style="font-weight:400; font-size:0.7rem; color:#888;">/ Gün</span></div>
                     </div>
                 </div>
                 <div style="display:flex; justify-content:space-between; align-items:center; background:rgba(0,0,0,0.2); padding:10px; border-radius:14px;">
