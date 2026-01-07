@@ -219,7 +219,8 @@ function login(user) {
 
 async function loadChannelMarket(channelId) {
     document.getElementById('no-channel-msg').classList.add('hidden');
-    channelBadge.classList.remove('hidden');
+    const channelBadge = document.getElementById('channel-badge');
+    if (channelBadge) channelBadge.classList.remove('hidden');
     const snap = await db.ref('channels/' + channelId).once('value');
     const channelData = snap.val() || {};
     const settings = channelData.settings || {};
@@ -578,12 +579,9 @@ async function loadQuests() {
     container.innerHTML = `<div class="loading-spinner"></div>`;
 
     try {
-        const qRes = await fetch('/admin-api/get-quests', {
-            method: 'POST',
-            headers: { 'Content-Type': 'application/json' },
-            body: JSON.stringify({ key: 'PUBLIC' })
-        });
-        const globalQuests = await qRes.json();
+        // Use direct Firebase read instead of admin API which is restricted
+        const snap = await db.ref('global_quests').once('value');
+        const globalQuests = snap.val() || {};
 
         db.ref('users/' + currentUser).once('value', snap => {
             const u = snap.val() || {};
@@ -607,7 +605,7 @@ async function loadQuests() {
                 card.innerHTML = `
                     <div style="display:flex; justify-content:space-between; align-items:center;">
                         <h3>${q.name}</h3>
-                        <span style="color:var(--primary); font-weight:700;">+${q.reward.toLocaleString()} 💰</span>
+                        <span style="color:var(--primary); font-weight:700;">+${(parseInt(q.reward) || 0).toLocaleString()} 💰</span>
                     </div>
                     <p>Görev Türü: ${q.type === 'm' ? 'Sohbet' : q.type === 'g' ? 'Kumar' : q.type === 'w' ? '👁️ İzleme' : '⚔️ Düello'}</p>
                     <div class="progress-bar"><div class="progress-fill" style="width: ${percent}%"></div></div>
