@@ -187,7 +187,7 @@ async function loadChannelMarket(channelId) {
 
     // 1. MUTE
     const muteCost = settings.mute_cost || 10000;
-    renderItem("🚫 Kullanıcı Sustur", "Hedeflenen kişiyi 10 dakika boyunca susturur.", muteCost, "mute");
+    renderItem("🚫 Kullanıcı Sustur", "Hedeflenen kişiyi 2 dakika boyunca susturur.", muteCost, "mute");
 
     // 2. TTS
     const ttsCost = settings.tts_cost || 2500;
@@ -329,6 +329,7 @@ function switchTab(id) {
 
     if (id === 'leaderboard') loadLeaderboard();
     if (id === 'borsa') loadBorsa();
+    if (id === 'emlak') loadEmlak();
     if (id === 'quests') loadQuests();
     if (id === 'profile') loadProfile();
 }
@@ -641,9 +642,236 @@ async function loadProfile() {
             }
                     </div>
                 </div>
+
+                <div class="emlak-portfolio-section" style="margin-top:20px; border-top:1px solid rgba(255,255,255,0.1); padding-top:20px;">
+                    <h3 style="margin-bottom:15px; font-size:1rem; opacity:0.8;">🏠 Emlak Portföyüm</h3>
+                    <div id="user-emlak" style="display:grid; grid-template-columns: 1fr; gap:10px;">
+                        ${u.properties && u.properties.length > 0 ?
+                u.properties.map(p => `
+                                <div class="stat-mini" style="border:1px solid var(--primary); background:rgba(102, 252, 241, 0.05); display:flex; justify-content:space-between; align-items:center;">
+                                    <div>
+                                        <label>${p.city}</label>
+                                        <div class="v" style="font-size:0.9rem;">${p.name}</div>
+                                    </div>
+                                    <div style="text-align:right;">
+                                        <div style="color:var(--primary); font-weight:800; font-size:0.8rem;">+${Math.floor(p.income / 24)} 💰 / Saat</div>
+                                        <div style="font-size:0.7rem; color:#666;">Günlük: ${p.income}</div>
+                                    </div>
+                                </div>
+                            `).join('') : '<p style="font-size: 0.8rem; color:#666;">Henüz mülk sahibi değilsin.</p>'
+            }
+                    </div>
+                </div>
             </div>
         `;
     });
+}
+
+const EMLAK_CITIES = [
+    { "id": "ADANA", "name": "Adana", "x": 50, "y": 81 },
+    { "id": "ADIYAMAN", "name": "Adıyaman", "x": 66, "y": 72 },
+    { "id": "AFYONKARAHISAR", "name": "Afyon", "x": 25, "y": 53 },
+    { "id": "AGRI", "name": "Ağrı", "x": 91, "y": 38 },
+    { "id": "AMASYA", "name": "Amasya", "x": 53, "y": 23 },
+    { "id": "ANKARA", "name": "Ankara", "x": 38, "y": 34 },
+    { "id": "ANTALYA", "name": "Antalya", "x": 26, "y": 83 },
+    { "id": "ARTVIN", "name": "Artvin", "x": 84, "y": 15 },
+    { "id": "AYDIN", "name": "Aydın", "x": 11, "y": 68 },
+    { "id": "BALIKESIR", "name": "Balıkesir", "x": 12, "y": 39 },
+    { "id": "BILECIK", "name": "Bilecik", "x": 23, "y": 31 },
+    { "id": "BINGOL", "name": "Bingöl", "x": 77, "y": 51 },
+    { "id": "BITLIS", "name": "Bitlis", "x": 86, "y": 59 },
+    { "id": "BOLU", "name": "Bolu", "x": 31, "y": 22 },
+    { "id": "BURDUR", "name": "Burdur", "x": 24, "y": 70 },
+    { "id": "BURSA", "name": "Bursa", "x": 18, "y": 30 },
+    { "id": "CANAKKALE", "name": "Çanakkale", "x": 4, "y": 31 },
+    { "id": "CANKIRI", "name": "Çankırı", "x": 42, "y": 24 },
+    { "id": "CORUM", "name": "Çorum", "x": 49, "y": 25 },
+    { "id": "DENIZLI", "name": "Denizli", "x": 18, "y": 69 },
+    { "id": "DIYARBAKIR", "name": "Diyarbakır", "x": 76, "y": 66 },
+    { "id": "EDIRNE", "name": "Edirne", "x": 5, "y": 7 },
+    { "id": "ELAZIG", "name": "Elazığ", "x": 71, "y": 54 },
+    { "id": "ERZINCAN", "name": "Erzincan", "x": 72, "y": 37 },
+    { "id": "ERZURUM", "name": "Erzurum", "x": 81, "y": 35 },
+    { "id": "ESKISEHIR", "name": "Eskişehir", "x": 25, "y": 37 },
+    { "id": "GAZIANTEP", "name": "Gaziantep", "x": 61, "y": 80 },
+    { "id": "GIRESUN", "name": "Giresun", "x": 66, "y": 19 },
+    { "id": "GUMUSHANE", "name": "Gümüşhane", "x": 72, "y": 26 },
+    { "id": "HAKKARI", "name": "Hakkari", "x": 94, "y": 72 },
+    { "id": "HATAY", "name": "Hatay", "x": 55, "y": 94 },
+    { "id": "ISPARTA", "name": "Isparta", "x": 26, "y": 69 },
+    { "id": "MERSIN", "name": "Mersin", "x": 47, "y": 84 },
+    { "id": "ISTANBUL", "name": "İstanbul", "x": 17, "y": 17 },
+    { "id": "IZMIR", "name": "İzmir", "x": 8, "y": 58 },
+    { "id": "KARS", "name": "Kars", "x": 91, "y": 24 },
+    { "id": "KASTAMONU", "name": "Kastamonu", "x": 42, "y": 12 },
+    { "id": "KAYSERI", "name": "Kayseri", "x": 51, "y": 54 },
+    { "id": "KIRKLARELI", "name": "Kırklareli", "x": 8, "y": 6 },
+    { "id": "KIRSEHIR", "name": "Kırşehir", "x": 44, "y": 47 },
+    { "id": "KOCAELI", "name": "Kocaeli", "x": 22, "y": 21 },
+    { "id": "KONYA", "name": "Konya", "x": 36, "y": 67 },
+    { "id": "KUTAHYA", "name": "Kütahya", "x": 23, "y": 43 },
+    { "id": "MALATYA", "name": "Malatya", "x": 66, "y": 60 },
+    { "id": "MANISA", "name": "Manisa", "x": 9, "y": 55 },
+    { "id": "KAHRAMANMARAS", "name": "Kahramanmaraş", "x": 59, "y": 72 },
+    { "id": "MARDIN", "name": "Mardin", "x": 79, "y": 76 },
+    { "id": "MUGLA", "name": "Muğla", "x": 14, "y": 78 },
+    { "id": "MUS", "name": "Muş", "x": 83, "y": 54 },
+    { "id": "NEVSEHIR", "name": "Nevşehir", "x": 47, "y": 55 },
+    { "id": "NIGDE", "name": "Niğde", "x": 47, "y": 66 },
+    { "id": "ORDU", "name": "Ordu", "x": 64, "y": 18 },
+    { "id": "RIZE", "name": "Rize", "x": 78, "y": 17 },
+    { "id": "SAKARYA", "name": "Sakarya", "x": 25, "y": 21 },
+    { "id": "SAMSUN", "name": "Samsun", "x": 56, "y": 13 },
+    { "id": "SIIRT", "name": "Siirt", "x": 85, "y": 66 },
+    { "id": "SINOP", "name": "Sinop", "x": 50, "y": 1 },
+    { "id": "SIVAS", "name": "Sivas", "x": 59, "y": 37 },
+    { "id": "TEKIRDAG", "name": "Tekirdağ", "x": 10, "y": 18 },
+    { "id": "TOKAT", "name": "Tokat", "x": 57, "y": 28 },
+    { "id": "TRABZON", "name": "Trabzon", "x": 73, "y": 17 },
+    { "id": "TUNCELI", "name": "Tunceli", "x": 72, "y": 48 },
+    { "id": "SANLIURFA", "name": "Şanlıurfa", "x": 69, "y": 78 },
+    { "id": "USAK", "name": "Uşak", "x": 20, "y": 54 },
+    { "id": "VAN", "name": "Van", "x": 92, "y": 57 },
+    { "id": "YOZGAT", "name": "Yozgat", "x": 48, "y": 36 },
+    { "id": "ZONGULDAK", "name": "Zonguldak", "x": 32, "y": 10 },
+    { "id": "AKSARAY", "name": "Aksaray", "x": 44, "y": 59 },
+    { "id": "BAYBURT", "name": "Bayburt", "x": 76, "y": 29 },
+    { "id": "KARAMAN", "name": "Karaman", "x": 39, "y": 78 },
+    { "id": "KIRIKKALE", "name": "Kırıkkale", "x": 41, "y": 36 },
+    { "id": "BATMAN", "name": "Batman", "x": 81, "y": 67 },
+    { "id": "SIRNAK", "name": "Şırnak", "x": 88, "y": 73 },
+    { "id": "BARTIN", "name": "Bartın", "x": 35, "y": 7 },
+    { "id": "ARDAHAN", "name": "Ardahan", "x": 89, "y": 16 },
+    { "id": "IGDIR", "name": "Iğdır", "x": 96, "y": 35 },
+    { "id": "YALOVA", "name": "Yalova", "x": 19, "y": 23 },
+    { "id": "KARABUK", "name": "Karabük", "x": 36, "y": 14 },
+    { "id": "KILIS", "name": "Kilis", "x": 60, "y": 86 },
+    { "id": "OSMANIYE", "name": "Osmaniye", "x": 55, "y": 80 },
+    { "id": "DUZCE", "name": "Düzce", "x": 29, "y": 20 }
+];
+
+let emlakActive = false;
+function loadEmlak() {
+    if (emlakActive) return;
+    emlakActive = true;
+    renderEmlakMap();
+}
+
+function renderEmlakMap() {
+    const overlay = document.getElementById('map-overlay');
+    if (!overlay) return;
+    overlay.innerHTML = "";
+
+    EMLAK_CITIES.forEach(city => {
+        const dot = document.createElement('div');
+        dot.style.position = "absolute";
+        dot.style.left = `${city.x}%`;
+        dot.style.top = `${city.y}%`;
+        dot.style.width = "18px";
+        dot.style.height = "18px";
+        dot.style.background = "var(--primary)";
+        dot.style.borderRadius = "50%";
+        dot.style.cursor = "pointer";
+        dot.style.boxShadow = "0 0 15px var(--primary)";
+        dot.style.transition = "all 0.3s";
+        dot.style.border = "3px solid rgba(0,0,0,0.5)";
+        dot.style.zIndex = "5";
+        dot.style.pointerEvents = "auto";
+
+        dot.addEventListener('mouseenter', () => {
+            dot.style.transform = "scale(1.5)";
+            const toast = document.getElementById('city-info-toast');
+            toast.innerText = city.name;
+            toast.style.display = "block";
+        });
+
+        dot.addEventListener('mouseleave', () => {
+            dot.style.transform = "scale(1)";
+            const toast = document.getElementById('city-info-toast');
+            toast.style.display = "none";
+        });
+
+        dot.addEventListener('click', () => {
+            document.querySelectorAll('#map-overlay div').forEach(d => d.style.borderColor = "rgba(0,0,0,0.5)");
+            dot.style.borderColor = "white";
+            loadCityProperties(city.id, city.name);
+        });
+
+        overlay.appendChild(dot);
+    });
+}
+
+async function loadCityProperties(cityId, cityName) {
+    const header = document.getElementById('selected-city-header');
+    const list = document.getElementById('property-list');
+
+    header.innerHTML = `
+        <h3 style="color: var(--primary); display: flex; align-items: center; gap: 10px;">
+            <i class="fas fa-city"></i> ${cityName}
+        </h3>
+        <p style="font-size: 0.8rem; color: var(--text-dim); border-bottom: 1px solid var(--glass-border); padding-bottom: 10px;">
+            Bu şehirdeki satılık mülkler listeleniyor. Gelirler sitemizde her saat başı otomatik dağıtılır.
+        </p>
+    `;
+
+    list.innerHTML = `<div class="loader" style="margin: 20px auto;"></div>`;
+
+    try {
+        const res = await fetch(`/api/real-estate/properties/${cityId}`);
+        const props = await res.json();
+
+        list.innerHTML = "";
+        props.forEach(p => {
+            const item = document.createElement('div');
+            item.style.padding = "15px";
+            item.style.background = "rgba(255,255,255,0.05)";
+            item.style.borderRadius = "12px";
+            item.style.border = "1px solid var(--glass-border)";
+            item.style.transition = "all 0.3s";
+
+            item.innerHTML = `
+                <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:8px;">
+                    <span style="font-weight:800; color:white;">${p.name}</span>
+                    <span style="color:var(--primary); font-size:0.8rem; font-weight:800;">+${p.income.toLocaleString()} 💰 / Gün</span>
+                </div>
+                <div style="display:flex; justify-content:space-between; align-items:center;">
+                    <span style="color:#aaa; font-size:0.9rem;">Fiyat: ${p.price.toLocaleString()} 💰</span>
+                    <button class="buy-btn" onclick="executePropertyBuy('${cityId}', '${p.id}', ${p.price})" style="padding: 6px 15px; font-size: 0.8rem; width: auto; margin:0;">SATIN AL</button>
+                </div>
+            `;
+            list.appendChild(item);
+        });
+    } catch (e) {
+        list.innerHTML = `<p style="color:var(--danger);">Hata: Veriler yüklenemedi.</p>`;
+    }
+}
+
+async function executePropertyBuy(cityId, propId, price) {
+    if (!currentUser) return showToast("Giriş yapmalısın!", "error");
+
+    if (!confirm(`${price.toLocaleString()} 💰 karşılığında bu mülkü satın almak istediğine emin misin?`)) return;
+
+    try {
+        const res = await fetch('/api/real-estate/buy', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({
+                username: currentUser,
+                cityId: cityId,
+                propertyId: propId
+            })
+        });
+        const data = await res.json();
+        if (data.success) {
+            showToast(data.message, "success");
+            loadProfile(); // Bakiyeyi güncellemek için
+        } else {
+            showToast(data.error, "error");
+        }
+    } catch (e) {
+        showToast("İşlem sırasında bir hata oluştu!", "error");
+    }
 }
 
 init();

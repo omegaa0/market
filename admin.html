@@ -495,15 +495,17 @@
                 ÇIKIŞ</button>
         </header>
 
-        <div class="tabs">
-            <button class="tab-btn active" onclick="showTab('channels')">📡 Kanallar</button>
-            <button class="tab-btn" onclick="showTab('users')">👥 Kullanıcılar</button>
-            <button class="tab-btn" onclick="showTab('troll'); loadActiveRigs();">🤡 Troll & Rig</button>
-            <button class="tab-btn" onclick="showTab('logs')">📋 İşlem Kayıtları</button>
-            <button class="tab-btn" onclick="showTab('quests')">🎯 Görevler</button>
-            <button class="tab-btn" onclick="showTab('stocks')">📈 Borsa</button>
-            <button class="tab-btn" onclick="showTab('memory'); loadMemory();">🧠 Bot Hafızası</button>
-            <button class="tab-btn" onclick="showTab('global')">⚙️ Duyuru</button>
+        <div class="tabs" id="admin-tabs">
+            <button id="tab-channels" class="tab-btn active" onclick="showTab('channels')">📡 Kanallar</button>
+            <button id="tab-users" class="tab-btn" onclick="showTab('users')">👥 Kullanıcılar</button>
+            <button id="tab-troll" class="tab-btn" onclick="showTab('troll'); loadActiveRigs();">🤡 Troll & Rig</button>
+            <button id="tab-logs" class="tab-btn" onclick="showTab('logs')">📋 İşlem Kayıtları</button>
+            <button id="tab-quests" class="tab-btn" onclick="showTab('quests')">🎯 Görevler</button>
+            <button id="tab-stocks" class="tab-btn" onclick="showTab('stocks')">📈 Borsa</button>
+            <button id="tab-memory" class="tab-btn" onclick="showTab('memory'); loadMemory();">🧠 Bot Hafızası</button>
+            <button id="tab-global" class="tab-btn" onclick="showTab('global')">⚙️ Duyuru</button>
+            <button id="tab-admins" class="tab-btn" style="display:none;" onclick="showTab('admins'); loadAdmins();">🔐
+                Admin Yetkileri</button>
         </div>
 
         <!-- CHANNELS -->
@@ -700,6 +702,38 @@
             </div>
         </div>
 
+        <!-- ADMINS (MASTER ONLY) -->
+        <div id="admins" class="section">
+            <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:20px;">
+                <h2 style="margin:0;">🔐 Admin Yetki Yönetimi</h2>
+                <p style="color:var(--muted); font-size:0.8rem;">Sadece MASTER (omegacyr) yetkileri düzenleyebilir.</p>
+            </div>
+            <div class="table-container">
+                <table>
+                    <thead>
+                        <tr>
+                            <th>Admin</th>
+                            <th style="text-align:center">📡 Kanallar</th>
+                            <th style="text-align:center">👥 Kullanıcılar</th>
+                            <th style="text-align:center">🤡 Troll</th>
+                            <th style="text-align:center">📋 Loglar</th>
+                            <th style="text-align:center">🎯 Görev</th>
+                            <th style="text-align:center">📈 Borsa</th>
+                            <th style="text-align:center">🧠 Hafıza</th>
+                            <th style="text-align:center">⚙️ Duyuru</th>
+                            <th style="text-align:right">İşlem</th>
+                        </tr>
+                    </thead>
+                    <tbody id="admin-users-list">
+                        <tr>
+                            <td colspan="10" style="text-align:center; padding:20px; color:var(--muted);">Yükleniyor...
+                            </td>
+                        </tr>
+                    </tbody>
+                </table>
+            </div>
+        </div>
+
         <!-- STOCKS -->
         <div id="stocks" class="section">
             <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:20px;">
@@ -790,6 +824,7 @@
 
         <script>
             let sessionKey = "";
+            let currentUser = null;
             let rawUsers = {};
             const COMMANDS = ['slot', 'yazitura', 'kutu', 'duello', 'soygun', 'fal', 'ship', 'hava', 'zenginler', 'tts', 'ses', 'atyarisi', 'sr', 'ai'];
             const JOBS = ["İşsiz", "Simitçi", "Çöpçü", "Kurye", "Garson", "Berber", "Tamirci", "Madenci", "Memur", "Öğretmen", "Avukat", "Yazılımcı", "Mimar", "Doktor", "Kaptan", "Pilot", "Bilim İnsanı", "Kumarbaz", "CEO", "Astronot"];
@@ -836,9 +871,13 @@
                     const data = await res.json();
                     if (data.success) {
                         sessionKey = `${username}:${password}`;
+                        currentUser = data.user;
+
                         document.getElementById('login-overlay').style.opacity = '0';
                         setTimeout(() => document.getElementById('login-overlay').style.display = 'none', 500);
                         document.getElementById('admin-panel').style.display = 'block';
+
+                        applyPermissions();
                         loadChannels();
                         loadUsers();
                     } else {
@@ -1003,30 +1042,80 @@
 
                         <!-- KANAL: OYUNLAR -->
                          <div id="sub-oyunlar-${id}" class="sub-section">
-                            <div class="range-container">
-                                <label class="range-label">Slot Kazanma: <span>%<span id="v-sl-${id}">${getVal(s.wr_slot, 30)}</span></span></label>
-                                <input type="range" min="0" max="100" value="${getVal(s.wr_slot, 30)}" oninput="document.getElementById('v-sl-${id}').innerText=this.value" onchange="toggleCmd('${id}','wr_slot',parseInt(this.value))">
-                            </div>
-                            <div class="range-container">
-                                <label class="range-label">YazıTura Kazanma: <span>%<span id="v-yt-${id}">${getVal(s.wr_yazitura, 50)}</span></span></label>
-                                <input type="range" min="0" max="100" value="${getVal(s.wr_yazitura, 50)}" oninput="document.getElementById('v-yt-${id}').innerText=this.value" onchange="toggleCmd('${id}','wr_yazitura',parseInt(this.value))">
-                            </div>
-                            <div class="range-container">
-                                <label class="range-label">Kutu Kazanma: <span>%<span id="v-kt-${id}">${getVal(s.wr_kutu, 40)}</span></span></label>
-                                <input type="range" min="0" max="100" value="${getVal(s.wr_kutu, 40)}" oninput="document.getElementById('v-kt-${id}').innerText=this.value" onchange="toggleCmd('${id}','wr_kutu',parseInt(this.value))">
-                            </div>
-                            <div class="range-container">
-                                <label class="range-label">Soygun Kazanma: <span>%<span id="v-sy-${id}">${getVal(s.wr_soygun, 40)}</span></span></label>
-                                <input type="range" min="0" max="100" value="${getVal(s.wr_soygun, 40)}" oninput="document.getElementById('v-sy-${id}').innerText=this.value" onchange="toggleCmd('${id}','wr_soygun',parseInt(this.value))">
-                            </div>
-                            <div class="form-row">
-                                <div style="flex:1">
-                                    <label class="range-label">Soygun Ödül</label>
-                                    <input type="number" value="${getVal(s.soygun_reward, 30000)}" class="inp" style="height:35px; margin:0;" onchange="toggleCmd('${id}','soygun_reward',parseInt(this.value))">
+                            <div style="display:grid; grid-template-columns: 1fr 1fr; gap:10px; margin-bottom:15px;">
+                                <div style="background:rgba(255,255,255,0.03); padding:10px; border-radius:10px;">
+                                    <h4 style="font-size:0.8rem; color:var(--primary); margin-bottom:10px;">🎰 SLOT AYARLARI</h4>
+                                    <div class="range-container">
+                                        <label class="range-label">Şans: <span>%<span id="v-sl-${id}">${getVal(s.wr_slot, 30)}</span></span></label>
+                                        <input type="range" min="0" max="100" value="${getVal(s.wr_slot, 30)}" oninput="document.getElementById('v-sl-${id}').innerText=this.value" onchange="toggleCmd('${id}','wr_slot',parseInt(this.value))">
+                                    </div>
+                                    <div style="display:flex; gap:5px;">
+                                        <div style="flex:1">
+                                            <label style="font-size:0.6rem; color:#666">3lü Çarpan</label>
+                                            <input type="number" value="${getVal(s.mult_slot_3, 5)}" class="inp" style="height:28px; font-size:0.75rem;" onchange="toggleCmd('${id}','mult_slot_3',parseFloat(this.value))">
+                                        </div>
+                                        <div style="flex:1">
+                                            <label style="font-size:0.6rem; color:#666">2li Çarpan</label>
+                                            <input type="number" value="${getVal(s.mult_slot_2, 1.5)}" class="inp" style="height:28px; font-size:0.75rem;" onchange="toggleCmd('${id}','mult_slot_2',parseFloat(this.value))">
+                                        </div>
+                                        <div style="flex:1">
+                                            <label style="font-size:0.6rem; color:#666">Sınır/Sa</label>
+                                            <input type="number" value="${getVal(s.limit_slot, 10)}" class="inp" style="height:28px; font-size:0.75rem;" onchange="toggleCmd('${id}','limit_slot',parseInt(this.value))">
+                                        </div>
+                                    </div>
                                 </div>
-                                <div style="flex:1">
-                                    <label class="range-label">Soygun Sınır/Sa</label>
-                                    <input type="number" value="${getVal(s.soygun_limit, 3)}" class="inp" style="height:35px; margin:0;" onchange="toggleCmd('${id}','soygun_limit',parseInt(this.value))">
+                                <div style="background:rgba(255,255,255,0.03); padding:10px; border-radius:10px;">
+                                    <h4 style="font-size:0.8rem; color:var(--primary); margin-bottom:10px;">🪙 YAZITURA AYARLARI</h4>
+                                    <div class="range-container">
+                                        <label class="range-label">Şans: <span>%<span id="v-yt-${id}">${getVal(s.wr_yazitura, 50)}</span></span></label>
+                                        <input type="range" min="0" max="100" value="${getVal(s.wr_yazitura, 50)}" oninput="document.getElementById('v-yt-${id}').innerText=this.value" onchange="toggleCmd('${id}','wr_yazitura',parseInt(this.value))">
+                                    </div>
+                                    <div style="display:flex; gap:5px;">
+                                        <div style="flex:1">
+                                            <label style="font-size:0.6rem; color:#666">Kazanç Çarpanı</label>
+                                            <input type="number" value="${getVal(s.mult_yazitura, 2)}" class="inp" style="height:28px; font-size:0.75rem;" onchange="toggleCmd('${id}','mult_yazitura',parseFloat(this.value))">
+                                        </div>
+                                        <div style="flex:1">
+                                            <label style="font-size:0.6rem; color:#666">Sınır/Sa</label>
+                                            <input type="number" value="${getVal(s.limit_yazitura, 20)}" class="inp" style="height:28px; font-size:0.75rem;" onchange="toggleCmd('${id}','limit_yazitura',parseInt(this.value))">
+                                        </div>
+                                    </div>
+                                </div>
+                            </div>
+                            <div style="display:grid; grid-template-columns: 1fr 1fr; gap:10px;">
+                                <div style="background:rgba(255,255,255,0.03); padding:10px; border-radius:10px;">
+                                    <h4 style="font-size:0.8rem; color:var(--primary); margin-bottom:10px;">📦 KUTU AYARLARI</h4>
+                                    <div class="range-container">
+                                        <label class="range-label">Şans: <span>%<span id="v-kt-${id}">${getVal(s.wr_kutu, 40)}</span></span></label>
+                                        <input type="range" min="0" max="100" value="${getVal(s.wr_kutu, 40)}" oninput="document.getElementById('v-kt-${id}').innerText=this.value" onchange="toggleCmd('${id}','wr_kutu',parseInt(this.value))">
+                                    </div>
+                                    <div style="display:flex; gap:5px;">
+                                        <div style="flex:1">
+                                            <label style="font-size:0.6rem; color:#666">Kazanç Çarpanı</label>
+                                            <input type="number" value="${getVal(s.mult_kutu, 3)}" class="inp" style="height:28px; font-size:0.75rem;" onchange="toggleCmd('${id}','mult_kutu',parseFloat(this.value))">
+                                        </div>
+                                        <div style="flex:1">
+                                            <label style="font-size:0.6rem; color:#666">Sınır/Sa</label>
+                                            <input type="number" value="${getVal(s.limit_kutu, 15)}" class="inp" style="height:28px; font-size:0.75rem;" onchange="toggleCmd('${id}','limit_kutu',parseInt(this.value))">
+                                        </div>
+                                    </div>
+                                </div>
+                                <div style="background:rgba(255,255,255,0.03); padding:10px; border-radius:10px;">
+                                    <h4 style="font-size:0.8rem; color:var(--primary); margin-bottom:10px;">💥 SOYGUN AYARLARI</h4>
+                                    <div class="range-container">
+                                        <label class="range-label">Şans: <span>%<span id="v-sy-${id}">${getVal(s.wr_soygun, 40)}</span></span></label>
+                                        <input type="range" min="0" max="100" value="${getVal(s.wr_soygun, 40)}" oninput="document.getElementById('v-sy-${id}').innerText=this.value" onchange="toggleCmd('${id}','wr_soygun',parseInt(this.value))">
+                                    </div>
+                                    <div style="display:flex; gap:5px;">
+                                        <div style="flex:1">
+                                            <label style="font-size:0.6rem; color:#666">Toplam Havuz</label>
+                                            <input type="number" value="${getVal(s.soygun_reward, 30000)}" class="inp" style="height:28px; font-size:0.75rem;" onchange="toggleCmd('${id}','soygun_reward',parseInt(this.value))">
+                                        </div>
+                                        <div style="flex:1">
+                                            <label style="font-size:0.6rem; color:#666">Sınır/Sa</label>
+                                            <input type="number" value="${getVal(s.limit_soygun, 3)}" class="inp" style="height:28px; font-size:0.75rem;" onchange="toggleCmd('${id}','limit_soygun',parseInt(this.value))">
+                                        </div>
+                                    </div>
                                 </div>
                             </div>
                         </div>
@@ -1448,6 +1537,88 @@
                 }
             }
 
+            function applyPermissions() {
+                if (!currentUser) return;
+                const perms = currentUser.permissions || {};
+
+                // Sekmeleri göster/gizle
+                document.getElementById('tab-channels').style.display = perms.channels ? 'block' : 'none';
+                document.getElementById('tab-users').style.display = perms.users ? 'block' : 'none';
+                document.getElementById('tab-troll').style.display = perms.troll ? 'block' : 'none';
+                document.getElementById('tab-logs').style.display = perms.logs ? 'block' : 'none';
+                document.getElementById('tab-quests').style.display = perms.quests ? 'block' : 'none';
+                document.getElementById('tab-stocks').style.display = perms.stocks ? 'block' : 'none';
+                document.getElementById('tab-memory').style.display = perms.memory ? 'block' : 'none';
+                document.getElementById('tab-global').style.display = perms.global ? 'block' : 'none';
+
+                // Master sekmesi
+                document.getElementById('tab-admins').style.display = (currentUser.username === 'omegacyr' || perms.admins) ? 'block' : 'none';
+
+                // Eğer aktif sekme yetkisizse ilk yetkili sekmeye geç
+                const activeTabId = document.querySelector('.tab-btn.active').id.replace('tab-', '');
+                if (perms[activeTabId] === false) {
+                    const firstPerm = Object.keys(perms).find(k => perms[k] === true);
+                    if (firstPerm) showTab(firstPerm);
+                }
+            }
+
+            async function loadAdmins() {
+                const res = await fetch('/admin-api/list-admins', {
+                    method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ key: sessionKey })
+                });
+                const admins = await res.json();
+                const container = document.getElementById('admin-users-list');
+                container.innerHTML = "";
+
+                Object.entries(admins).forEach(([u, d]) => {
+                    const perms = d.permissions || {};
+                    const isMaster = u === 'omegacyr';
+
+                    container.innerHTML += `
+                        <tr>
+                            <td><b>${u}</b> ${isMaster ? '<span style="color:var(--primary); font-size:0.7rem;">(MASTER)</span>' : ''}</td>
+                            <td align="center">${renderCheck(u, 'channels', perms.channels, isMaster)}</td>
+                            <td align="center">${renderCheck(u, 'users', perms.users, isMaster)}</td>
+                            <td align="center">${renderCheck(u, 'troll', perms.troll, isMaster)}</td>
+                            <td align="center">${renderCheck(u, 'logs', perms.logs, isMaster)}</td>
+                            <td align="center">${renderCheck(u, 'quests', perms.quests, isMaster)}</td>
+                            <td align="center">${renderCheck(u, 'stocks', perms.stocks, isMaster)}</td>
+                            <td align="center">${renderCheck(u, 'memory', perms.memory, isMaster)}</td>
+                            <td align="center">${renderCheck(u, 'global', perms.global, isMaster)}</td>
+                            <td align="right">
+                                ${isMaster ? '' : `<button class="btn btn-small" onclick="saveAdminPerms('${u}')">💾 KAYDET</button>`}
+                            </td>
+                        </tr>
+                    `;
+                });
+            }
+
+            function renderCheck(user, key, val, isMaster) {
+                if (isMaster) return '✅';
+                return `<input type="checkbox" id="perm-${user}-${key}" ${val ? 'checked' : ''}>`;
+            }
+
+            async function saveAdminPerms(targetAdmin) {
+                const keys = ['channels', 'users', 'troll', 'logs', 'quests', 'stocks', 'memory', 'global'];
+                const permissions = {};
+                keys.forEach(k => {
+                    permissions[k] = document.getElementById(`perm-${targetAdmin}-${k}`).checked;
+                });
+
+                const res = await fetch('/admin-api/update-admin-perms', {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({ key: sessionKey, targetAdmin, permissions })
+                });
+                const d = await res.json();
+                if (d.success) {
+                    alert(`${targetAdmin} yetkileri güncellendi!`);
+                    loadAdmins();
+                } else {
+                    alert(d.error || "Hata oluştu.");
+                }
+            }
+
             async function deleteChannel(id) {
                 if (!confirm("Kanalı sildiğinizde tüm ayarlar kaybolur. Emin misiniz?")) return;
                 await fetch('/admin-api/delete-channel', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ key: sessionKey, channelId: id }) });
@@ -1465,14 +1636,22 @@
                     const res = await fetch('/admin-api/upload-sound', {
                         method: 'POST',
                         body: fd,
-                        headers: { 'c-id': id } // Body'den önce header'ı kontrol etmesi için
+                        headers: {
+                            'c-id': id,
+                            'Authorization': sessionKey
+                        }
                     });
                     const d = await res.json();
                     if (d.url) {
                         document.getElementById(`snd-url-${id}`).value = d.url;
                         alert("Dosya yüklendi!");
+                    } else {
+                        alert("Yükleme hatası: " + (d.error || "Bilinmeyen hata"));
                     }
-                } catch (e) { console.error(e); }
+                } catch (e) {
+                    console.error(e);
+                    alert("Sunucuyla bağlantı kurulamadı!");
+                }
             }
 
             async function addSound(id) {

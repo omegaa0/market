@@ -180,6 +180,7 @@
             <button class="tab-btn active" onclick="switchTab('market')">🛒 Market</button>
             <button class="tab-btn" onclick="switchTab('leaderboard')">🏆 Liderlik</button>
             <button class="tab-btn" onclick="switchTab('borsa')">📈 Borsa</button>
+            <button class="tab-btn" onclick="switchTab('emlak')">🏠 Emlak</button>
             <button class="tab-btn" onclick="switchTab('quests')">🎯 Görevler</button>
             <button class="tab-btn" onclick="switchTab('profile')">👤 Profilim</button>
         </nav>
@@ -231,6 +232,53 @@
                         saniyelik olarak güncellenir. Tüm kanallarda ortaktır.</p>
                     <div id="borsa-items" class="market-grid">
                         <!-- JS fills -->
+                    </div>
+                </div>
+
+                <!-- EMLAK TAB -->
+                <div id="tab-emlak" class="tab-content hidden">
+                    <h2 style="margin-bottom:20px;">🏠 Türkiye Emlak Piyasası</h2>
+                    <p style="color:var(--text-dim); margin-bottom:20px; font-size:0.9rem;">
+                        Şehirlerden mülk satın alarak pasif gelir elde et. Gelirler her saat başı bakiyene eklenir.
+                    </p>
+
+                    <div class="emlak-container" style="display: grid; grid-template-columns: 2fr 1.2fr; gap: 20px;">
+                        <!-- Harita Alanı -->
+                        <div class="map-wrapper glass-panel"
+                            style="position:relative; padding: 20px; overflow: hidden; background: rgba(0,0,0,0.4); min-height: 400px; display: flex; align-items: center; justify-content: center;">
+                            <div id="turkey-map" style="width: 100%; height: auto;">
+                                <!-- SVG Harita Buraya Gelecek -->
+                                <img src="https://upload.wikimedia.org/wikipedia/commons/1/13/Turkey_provinces_blank.svg"
+                                    alt="Turkey Map"
+                                    style="width: 100%; pointer-events: none; opacity: 0.2; filter: invert(1);">
+                                <div id="map-overlay"
+                                    style="position:absolute; top:0; left:0; width:100%; height:100%; pointer-events: none;">
+                                    <!-- İnteraktif Şehir Noktaları (JS tarafından doldurulacak) -->
+                                </div>
+                            </div>
+                            <div id="city-info-toast"
+                                style="position:absolute; bottom:20px; left:50%; transform:translateX(-50%); background: var(--primary); color: black; padding: 5px 15px; border-radius: 20px; font-weight: 800; font-size: 0.8rem; display:none; z-index: 10;">
+                                Şehir Seçildi
+                            </div>
+                        </div>
+
+                        <!-- Mülk Listesi -->
+                        <div id="city-properties-panel" class="glass-panel"
+                            style="position:static; transform:none; width:100%; padding: 20px; display:flex; flex-direction:column; gap:15px; background: rgba(0,0,0,0.2);">
+                            <div id="selected-city-header">
+                                <h3 style="color: var(--primary);">Şehir Seçin</h3>
+                                <p style="font-size: 0.8rem; color: var(--text-dim);">Haritadan bir şehre tıklayarak
+                                    satılık mülkleri gör.</p>
+                            </div>
+                            <div id="property-list"
+                                style="display:flex; flex-direction:column; gap:12px; margin-top:10px;">
+                                <!-- Mülkler buraya gelecek -->
+                                <div style="text-align:center; padding: 40px; opacity: 0.5;">
+                                    <i class="fas fa-map-marker-alt" style="font-size: 2rem; margin-bottom: 10px;"></i>
+                                    <p>Henüz şehir seçilmedi.</p>
+                                </div>
+                            </div>
+                        </div>
                     </div>
                 </div>
 

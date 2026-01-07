@@ -375,3 +375,62 @@ header {
         display: none;
     }
 }
+
+/* STAT MINI (PROFILE & PORTFOLIO) */
+.stat-mini {
+    background: rgba(255, 255, 255, 0.03);
+    border: 1px solid var(--glass-border);
+    padding: 12px 15px;
+    border-radius: 12px;
+    display: flex;
+    flex-direction: column;
+    gap: 4px;
+}
+
+.stat-mini label {
+    font-size: 0.7rem;
+    color: var(--text-dim);
+    text-transform: uppercase;
+    font-weight: 600;
+}
+
+.stat-mini .v {
+    font-size: 1.1rem;
+    font-weight: 800;
+    color: white;
+}
+
+/* EMLAK MAP STYLES */
+.map-wrapper:hover #turkey-map img {
+    opacity: 0.4 !important;
+    transition: opacity 0.5s;
+}
+
+#map-overlay div:hover {
+    background: white !important;
+    box-shadow: 0 0 25px white !important;
+}
+
+#property-list>div:hover {
+    background: rgba(255, 255, 255, 0.1) !important;
+    border-color: var(--primary) !important;
+}
+
+.stat-box {
+    background: rgba(255, 255, 255, 0.05);
+    padding: 15px;
+    border-radius: 15px;
+    border: 1px solid var(--glass-border);
+}
+
+.stat-box label {
+    font-size: 0.75rem;
+    color: var(--text-dim);
+    display: block;
+    margin-bottom: 5px;
+}
+
+.stat-box .val {
+    font-size: 1.2rem;
+    font-weight: 800;
+}

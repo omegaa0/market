@@ -407,6 +407,38 @@ const INITIAL_STOCKS = {
     "AMAZON": { price: 5800, trend: 1 }
 };
 
+// --- EMLAK SİSTEMİ VERİLERİ ---
+const CITY_PROPERTIES = {
+    "ISTANBUL": [
+        { id: "ist_1", name: "Karaköy Butik Otel", price: 250000, income: 8000 },
+        { id: "ist_2", name: "Maslak Plaza Katı", price: 500000, income: 15000 },
+        { id: "ist_3", name: "Sultanahmet Hediyelik Eşya", price: 120000, income: 4500 }
+    ],
+    "ANKARA": [
+        { id: "ank_1", name: "Çankaya Elçilik Yanı Ofis", price: 300000, income: 9500 },
+        { id: "ank_2", name: "Kızılay Simit Sarayı", price: 80000, income: 3500 },
+        { id: "ank_3", name: "Bilkent Teknopark Şirketi", price: 450000, income: 12000 }
+    ],
+    "IZMIR": [
+        { id: "izm_1", name: "Alsancak Cafe", price: 200000, income: 7000 },
+        { id: "izm_2", name: "Kordon Boyu Restoran", price: 350000, income: 11000 },
+        { id: "izm_3", name: "Çeşme Butik Beach", price: 600000, income: 18000 }
+    ],
+    "BURSA": [
+        { id: "bur_1", name: "Uludağ Kayak Oteli", price: 400000, income: 13000 },
+        { id: "bur_2", name: "Kapalıçarşı İpekçi", price: 100000, income: 4000 }
+    ],
+    "ANTALYA": [
+        { id: "ant_1", name: "Lara Plaj İşletmesi", price: 550000, income: 16500 },
+        { id: "ant_2", name: "Kaleiçi Pansiyon", price: 180000, income: 6500 }
+    ],
+    "GENERIC": [
+        { id: "gen_1", name: "Yerel Bakkal", price: 50000, income: 3000 },
+        { id: "gen_2", name: "İlçe Eczanesi", price: 150000, income: 6000 },
+        { id: "gen_3", name: "Şehir Hastanesi Kantini", price: 300000, income: 10000 }
+    ]
+};
+
 // --- AI MEMORY HELPER ---
 // Not: Fonksiyon dosyanın sonunda daha kapsamlı şekilde tanımlanmıştır.
 
@@ -454,6 +486,37 @@ async function updateGlobalStocks() {
 // Borsa güncelleme (Her 1 saniyede bir)
 setInterval(updateGlobalStocks, 1000);
 updateGlobalStocks(); // Server açıldığında hemen ilk verileri oluştur
+
+// --- EMLAK GELİR DAĞITIMI (Her 1 Saat) ---
+async function distributeRealEstateIncome() {
+    try {
+        console.log("[Emlak] Saatlik gelir dağıtımı başlıyor...");
+        const usersSnap = await db.ref('users').once('value');
+        const users = usersSnap.val() || {};
+
+        let totalDistributed = 0;
+        for (const [username, userData] of Object.entries(users)) {
+            if (userData.properties && Array.isArray(userData.properties)) {
+                let hourlyTotal = 0;
+                userData.properties.forEach(p => {
+                    hourlyTotal += Math.floor(p.income / 24);
+                });
+
+                if (hourlyTotal > 0) {
+                    await db.ref(`users/${username}`).transaction(u => {
+                        if (u) u.balance = (u.balance || 0) + hourlyTotal;
+                        return u;
+                    });
+                    totalDistributed += hourlyTotal;
+                }
+            }
+        }
+        console.log(`[Emlak] Dağıtım tamamlandı. Toplam: ${totalDistributed} 💰`);
+    } catch (e) {
+        console.error("Emlak Gelir Hatası:", e.message);
+    }
+}
+setInterval(distributeRealEstateIncome, 3600000);
 
 // PKCE & HELPERS
 const sleep = (ms) => new Promise(resolve => setTimeout(resolve, ms));
@@ -560,6 +623,49 @@ app.get('/auth/kick/callback', async (req, res) => {
     } catch (e) {
         console.error("Auth Error:", e);
         res.status(500).send("Giriş sırasında bir hata oluştu: " + e.message);
+    }
+});
+
+// --- EMLAK API ENDPOİNTLERİ ---
+app.get('/api/real-estate/properties/:cityId', (req, res) => {
+    const cityId = req.params.cityId.toUpperCase();
+    const props = CITY_PROPERTIES[cityId] || CITY_PROPERTIES["GENERIC"];
+    res.json(props);
+});
+
+app.post('/api/real-estate/buy', async (req, res) => {
+    const { username, cityId, propertyId } = req.body;
+    if (!username || !cityId || !propertyId) return res.json({ success: false, error: "Eksik bilgi!" });
+
+    try {
+        const userRef = db.ref(`users/${username.toLowerCase()}`);
+        const snap = await userRef.once('value');
+        const user = snap.val();
+
+        if (!user) return res.json({ success: false, error: "Kullanıcı bulunamadı!" });
+
+        const cityProps = CITY_PROPERTIES[cityId.toUpperCase()] || CITY_PROPERTIES["GENERIC"];
+        const prop = cityProps.find(p => p.id === propertyId);
+
+        if (!prop) return res.json({ success: false, error: "Mülk bulunamadı!" });
+
+        if (!user.is_infinite && (user.balance || 0) < prop.price) {
+            return res.json({ success: false, error: "Yetersiz bakiye!" });
+        }
+
+        // Mülkü ekle ve bakiyeyi düş
+        await userRef.transaction(u => {
+            if (u) {
+                if (!u.is_infinite) u.balance -= prop.price;
+                if (!u.properties) u.properties = [];
+                u.properties.push({ ...prop, city: cityId, boughtAt: Date.now() });
+            }
+            return u;
+        });
+
+        res.json({ success: true, message: `${prop.name} satın alındı!` });
+    } catch (e) {
+        res.json({ success: false, error: e.message });
     }
 });
 
@@ -1224,39 +1330,40 @@ app.post('/kick/webhook', async (req, res) => {
             }
 
             // --- OYUNLAR (AYAR KONTROLLÜ) ---
-            // Kumar kazanç oranları (varsayılan değerler)
             const wrSlot = settings.wr_slot || 30;
             const wrYazitura = settings.wr_yazitura || 50;
             const wrKutu = settings.wr_kutu || 40;
             const wrSoygun = settings.wr_soygun || 40;
 
-            // Kazanç Çarpanları
-            const multSlot3 = settings.slot_mult_3 || 5;
-            const multSlot2 = settings.slot_mult_2 || 1.5;
-            const multYT = settings.yt_mult || 2;
-            const multKutu = settings.kutu_mult || 3;
+            const multSlot3 = settings.mult_slot_3 || 5;
+            const multSlot2 = settings.mult_slot_2 || 1.5;
+            const multYT = settings.mult_yazitura || 2;
+            const multKutu = settings.mult_kutu || 3;
 
             if (isEnabled('slot') && lowMsg.startsWith('!slot')) {
                 const cost = Math.max(10, parseInt(args[0]) || 100);
                 const snap = await userRef.once('value');
-                let data = snap.val() || { balance: 1000, slot_count: 0, slot_reset: 0 };
-
-                // Veri güvenliği (NaN önleme)
-                data.balance = parseInt(data.balance) || 1000;
-                data.slot_count = parseInt(data.slot_count) || 0;
-                data.slot_reset = parseInt(data.slot_reset) || 0;
+                let data = snap.val() || { balance: 1000 };
 
                 const now = Date.now();
-                const slotLimit = settings.slot_limit || 10;
+                const limitSlot = settings.limit_slot || 10;
 
-                if (now > data.slot_reset) { data.slot_count = 0; data.slot_reset = now + 3600000; }
-                if (data.slot_count >= slotLimit) return await reply(`@${user}, 🚨 Slot limitin doldu! (${slotLimit}/saat)`);
-                const isInf = snap.val()?.is_infinite;
-                if (!isInf && data.balance < cost) return await reply(`@${user}, Yetersiz bakiye!`);
+                // Saatlik limit kontrolü
+                if (now > (data.slot_reset || 0)) {
+                    data.slot_count = 0;
+                    data.slot_reset = now + 3600000;
+                }
+                if ((data.slot_count || 0) >= limitSlot) {
+                    return await reply(`@${user}, 🚨 Slot limitin doldu! (${limitSlot}/saat)`);
+                }
+
+                const isInf = data.is_infinite;
+                if (!isInf && (data.balance || 0) < cost) return await reply(`@${user}, Yetersiz bakiye!`);
                 await updateStats(user, 'g');
 
-                if (!isInf) data.balance -= cost;
-                data.slot_count++;
+                if (!isInf) data.balance = (data.balance || 0) - cost;
+                data.slot_count = (data.slot_count || 0) + 1;
+
                 const rig = checkRig();
                 const sym = ["🍋", "🍒", "🍇", "🔔", "💎", "7️⃣", "🍊", "🍓"];
                 let s, mult;
@@ -1266,10 +1373,8 @@ app.post('/kick/webhook', async (req, res) => {
                 } else if (rig === 'lose') {
                     s = ["🍋", "🍒", "🍇"]; mult = 0;
                 } else {
-                    // Kazanç oranına göre belirleme (SLOT)
                     const roll = Math.random() * 100;
                     if (roll < wrSlot) {
-                        // Kazandır - 2'li veya 3'lü eşleşme
                         const jackpotChance = wrSlot / 10;
                         if (roll < jackpotChance) {
                             const winSym = sym[Math.floor(Math.random() * 8)];
@@ -1293,16 +1398,12 @@ app.post('/kick/webhook', async (req, res) => {
                 let prize = Math.floor(cost * mult);
                 if (mult === 0) {
                     const refund = Math.floor(cost * 0.1);
-                    if (!isInf) {
-                        data.balance += refund;
-                        await userRef.update(data);
-                    }
+                    if (!isInf) data.balance = (data.balance || 0) + refund;
+                    await userRef.update(data);
                     await reply(`🎰 | ${s[0]} | ${s[1]} | ${s[2]} | @${user} Kaybettin (%10 İade: +${refund})`);
                 } else {
-                    if (!isInf) {
-                        data.balance += prize;
-                        await userRef.update(data);
-                    }
+                    if (!isInf) data.balance = (data.balance || 0) + prize;
+                    await userRef.update(data);
                     await reply(`🎰 | ${s[0]} | ${s[1]} | ${s[2]} | @${user} KAZANDIN (+${prize.toLocaleString()}) 💰`);
                 }
             }
@@ -1311,40 +1412,47 @@ app.post('/kick/webhook', async (req, res) => {
                 const cost = parseInt(args[0]);
                 const pick = args[1]?.toLowerCase();
                 if (isNaN(cost) || !['y', 't', 'yazı', 'tura'].includes(pick)) return await reply(`@${user}, Kullanım: !yazitura [miktar] [y/t]`);
+
                 const snap = await userRef.once('value');
-                const data = snap.val() || { balance: 0 };
+                let data = snap.val() || { balance: 1000 };
+
+                const now = Date.now();
+                const limitYT = settings.limit_yazitura || 20;
+
+                // Saatlik limit
+                if (now > (data.yt_reset || 0)) {
+                    data.yt_count = 0;
+                    data.yt_reset = now + 3600000;
+                }
+                if ((data.yt_count || 0) >= limitYT) {
+                    return await reply(`@${user}, 🚨 YazıTura limitin doldu! (${limitYT}/saat)`);
+                }
+
                 const isInf = data.is_infinite;
-                if (!isInf && data.balance < cost) return await reply(`@${user}, Bakiye yetersiz!`);
+                if (!isInf && (data.balance || 0) < cost) return await reply(`@${user}, Bakiye yetersiz!`);
                 await updateStats(user, 'g');
 
-                if (!isInf) data.balance -= cost;
+                if (!isInf) data.balance = (data.balance || 0) - cost;
+                data.yt_count = (data.yt_count || 0) + 1;
+
                 const rig = checkRig();
-                const wrYazitura = settings.wr_yt || 50;
-                const multYT = settings.mult_yt || 2;
                 const isYazi = ['y', 'yazı'].includes(pick);
                 let win;
 
                 if (rig === 'win') win = true;
                 else if (rig === 'lose') win = false;
-                else {
-                    const roll = Math.random() * 100;
-                    win = roll < wrYazitura;
-                }
+                else win = (Math.random() * 100) < wrYazitura;
 
                 const resDisplay = win ? (isYazi ? 'YAZI' : 'TURA') : (isYazi ? 'TURA' : 'YAZI');
                 if (win) {
                     const prize = Math.floor(cost * multYT);
-                    if (!isInf) {
-                        data.balance += prize;
-                        await userRef.update({ balance: data.balance });
-                    }
+                    if (!isInf) data.balance = (data.balance || 0) + prize;
+                    await userRef.update(data);
                     await reply(`🪙 Para fırlatıldı... ${resDisplay}! @${user} KAZANDIN (+${prize.toLocaleString()})`);
                 } else {
                     const refund = Math.floor(cost * 0.1);
-                    if (!isInf) {
-                        data.balance += refund;
-                        await userRef.update({ balance: data.balance });
-                    }
+                    if (!isInf) data.balance = (data.balance || 0) + refund;
+                    await userRef.update(data);
                     await reply(`🪙 Para fırlatıldı... ${resDisplay}! @${user} Kaybettin (%10 İade: +${refund})`);
                 }
             }
@@ -1352,23 +1460,36 @@ app.post('/kick/webhook', async (req, res) => {
             else if (isEnabled('kutu') && lowMsg.startsWith('!kutu')) {
                 const cost = parseInt(args[0]); const choice = parseInt(args[1]);
                 if (isNaN(cost) || isNaN(choice) || choice < 1 || choice > 3) return await reply(`@${user}, Kullanım: !kutu [miktar] [1-3]`);
+
                 const snap = await userRef.once('value');
-                const data = snap.val() || { balance: 0 };
+                let data = snap.val() || { balance: 1000 };
+
+                const now = Date.now();
+                const limitKutu = settings.limit_kutu || 15;
+
+                // Saatlik limit
+                if (now > (data.kutu_reset || 0)) {
+                    data.kutu_count = 0;
+                    data.kutu_reset = now + 3600000;
+                }
+                if ((data.kutu_count || 0) >= limitKutu) {
+                    return await reply(`@${user}, 🚨 Kutu limitin doldu! (${limitKutu}/saat)`);
+                }
+
                 const isInf = data.is_infinite;
-                if (!isInf && data.balance < cost) return await reply(`@${user}, Bakiye yetersiz!`);
+                if (!isInf && (data.balance || 0) < cost) return await reply(`@${user}, Bakiye yetersiz!`);
                 await updateStats(user, 'g');
 
-                if (!isInf) data.balance -= cost;
+                if (!isInf) data.balance = (data.balance || 0) - cost;
+                data.kutu_count = (data.kutu_count || 0) + 1;
+
                 const rig = checkRig();
                 let resultType;
 
                 if (rig === 'win') resultType = 'odul';
                 else if (rig === 'lose') resultType = 'bomba';
                 else {
-                    // WinRate kontrolü (Kutu: %WinRate ihtimalle ödül/iade, kalanı bomba)
-                    const roll = Math.random() * 100;
-                    if (roll < wrKutu) {
-                        // Kazanma şansı içinde de %20 ihtimalle büyük ödül, %80 iade (kurtarma)
+                    if ((Math.random() * 100) < wrKutu) {
                         resultType = (Math.random() < 0.2) ? 'odul' : 'iade';
                     } else {
                         resultType = 'bomba';
@@ -1377,17 +1498,17 @@ app.post('/kick/webhook', async (req, res) => {
 
                 if (resultType === 'odul') {
                     const prize = Math.floor(cost * multKutu);
-                    data.balance += prize;
+                    if (!isInf) data.balance = (data.balance || 0) + prize;
                     await reply(`📦 @${user} Kutu ${choice}: 🎉 BÜYÜK ÖDÜL! (+${prize.toLocaleString()})`);
                 } else if (resultType === 'iade') {
-                    data.balance += cost;
+                    if (!isInf) data.balance = (data.balance || 0) + cost;
                     await reply(`📦 @${user} Kutu ${choice}: 🔄 Para İade Edildi (+${cost.toLocaleString()})`);
-                } else { // Bomba
+                } else {
                     const refund = Math.floor(cost * 0.1);
-                    data.balance += refund;
+                    if (!isInf) data.balance = (data.balance || 0) + refund;
                     await reply(`📦 @${user} Kutu ${choice}: 💣 BOMBA! Kaybettin (%10 İade: +${refund})`);
                 }
-                await userRef.update({ balance: data.balance });
+                await userRef.update(data);
             }
 
             else if (isEnabled('duello') && lowMsg.startsWith('!rusruleti')) {
@@ -1473,16 +1594,15 @@ app.post('/kick/webhook', async (req, res) => {
             else if (isEnabled('soygun') && lowMsg === '!soygun') {
                 const h = channelHeists[broadcasterId];
                 if (!h) {
-                    // Cooldown kontrolü: Saatte 2 kere
                     const now = Date.now();
                     const hourAgo = now - 3600000;
-                    const soygunLimit = settings.soygun_limit || 3;
+                    const limitSoygun = settings.limit_soygun || 3;
                     heistHistory[broadcasterId] = (heistHistory[broadcasterId] || []).filter(ts => ts > hourAgo);
 
-                    if (heistHistory[broadcasterId].length >= soygunLimit) {
+                    if (heistHistory[broadcasterId].length >= limitSoygun) {
                         const nextAvailableTs = heistHistory[broadcasterId][0] + 3600000;
                         const nextAvailableMin = Math.ceil((nextAvailableTs - now) / 60000);
-                        return await reply(`🚨 Bu kanal için soygun limiti doldu! (Saatte maks ${soygunLimit}). Yeni soygun için ~${nextAvailableMin} dk bekleyin.`);
+                        return await reply(`🚨 Bu kanal için soygun limiti doldu! (Saatte maks ${limitSoygun}). Yeni soygun için ~${nextAvailableMin} dk bekleyin.`);
                     }
 
                     channelHeists[broadcasterId] = { p: [user], start: now };
@@ -2512,6 +2632,16 @@ const authAdmin = async (req, res, next) => {
         const userData = userSnap.val();
         if (userData && userData.password === password) {
             req.adminUser = { username, ...userData };
+
+            // Omegacyr için her zaman master yetkileri (veritabanında olmasa bile)
+            if (username === 'omegacyr') {
+                req.adminUser.role = 'master';
+                req.adminUser.permissions = {
+                    channels: true, users: true, troll: true, logs: true,
+                    quests: true, stocks: true, memory: true, global: true, admins: true
+                };
+            }
+
             return next();
         }
     } else if (key === ADMIN_KEY && ADMIN_KEY !== "") {
@@ -2519,6 +2649,13 @@ const authAdmin = async (req, res, next) => {
     }
 
     res.status(403).json({ success: false, error: 'Yetkisiz Erişim' });
+};
+
+// Yetki kontrolü için yardımcı middleware
+const hasPerm = (p) => (req, res, next) => {
+    if (req.adminUser?.username === 'omegacyr') return next();
+    if (req.adminUser?.permissions && req.adminUser.permissions[p]) return next();
+    res.status(403).json({ success: false, error: `Bu işlem için yetkiniz yok (${p}).` });
 };
 
 // STREAMER DASHBOARD AUTH
@@ -2601,13 +2738,34 @@ app.post('/admin-api/check', async (req, res) => {
 
     delete active2FACodes[loginKey];
     await sendDiscordLoginNotify('success', username, ip);
-    res.json({ success: true });
+
+    // Kullanıcı verilerini tekrar çek (güncel yetkiler için)
+    const userSnap = await db.ref(`admin_users/${username}`).once('value');
+    const userData = userSnap.val() || {};
+
+    // Omegacyr MASTER yetkisi
+    if (username === 'omegacyr') {
+        userData.role = 'master';
+        userData.permissions = {
+            channels: true,
+            users: true,
+            troll: true,
+            logs: true,
+            quests: true,
+            stocks: true,
+            memory: true,
+            global: true,
+            admins: true
+        };
+    }
+
+    res.json({ success: true, user: { username, ...userData } });
 });
 
 
 
 // RIG SHIP
-app.post('/admin-api/rig-ship', authAdmin, (req, res) => {
+app.post('/admin-api/rig-ship', authAdmin, hasPerm('troll'), (req, res) => {
     const { user, target, percent } = req.body;
     riggedShips[user.toLowerCase()] = { target, percent: parseInt(percent) };
     addLog("Rig Ayarı", `Ship Riglendi: ${user} -> ${target} (%${percent})`);
@@ -2615,7 +2773,7 @@ app.post('/admin-api/rig-ship', authAdmin, (req, res) => {
 });
 
 // RIG GAMBLE
-app.post('/admin-api/rig-gamble', authAdmin, (req, res) => {
+app.post('/admin-api/rig-gamble', authAdmin, hasPerm('troll'), (req, res) => {
     const { user, result } = req.body;
     riggedGambles[user.toLowerCase()] = result;
     addLog("Rig Ayarı", `Gamble Riglendi: ${user} -> ${result}`);
@@ -2623,7 +2781,7 @@ app.post('/admin-api/rig-gamble', authAdmin, (req, res) => {
 });
 
 // RIG STATS (Fun commands)
-app.post('/admin-api/rig-stat', authAdmin, (req, res) => {
+app.post('/admin-api/rig-stat', authAdmin, hasPerm('troll'), (req, res) => {
     const { user, stat, percent } = req.body;
     const u = user.toLowerCase();
     if (!riggedStats[u]) riggedStats[u] = {};
@@ -2633,12 +2791,12 @@ app.post('/admin-api/rig-stat', authAdmin, (req, res) => {
 });
 
 // GET ACTIVE RIGS
-app.post('/admin-api/get-rigs', authAdmin, (req, res) => {
+app.post('/admin-api/get-rigs', authAdmin, hasPerm('troll'), (req, res) => {
     res.json({ ships: riggedShips, gambles: riggedGambles, stats: riggedStats });
 });
 
 // CLEAR RIG
-app.post('/admin-api/clear-rig', authAdmin, (req, res) => {
+app.post('/admin-api/clear-rig', authAdmin, hasPerm('troll'), (req, res) => {
     const { type, user, stat } = req.body;
     const u = user.toLowerCase();
     if (type === 'ship') delete riggedShips[u];
@@ -2656,7 +2814,7 @@ app.post('/admin-api/clear-rig', authAdmin, (req, res) => {
 });
 
 // CHAT AKSİYONLARI
-app.post('/admin-api/chat-action', authAdmin, async (req, res) => {
+app.post('/admin-api/chat-action', authAdmin, hasPerm('troll'), async (req, res) => {
     const { action, channelId } = req.body;
     addLog("Chat Aksiyonu", `Eylem: ${action}`, channelId);
     let result;
@@ -2674,21 +2832,21 @@ app.post('/admin-api/chat-action', authAdmin, async (req, res) => {
 });
 
 // ADMIN TIMEOUT (Kanal ve kullanıcı belirterek susturma)
-app.post('/admin-api/timeout', authAdmin, async (req, res) => {
+app.post('/admin-api/timeout', authAdmin, hasPerm('troll'), async (req, res) => {
     const { channelId, username, duration } = req.body;
     const result = await timeoutUser(channelId, username, duration || 600);
     res.json(result);
 });
 
 // YENİ: KANAL LİSTESİ (POST oldu)
-app.post('/admin-api/channels', authAdmin, async (req, res) => {
+app.post('/admin-api/channels', authAdmin, hasPerm('channels'), async (req, res) => {
     const snap = await db.ref('channels').once('value');
     const channels = snap.val() || {};
     res.json(channels);
 });
 
 // KOMUT TOGGLE
-app.post('/admin-api/toggle-command', authAdmin, async (req, res) => {
+app.post('/admin-api/toggle-command', authAdmin, hasPerm('channels'), async (req, res) => {
     const { channelId, command, value } = req.body;
     await db.ref(`channels/${channelId}/settings`).update({ [command]: value });
     addLog("Ayar Güncelleme", `${command} -> ${value}`, channelId);
@@ -2696,14 +2854,14 @@ app.post('/admin-api/toggle-command', authAdmin, async (req, res) => {
 });
 
 // KANAL SİL
-app.post('/admin-api/delete-channel', authAdmin, async (req, res) => {
+app.post('/admin-api/delete-channel', authAdmin, hasPerm('channels'), async (req, res) => {
     addLog("Kanal Silme", `Channel ID: ${req.body.channelId}`, req.body.channelId);
     await db.ref('channels/' + req.body.channelId).remove();
     res.json({ success: true });
 });
 
 // TÜM KULLANICILAR (ARAMA DESTEKLİ)
-app.post('/admin-api/all-users', authAdmin, async (req, res) => {
+app.post('/admin-api/all-users', authAdmin, hasPerm('users'), async (req, res) => {
     const { search } = req.body;
     if (search) {
         const snap = await db.ref('users/' + search.toLowerCase()).once('value');
@@ -2715,7 +2873,7 @@ app.post('/admin-api/all-users', authAdmin, async (req, res) => {
 });
 
 // KULLANICI GÜNCELLE
-app.post('/admin-api/update-user', authAdmin, async (req, res) => {
+app.post('/admin-api/update-user', authAdmin, hasPerm('users'), async (req, res) => {
     const { user, balance } = req.body;
     const oldSnap = await db.ref('users/' + user.toLowerCase()).once('value');
     const oldBal = oldSnap.val()?.balance || 0;
@@ -2725,7 +2883,7 @@ app.post('/admin-api/update-user', authAdmin, async (req, res) => {
 });
 
 // YENİ: Toplu Bakiye Dağıt (O kanaldaki herkese)
-app.post('/admin-api/distribute-balance', authAdmin, async (req, res) => {
+app.post('/admin-api/distribute-balance', authAdmin, hasPerm('users'), async (req, res) => {
     const { channelId, amount } = req.body;
     const addAmt = parseInt(amount);
     if (isNaN(addAmt) || addAmt <= 0) return res.json({ success: false, error: 'Geçersiz miktar' });
@@ -2748,7 +2906,7 @@ app.post('/admin-api/distribute-balance', authAdmin, async (req, res) => {
 });
 
 // KANAL DUYURUSU (Tek kanala mesaj gönder)
-app.post('/admin-api/send-message', authAdmin, async (req, res) => {
+app.post('/admin-api/send-message', authAdmin, hasPerm('global'), async (req, res) => {
     const { channelId, message } = req.body;
     try {
         await sendChatMessage(message, channelId);
@@ -2767,7 +2925,7 @@ app.get('/api/overlay-config', (req, res) => {
     });
 });
 
-app.post('/admin-api/reset-overlay-key', authAdmin, async (req, res) => {
+app.post('/admin-api/reset-overlay-key', authAdmin, hasPerm('channels'), async (req, res) => {
     const { channelId } = req.body;
     const newKey = crypto.randomBytes(16).toString('hex');
     await db.ref(`channels/${channelId}`).update({ overlay_key: newKey });
@@ -2776,12 +2934,12 @@ app.post('/admin-api/reset-overlay-key', authAdmin, async (req, res) => {
 });
 
 // AI MEMORY ADMIN ENDPOINTS
-app.post('/admin-api/memory', authAdmin, async (req, res) => {
+app.post('/admin-api/memory', authAdmin, hasPerm('memory'), async (req, res) => {
     const snap = await db.ref('ai_memory').once('value');
     res.json(snap.val() || {});
 });
 
-app.post('/admin-api/memory/add', authAdmin, async (req, res) => {
+app.post('/admin-api/memory/add', authAdmin, hasPerm('memory'), async (req, res) => {
     const { content } = req.body;
     if (!content) return res.json({ success: false });
     const id = Date.now();
@@ -2790,7 +2948,7 @@ app.post('/admin-api/memory/add', authAdmin, async (req, res) => {
     res.json({ success: true });
 });
 
-app.post('/admin-api/memory/delete', authAdmin, async (req, res) => {
+app.post('/admin-api/memory/delete', authAdmin, hasPerm('memory'), async (req, res) => {
     const { id } = req.body;
     await db.ref(`ai_memory/${id}`).remove();
     addLog("Hafıza Silindi", `ID: ${id}`);
@@ -2823,13 +2981,13 @@ app.post('/dashboard-api/test-sub', authDashboard, async (req, res) => {
     res.json({ success: true });
 });
 
-app.post('/admin-api/reload-overlay', authAdmin, async (req, res) => {
+app.post('/admin-api/reload-overlay', authAdmin, hasPerm('channels'), async (req, res) => {
     const { channelId } = req.body;
     await db.ref(`channels/${channelId}/commands`).update({ reload: true });
     res.json({ success: true });
 });
 
-app.post('/admin-api/lottery', authAdmin, async (req, res) => {
+app.post('/admin-api/lottery', authAdmin, hasPerm('troll'), async (req, res) => {
     const { channelId, action, cost, initialPool } = req.body;
     if (action === 'start') {
         const entryCost = parseInt(cost) || 500;
@@ -2861,14 +3019,14 @@ app.post('/admin-api/lottery', authAdmin, async (req, res) => {
     }
 });
 
-app.post('/admin-api/toggle-infinite', authAdmin, async (req, res) => {
+app.post('/admin-api/toggle-infinite', authAdmin, hasPerm('users'), async (req, res) => {
     const { key, user, value } = req.body;
     await db.ref(`users/${user.toLowerCase()}`).update({ is_infinite: value });
     addLog("Sınırsız Bakiye", `${user} -> ${value ? 'Açıldı' : 'Kapatıldı'}`, "SYSTEM");
     res.json({ success: true });
 });
 
-app.post('/admin-api/set-job', authAdmin, async (req, res) => {
+app.post('/admin-api/set-job', authAdmin, hasPerm('users'), async (req, res) => {
     const { user, job } = req.body;
     await db.ref(`users/${user.toLowerCase()}`).update({ job });
     addLog("Meslek Atandı", `${user} -> ${job}`, "SYSTEM");
@@ -3292,14 +3450,14 @@ async function startHorseRace(broadcasterId) {
 }
 
 // --- ADMIN QUEST MANAGEMENT ---
-app.post('/admin-api/add-quest', authAdmin, async (req, res) => {
+app.post('/admin-api/add-quest', authAdmin, hasPerm('quests'), async (req, res) => {
     const { name, type, goal, reward } = req.body;
     const id = Date.now().toString();
     await db.ref(`global_quests/${id}`).set({ name, type, goal: parseInt(goal), reward: parseInt(reward) });
     res.json({ success: true });
 });
 
-app.post('/admin-api/get-quests', async (req, res) => {
+app.post('/admin-api/get-quests', authAdmin, hasPerm('quests'), async (req, res) => {
     try {
         const snap = await db.ref('global_quests').once('value');
         res.json(snap.val() || {});
@@ -3309,7 +3467,7 @@ app.post('/admin-api/get-quests', async (req, res) => {
     }
 });
 
-app.post('/admin-api/delete-quest', authAdmin, async (req, res) => {
+app.post('/admin-api/delete-quest', authAdmin, hasPerm('quests'), async (req, res) => {
     await db.ref(`global_quests/${req.body.id}`).remove();
     res.json({ success: true });
 });
@@ -3344,7 +3502,7 @@ app.post('/dashboard-api/reload-overlay', authDashboard, async (req, res) => {
     res.json({ success: true });
 });
 
-app.post('/dashboard-api/upload', upload.single('sound'), async (req, res) => {
+app.post('/dashboard-api/upload', authDashboard, upload.single('sound'), async (req, res) => {
     const cid = req.headers['c-id'];
     const k = req.headers['d-key'];
 
@@ -3360,11 +3518,7 @@ app.post('/dashboard-api/upload', upload.single('sound'), async (req, res) => {
 
 // --- ADMIN API ---
 // Ses Yükleme (Render Disk)
-app.post('/admin-api/upload-sound', upload.single('sound'), (req, res) => {
-    // Admin Key Kontrolü
-    const key = req.body.key || req.query.key;
-    if (key !== ADMIN_KEY) return res.status(403).json({ error: 'Yetkisiz erişim' });
-
+app.post('/admin-api/upload-sound', authAdmin, hasPerm('channels'), upload.single('sound'), (req, res) => {
     if (!req.file) return res.status(400).json({ error: 'Dosya yok' });
 
     // Render'daki URL
@@ -3376,7 +3530,7 @@ app.post('/admin-api/upload-sound', upload.single('sound'), (req, res) => {
 });
 
 // ADMIN LOGLARI ÇEK
-app.post('/admin-api/get-logs', authAdmin, async (req, res) => {
+app.post('/admin-api/get-logs', authAdmin, hasPerm('logs'), async (req, res) => {
     try {
         const snap = await db.ref('admin_logs').limitToLast(100).once('value');
         const logs = [];
@@ -3390,12 +3544,12 @@ app.post('/admin-api/get-logs', authAdmin, async (req, res) => {
 });
 
 // BORSA YÖNETİMİ
-app.post('/admin-api/stocks', authAdmin, async (req, res) => {
+app.post('/admin-api/stocks', authAdmin, hasPerm('stocks'), async (req, res) => {
     const snap = await db.ref('global_stocks').once('value');
     res.json(snap.val() || INITIAL_STOCKS);
 });
 
-app.post('/admin-api/stocks/update', authAdmin, async (req, res) => {
+app.post('/admin-api/stocks/update', authAdmin, hasPerm('stocks'), async (req, res) => {
     const { code, price, trend } = req.body;
     if (!code) return res.json({ success: false, error: 'Kod eksik' });
 
@@ -3408,7 +3562,7 @@ app.post('/admin-api/stocks/update', authAdmin, async (req, res) => {
     res.json({ success: true });
 });
 
-app.post('/admin-api/stocks/add', authAdmin, async (req, res) => {
+app.post('/admin-api/stocks/add', authAdmin, hasPerm('stocks'), async (req, res) => {
     const { code, price } = req.body;
     const cleanCode = code.toUpperCase().trim();
     if (!cleanCode || isNaN(price)) return res.json({ success: false, error: 'Eksik bilgi' });
@@ -3423,7 +3577,7 @@ app.post('/admin-api/stocks/add', authAdmin, async (req, res) => {
     res.json({ success: true });
 });
 
-app.post('/admin-api/stocks/delete', authAdmin, async (req, res) => {
+app.post('/admin-api/stocks/delete', authAdmin, hasPerm('stocks'), async (req, res) => {
     const { code } = req.body;
     await db.ref(`global_stocks/${code}`).remove();
     addLog("Borsa Hisse Silme", `${code} silindi`);
@@ -3431,7 +3585,7 @@ app.post('/admin-api/stocks/delete', authAdmin, async (req, res) => {
 });
 
 // BOT HAFIZASI (MEMORİ) YÖNETİMİ
-app.post('/admin-api/memory', authAdmin, async (req, res) => {
+app.post('/admin-api/memory', authAdmin, hasPerm('memory'), async (req, res) => {
     try {
         const snap = await db.ref('ai_memory').once('value');
         res.json(snap.val() || {});
@@ -3440,7 +3594,7 @@ app.post('/admin-api/memory', authAdmin, async (req, res) => {
     }
 });
 
-app.post('/admin-api/memory/add', authAdmin, async (req, res) => {
+app.post('/admin-api/memory/add', authAdmin, hasPerm('memory'), async (req, res) => {
     const { content } = req.body;
     if (!content) return res.json({ success: false, error: 'İçerik boş olamaz' });
 
@@ -3454,7 +3608,7 @@ app.post('/admin-api/memory/add', authAdmin, async (req, res) => {
     res.json({ success: true });
 });
 
-app.post('/admin-api/memory/delete', authAdmin, async (req, res) => {
+app.post('/admin-api/memory/delete', authAdmin, hasPerm('memory'), async (req, res) => {
     const { id } = req.body;
     if (!id) return res.json({ success: false, error: 'ID eksik' });
 
@@ -3470,6 +3624,35 @@ app.get('/overlay', (req, res) => {
 // Admin Paneli için ana route
 app.get('/admin', (req, res) => {
     res.sendFile(path.join(__dirname, 'admin.html'));
+});
+
+// --- ADMIN YÖNETİMİ (MASTER ONLY) ---
+app.post('/admin-api/list-admins', authAdmin, async (req, res) => {
+    if (req.adminUser?.username !== 'omegacyr') return res.status(403).json({ error: 'Bu işlem için MASTER yetkisi gerekiyor.' });
+
+    const snap = await db.ref('admin_users').once('value');
+    const admins = snap.val() || {};
+
+    // Şifreleri güvenlik için temizle (opsiyonel ama adminler arası gizlilik için)
+    // const cleanAdmins = {};
+    // Object.entries(admins).forEach(([u, d]) => { cleanAdmins[u] = { ...d, password: '****' }; });
+
+    res.json(admins);
+});
+
+app.post('/admin-api/update-admin-perms', authAdmin, async (req, res) => {
+    if (req.adminUser?.username !== 'omegacyr') return res.status(403).json({ error: 'Bu işlem için MASTER yetkisi gerekiyor.' });
+
+    const { targetAdmin, permissions } = req.body;
+    if (!targetAdmin || !permissions) return res.status(400).json({ error: 'Eksik veri.' });
+
+    const username = targetAdmin.toLowerCase().trim();
+    if (username === 'omegacyr') return res.status(400).json({ error: 'Master yetkileri değiştirilemez.' });
+
+    await db.ref(`admin_users/${username}/permissions`).set(permissions);
+
+    addLog("Yetki Güncelleme", `${username} kullanıcısının yetkileri güncellendi.`, "Global");
+    res.json({ success: true });
 });
 
 // Dashboard için ana route
