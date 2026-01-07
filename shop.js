@@ -12,12 +12,38 @@ const firebaseConfig = {
 firebase.initializeApp(firebaseConfig);
 const db = firebase.database();
 
+// Global Variables
+let currentUser = null;
+let currentChannelId = null;
+let currentPreview = null;
+let currentPreviewTimeout = null;
+
+function init() {
+    console.log("Market initialized");
+    const savedUser = localStorage.getItem('aloskegang_user');
+    renderFreeCommands();
+
+    if (savedUser) {
+        login(savedUser);
+    } else {
+        showAuth();
+    }
+
+    const genBtn = document.getElementById('generate-code-btn');
+    if (genBtn) genBtn.addEventListener('click', startAuth);
+
+    const backBtn = document.getElementById('back-btn');
+    if (backBtn) backBtn.addEventListener('click', showAuth);
+
+    const logoutBtn = document.getElementById('logout-btn');
+    if (logoutBtn) logoutBtn.addEventListener('click', logout);
+}
+
+window.addEventListener('DOMContentLoaded', init);
+
 function getTodayKey() {
     return new Date().toLocaleDateString('en-CA', { timeZone: 'Europe/Istanbul' });
 }
-
-let currentUser = null;
-let currentChannelId = null;
 
 const FREE_COMMANDS = [
     { cmd: "!bakiye", desc: "Mevcut paranı sorgular" },
@@ -41,32 +67,9 @@ const FREE_COMMANDS = [
     { cmd: "!borsa sat [kod] [adet]", desc: "Hisse senedi satışı yapar" }
 ];
 
-// UI Elements
-const authContainer = document.getElementById('auth-container');
-const mainContent = document.getElementById('main-content');
-const step1 = document.getElementById('step-1');
-const step2 = document.getElementById('step-2');
-const usernameInput = document.getElementById('username-input');
-const codeDisplay = document.getElementById('auth-code');
-const cmdExample = document.getElementById('cmd-example');
-const marketGrid = document.getElementById('market-items');
-const toast = document.getElementById('toast');
-const channelBadge = document.getElementById('channel-badge');
-const freeCmdContainer = document.getElementById('free-commands');
-
-let currentPreview = null;
-let currentPreviewTimeout = null;
-
-function init() {
-    const savedUser = localStorage.getItem('aloskegang_user');
-    renderFreeCommands();
-    if (savedUser) { login(savedUser); } else { showAuth(); }
-    document.getElementById('generate-code-btn').addEventListener('click', startAuth);
-    document.getElementById('back-btn').addEventListener('click', showAuth);
-    document.getElementById('logout-btn').addEventListener('click', logout);
-}
-
 function renderFreeCommands() {
+    const freeCmdContainer = document.getElementById('free-commands');
+    if (!freeCmdContainer) return;
     freeCmdContainer.innerHTML = "";
     FREE_COMMANDS.forEach(c => {
         const item = document.createElement('div');
@@ -103,52 +106,91 @@ async function fetchKickPFP(username) {
 }
 
 function showAuth() {
-    authContainer.classList.remove('hidden');
-    mainContent.classList.add('hidden');
-    step1.classList.remove('hidden');
-    step2.classList.add('hidden');
+    const authContainer = document.getElementById('auth-container');
+    const mainContent = document.getElementById('main-content');
+    const step1 = document.getElementById('step-1');
+    const step2 = document.getElementById('step-2');
+
+    if (authContainer) authContainer.classList.remove('hidden');
+    if (mainContent) mainContent.classList.add('hidden');
+    if (step1) step1.classList.remove('hidden');
+    if (step2) step2.classList.add('hidden');
     db.ref('pending_auth').off();
 }
 
 function startAuth() {
+    const usernameInput = document.getElementById('username-input');
     const user = usernameInput.value.toLowerCase().trim();
     if (user.length < 3) return showToast("Geçersiz kullanıcı adı!", "error");
+
+    // Özel karakter kontrolü
+    if (/[.#$\[\]]/.test(user)) return showToast("Kullanıcı adı geçersiz karakterler içeriyor!", "error");
+
     const code = Math.floor(100000 + Math.random() * 900000).toString();
-    db.ref('pending_auth/' + user).set({ code, timestamp: Date.now() }).then(() => {
-        codeDisplay.innerText = code;
-        cmdExample.innerText = `!doğrulama ${code}`;
-        step1.classList.add('hidden');
-        step2.classList.remove('hidden');
-        db.ref('auth_success/' + user).on('value', (snap) => {
-            if (snap.val()) { db.ref('auth_success/' + user).remove(); login(user); }
+    showToast("Kod oluşturuluyor...", "success");
+
+    db.ref('pending_auth/' + user).set({ code, timestamp: Date.now() })
+        .then(() => {
+            const codeDisplay = document.getElementById('auth-code');
+            const cmdExample = document.getElementById('cmd-example');
+            const step1 = document.getElementById('step-1');
+            const step2 = document.getElementById('step-2');
+
+            if (codeDisplay) codeDisplay.innerText = code;
+            if (cmdExample) cmdExample.innerText = `!doğrulama ${code}`;
+            if (step1) step1.classList.add('hidden');
+            if (step2) step2.classList.remove('hidden');
+
+            db.ref('auth_success/' + user).on('value', (snap) => {
+                if (snap.val()) {
+                    db.ref('auth_success/' + user).remove();
+                    login(user);
+                }
+            });
+        })
+        .catch(err => {
+            console.error("Auth Error:", err);
+            showToast("Bağlantı hatası! Firebase kurallarını kontrol edin.", "error");
         });
-    });
 }
 
 function login(user) {
     currentUser = user;
     localStorage.setItem('aloskegang_user', user);
-    authContainer.classList.add('hidden');
-    mainContent.classList.remove('hidden');
-    document.getElementById('display-name').innerText = user.toUpperCase();
-    document.getElementById('hero-name').innerText = user.toUpperCase();
+
+    const authContainer = document.getElementById('auth-container');
+    const mainContent = document.getElementById('main-content');
+    if (authContainer) authContainer.classList.add('hidden');
+    if (mainContent) mainContent.classList.remove('hidden');
+
+    const dispName = document.getElementById('display-name');
+    const heroName = document.getElementById('hero-name');
+    if (dispName) dispName.innerText = user.toUpperCase();
+    if (heroName) heroName.innerText = user.toUpperCase();
 
     // Setup PFP
     const fallback = document.getElementById('user-pfp-fallback');
-    fallback.innerText = user[0].toUpperCase();
+    if (fallback) fallback.innerText = user[0].toUpperCase();
     fetchKickPFP(user);
 
     db.ref('users/' + user).on('value', (snap) => {
         const data = snap.val() || { balance: 0, auth_channel: null };
-        document.getElementById('user-balance').innerText = `${(data.balance || 0).toLocaleString()} 💰`;
+        const balanceEl = document.getElementById('user-balance');
+        if (balanceEl) balanceEl.innerText = `${(data.balance || 0).toLocaleString()} 💰`;
+
         if (data.auth_channel && data.auth_channel !== currentChannelId) {
             currentChannelId = data.auth_channel;
             loadChannelMarket(currentChannelId);
         } else if (!data.auth_channel) {
-            document.getElementById('no-channel-msg').classList.remove('hidden');
-            marketGrid.innerHTML = "";
-            channelBadge.classList.add('hidden');
-            document.getElementById('market-status').innerText = "Market ürünlerini görmek için herhangi bir kanalda !doğrulama yapmalısın.";
+            const noChanMsg = document.getElementById('no-channel-msg');
+            const marketGrid = document.getElementById('market-items');
+            const channelBadge = document.getElementById('channel-badge');
+            const marketStat = document.getElementById('market-status');
+
+            if (noChanMsg) noChanMsg.classList.remove('hidden');
+            if (marketGrid) marketGrid.innerHTML = "";
+            if (channelBadge) channelBadge.classList.add('hidden');
+            if (marketStat) marketStat.innerText = "Market ürünlerini görmek için herhangi bir kanalda !doğrulama yapmalısın.";
         }
     });
 }
@@ -204,6 +246,9 @@ async function loadChannelMarket(channelId) {
 }
 
 function renderItem(name, desc, price, type, trigger = "", soundUrl = "", duration = 0) {
+    const marketGrid = document.getElementById('market-items');
+    if (!marketGrid) return;
+
     const card = document.createElement('div');
     card.className = 'item-card';
     const icon = type === 'tts' ? '🎙️' : (type === 'mute' ? '🚫' : (type === 'sr' ? '🎵' : '🎼'));
@@ -316,8 +361,12 @@ async function executePurchase(type, trigger, price) {
 
 function logout() { localStorage.removeItem('aloskegang_user'); location.reload(); }
 function showToast(msg, type) {
-    toast.innerText = msg; toast.className = `toast ${type}`; toast.classList.remove('hidden');
-    setTimeout(() => toast.classList.add('hidden'), 3000);
+    const t = document.getElementById('toast');
+    if (!t) return;
+    t.innerText = msg;
+    t.className = `toast ${type}`;
+    t.classList.remove('hidden');
+    setTimeout(() => t.classList.add('hidden'), 3000);
 }
 // TABS LOGIC
 function switchTab(id) {
@@ -904,4 +953,4 @@ async function executePropertyBuy(cityId, propId, price, cityName) {
     }
 }
 
-init();
+// init is called via DOMContentLoaded

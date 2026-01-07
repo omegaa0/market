@@ -440,14 +440,14 @@ header {
 
 .city-dot {
     position: absolute;
-    width: 14px;
-    height: 14px;
+    width: 10px;
+    height: 10px;
     background: var(--primary);
     border-radius: 50%;
     cursor: pointer;
-    box-shadow: 0 0 15px var(--primary);
-    transition: all 0.4s cubic-bezier(0.175, 0.885, 0.32, 1.275);
-    border: 2.5px solid rgba(0, 0, 0, 0.7);
+    box-shadow: 0 0 10px rgba(5, 234, 106, 0.3);
+    transition: all 0.3s ease;
+    border: 1.5px solid rgba(0, 0, 0, 0.5);
     z-index: 10;
     pointer-events: auto;
     transform: translate(-50%, -50%);
@@ -462,8 +462,8 @@ header {
 
 .city-dot.active {
     background: white;
-    border-color: var(--primary);
-    box-shadow: 0 0 30px var(--primary);
+    border-color: #00f2ff;
+    box-shadow: 0 0 30px #00f2ff;
     transform: translate(-50%, -50%) scale(1.4);
 }
 
@@ -486,17 +486,18 @@ header {
     }
 }
 
+
 .city-dot:hover {
-    transform: translate(-50%, -50%) scale(1.6);
+    transform: translate(-50%, -50%) scale(1.4);
     background: white !important;
-    box-shadow: 0 0 20px white !important;
-    z-index: 10;
+    box-shadow: 0 0 15px var(--primary) !important;
 }
 
 .city-dot.active {
     background: white !important;
-    box-shadow: 0 0 20px white !important;
     border-color: var(--primary) !important;
+    box-shadow: 0 0 20px var(--primary) !important;
+    transform: translate(-50%, -50%) scale(1.3);
 }
 
 .city-dot::after {
@@ -509,21 +510,21 @@ header {
     border-radius: 50%;
     background: var(--primary);
     transform: translate(-50%, -50%);
-    animation: city-pulse 2s infinite;
+    animation: city-pulse 2.5s infinite;
     z-index: -1;
-    opacity: 0.6;
+    opacity: 0.4;
 }
 
 @keyframes city-pulse {
     0% {
         width: 100%;
         height: 100%;
-        opacity: 0.6;
+        opacity: 0.4;
     }
 
     100% {
-        width: 300%;
-        height: 300%;
+        width: 250%;
+        height: 250%;
         opacity: 0;
     }
 }
