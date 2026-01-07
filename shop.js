@@ -143,7 +143,8 @@ function startAuth() {
 
     db.ref('pending_auth/' + user).set({ code, timestamp: Date.now() })
         .then(() => {
-            console.log("Auth code saved successfully");
+            console.log(`[Shop] Auth code saved for ${user}: ${code}`);
+            showToast("Kod veritabanına kaydedildi! Şimdi chat'e yazabilirsin.", "success");
 
             // Onay bekleyen dinleyiciyi kur
             db.ref('auth_success/' + user).off(); // Eski varsa temizle

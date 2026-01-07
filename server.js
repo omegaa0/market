@@ -2446,106 +2446,72 @@ EK TALİMAT: ${aiInst}`;
             }
 
             else if (/^!(do[gğ]rulama|kod|verification|auth)/i.test(lowMsg)) {
-                // 1. Kodu mesajın içinden akıllıca ayıkla (6 haneli sayı ara)
+                // 1. Mesajdan 6 haneli kodu ayıkla
                 const codeMatch = rawMsg.match(/\d{6}/);
                 const inputCode = codeMatch ? codeMatch[0] : args[0]?.trim();
 
-                if (!inputCode || inputCode.length < 6) {
+                if (!inputCode) {
                     return await reply(`@${user}, Lütfen mağazadaki 6 haneli kodu yazın. Örn: !doğrulama 123456`);
                 }
 
-                console.log(`[Auth-Mega] İstek Geldi: User="${user}" | Kod="${inputCode}"`);
+                console.log(`[Auth-Mega] Giriş Denemesi: User="${user}" | Kod="${inputCode}"`);
 
                 const cleanUser = user.toLowerCase().trim();
                 let foundMatch = null;
 
-                // Nesne veya direkt string kontrolü için yardımcı
                 const getCode = (d) => (typeof d === 'object' && d !== null) ? (d.code || d.auth_code) : d;
 
-                // --- TÜM BEKLEYENLERİ ÇEK VE ARA (EN GARANTİ YOL) ---
+                // --- TÜM VERİLERİ ÇEK (DEBUG İÇİN) ---
                 const allPendingSnap = await db.ref('pending_auth').once('value');
                 const allPending = allPendingSnap.val() || {};
                 
-                // 1. Adım: Önce direkt kullanıcı adıyla tam eşleşme ara
-                if (allPending[cleanUser]) {
-                    const d = allPending[cleanUser];
-                    if (String(getCode(d)).trim() === String(inputCode)) {
-                        foundMatch = { username: cleanUser, data: d };
-                        console.log(`[Auth-Mega] Direkt eşleşme başarılı: ${cleanUser}`);
-                    }
+                console.log(`[Auth-Mega] Veritabanındaki Bekleyenler: ${Object.keys(allPending).join(', ') || 'BOŞ'}`);
+
+                // 1. Direkt Eşleşme
+                if (allPending[cleanUser] && String(getCode(allPending[cleanUser])).trim() === String(inputCode)) {
+                    foundMatch = { username: cleanUser, data: allPending[cleanUser] };
                 }
 
-                // 2. Adım: Eğer direkt eşleşme yoksa, kodu tüm havuzda ara (Smart Match)
+                // 2. Havuz Taraması (Smart Match)
                 if (!foundMatch) {
-                    console.log(`[Auth-Mega] Havuzda aranıyor...`);
-                    const matches = Object.entries(allPending).filter(([u, d]) => {
-                        return String(getCode(d)).trim() === String(inputCode);
-                    });
-
+                    const matches = Object.entries(allPending).filter(([u, d]) => String(getCode(d)).trim() === String(inputCode));
                     if (matches.length === 1) {
-                        const [matchedUser, matchedData] = matches[0];
-                        foundMatch = { username: matchedUser, data: matchedData, isSmart: true };
-                        console.log(`[Auth-Mega] Akıllı eşleşme (Smart Match) bulundu: ${matchedUser}`);
-                    } else if (matches.length > 1) {
-                        console.log(`[Auth-Mega] Çakışma! Birden fazla hesapta aynı kod var.`);
-                        return await reply(`❌ @${user}, Bu kod birden fazla talep ile çakışıyor. Lütfen mağazadan yeni bir kod al.`);
+                        foundMatch = { username: matches[0][0], data: matches[0][1], isSmart: true };
                     }
                 }
 
-                // --- SONUÇ KONTROLÜ ---
                 if (foundMatch) {
                     const { username: targetUser, data, isSmart } = foundMatch;
                     
-                    // Zaman aşımı kontrolü (60 Dakika - Daha esnek)
-                    const ts = (typeof data === 'object' && data !== null) ? (data.timestamp || 0) : 0;
-                    const isExpired = ts > 0 && (Date.now() - ts > 3600000); 
-                    
-                    if (isExpired) {
-                        console.log(`[Auth-Mega] Süre aşımı: ${targetUser}`);
-                        return await reply(`❌ @${user}, Kodun süresi dolmuş (1 saat). Lütfen mağazadan yeni bir kod al.`);
-                    }
-
-                    console.log(`[Auth-Mega] DOĞRULAMA ONAYLANDI: ${targetUser}`);
-
-                    // 1. Başarı sinyalini gönder
                     await db.ref('auth_success/' + targetUser).set(true);
-                    
-                    // 2. Kullanıcı verilerini güncelle
                     await db.ref('users/' + targetUser).update({ 
                         auth_channel: broadcasterId,
                         last_auth_at: Date.now(),
                         kick_name: user,
                         is_verified: true
                     });
-                    
-                    // 3. Bekleyen isteği temizle
                     await db.ref('pending_auth/' + targetUser).remove();
 
-                    const note = isSmart ? " (İsim otomatik eşleştirildi)" : "";
-                    await reply(`✅ @${user}, Kimliğin başarıyla doğrulandı! Market sayfasına artık dönebilirsin.${note} 🛍️`);
+                    console.log(`[Auth-Mega] BAŞARILI: ${targetUser}`);
+                    await reply(`✅ @${user}, Kimliğin doğrulandı! Mağaza sayfasına dönebilirsin. ${isSmart ? '(Otomatik eşleşme)' : ''}`);
                 } else {
-                    console.log(`[Auth-Mega] Hatalı Kod Denemesi: ${inputCode} (User: ${user})`);
-                    
-                    // Kullanıcıya ipucu ver
-                    const hasAnyPending = Object.keys(allPending).length > 0;
-                    const hint = hasAnyPending ? "Mağazadaki kodu tam olarak yazdığından emin ol." : "Mağazadan 'Kod Al' butonuna bastığından emin ol.";
-                    
-                    await reply(`❌ @${user}, Geçersiz kod! ${hint}`);
+                    console.log(`[Auth-Mega] BAŞARISIZ. Girilen: ${inputCode}. Havuzda bu kod yok.`);
+                    await reply(`❌ @${user}, Kod yanlış! Lütfen Mağazadan 'Kod Al' diyerek yeni bir kod oluşturduğuna emin ol.`);
                 }
             }
 
-            // --- MASTER ADMIN: YARDIMCI KOMUTLAR ---
+            // --- ADMIN ARAÇLARI ---
             else if (lowMsg === '!auth-liste' && user.toLowerCase() === 'omegacyr') {
                 const snap = await db.ref('pending_auth').once('value');
                 const list = snap.val() || {};
-                const keys = Object.keys(list);
-                await reply(`📊 Bekleyen Doğrulamalar (${keys.length}): ${keys.slice(0, 5).join(', ')}${keys.length > 5 ? '...' : ''}`);
+                await reply(`📊 Bekleyen: ${Object.keys(list).join(', ') || 'Yok'}`);
             }
 
             else if (lowMsg === '!auth-temizle' && user.toLowerCase() === 'omegacyr') {
                 await db.ref('pending_auth').remove();
-                await reply(`🧹 @${user}, Tüm bekleyen doğrulama talepleri veritabanından silindi.`);
+                await reply(`🧹 Tüm kodlar temizlendi.`);
             }
+
 
 
 
