@@ -1136,7 +1136,7 @@ async function refreshChannelToken(broadcasterId) {
 
 
 
-// YENİ CHAT GÖNDERME FONKSİYONU (V6 - Header Hunter & Info Dump)
+// YENİ CHAT GÖNDERME FONKSİYONU (V7 - Ajan Modu & Link Keşfi)
 async function sendChatMessage(message, broadcasterId) {
     if (!message || !broadcasterId) return;
     try {
@@ -1151,34 +1151,38 @@ async function sendChatMessage(message, broadcasterId) {
             return;
         }
 
-        // 1. INFO DUMP: Token'ın kime ait olduğunu ve yetkilerini görelim.
-        const BROWSER_HEADERS = {
+        const HEADERS = {
             'Authorization': `Bearer ${chan.access_token}`,
             'X-Kick-Client-Id': CLIENT_ID_TO_USE,
             'Content-Type': 'application/json',
             'Accept': 'application/json',
-            'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36'
+            'User-Agent': 'KickBot/1.0'
         };
 
+        const channelSlug = chan.slug || chan.username || broadcasterId;
         let realChatroomId = null;
-        let channelSlug = chan.slug || chan.username || broadcasterId;
 
+        // 1. AJANLIK: Kanal Bilgilerini Çek ve Link Ara
         try {
-            // Kullanıcı bilgilerini ve Chatroom ID'yi Public API'den (Header taklidiyle) çek
-            const who = await axios.get('https://api.kick.com/public/v1/users', { headers: BROWSER_HEADERS });
-            const u = who.data?.data?.[0];
-            if (u) {
-                if (u.chatroom) realChatroomId = u.chatroom.id;
-                console.log(`[Chat Debug] Token User: ${u.username} (ID: ${u.user_id}) | Chatroom: ${realChatroomId}`);
+            console.log(`[Chat Scout] Kanal bilgileri çekiliyor: ${channelSlug}`);
+            const chanRes = await axios.get(`https://api.kick.com/public/v1/channels/${channelSlug}`, { headers: HEADERS });
+
+            if (chanRes.data) {
+                // Chatroom ID'yi kap
+                if (chanRes.data.data?.chatroom?.id) realChatroomId = chanRes.data.data.chatroom.id;
+                else if (chanRes.data.chatroom?.id) realChatroomId = chanRes.data.chatroom.id;
+
+                // TÜM YANITI LOGLA (Endpoint ipucu arıyoruz)
+                console.log(`[Chat Scout] Kanal Verisi (Keys): ${Object.keys(chanRes.data)}`);
+                if (chanRes.data.data) console.log(`[Chat Scout] Data Keys: ${Object.keys(chanRes.data.data)}`);
             }
         } catch (e) {
-            console.error(`[Chat Debug] User Info Check Fail: ${e.response?.status}`);
-        }
-
-        // Eğer V1 Users API id vermediyse V2'den zorla al (önceki yöntem)
-        if (!realChatroomId && channelSlug) {
-            const v2Res = await axios.get(`https://kick.com/api/v2/channels/${channelSlug}`, { headers: { 'User-Agent': BROWSER_HEADERS['User-Agent'] } });
-            if (v2Res.data?.chatroom) realChatroomId = v2Res.data.chatroom.id;
+            console.error(`[Chat Scout] Kanal sorgusu 404: ${e.message}`);
+            // Backup V2 ID
+            try {
+                const v2Res = await axios.get(`https://kick.com/api/v2/channels/${channelSlug}`, { headers: { 'User-Agent': 'Kick/Mobile' } });
+                if (v2Res.data?.chatroom?.id) realChatroomId = v2Res.data.chatroom.id;
+            } catch (e2) { }
         }
 
         if (!realChatroomId) {
@@ -1188,55 +1192,32 @@ async function sendChatMessage(message, broadcasterId) {
 
         const targetId = realChatroomId;
 
-        // 2. ENDPOINT SALDIRISI (Gelişmiş Headerlar ile)
+        // 2. YENİ HEDEFLER
         const trials = [
-            // A. Standart Public V1 (Full Browser Taklidi)
-            {
-                name: "Public V1 (Browser)",
-                url: 'https://api.kick.com/public/v1/chat-messages',
-                body: { chatroom_id: targetId, content: message }, // content string, type yok
-                headers: BROWSER_HEADERS
-            },
+            // 1. Slug tabanlı (REST standardı)
+            { name: "Slug Msg", url: `https://api.kick.com/public/v1/channels/${channelSlug}/messages`, body: { content: message, type: "bot" } },
 
-            // B. Olası Public V2 (Belki V1 kapanmıştır?)
-            {
-                name: "Public V2 (Guess)",
-                url: 'https://api.kick.com/public/v2/chat-messages',
-                body: { chatroom_id: targetId, content: message },
-                headers: BROWSER_HEADERS
-            },
+            // 2. Chatroom ID tabanlı (Eski usul)
+            { name: "Chatroom Msg", url: `https://api.kick.com/public/v1/chatrooms/${targetId}/chat`, body: { content: message } },
 
-            // C. Kick Internal V2 (Mobile Payload, XSRF'siz Son Şans)
-            {
-                name: "Mobile V2",
-                url: `https://kick.com/api/v2/messages/send/${targetId}`,
-                body: { content: message, type: "message" },
-                headers: {
-                    'Authorization': `Bearer ${chan.access_token}`,
-                    'Accept': 'application/json',
-                    'Content-Type': 'application/json',
-                    'User-Agent': "Kick/28.0.0 (iPhone; iOS 16.0; Scale/3.00)",
-                    'X-Kick-Client-Id': CLIENT_ID_TO_USE
-                }
-            }
+            // 3. Klasik (Hala denemeye değer)
+            { name: "Public V1", url: 'https://api.kick.com/public/v1/chat-messages', body: { chatroom_id: targetId, content: message } }
         ];
 
         let success = false;
         for (const t of trials) {
             try {
-                const res = await axios.post(t.url, t.body, { headers: t.headers, timeout: 5000 });
+                const res = await axios.post(t.url, t.body, { headers: HEADERS, timeout: 5000 });
                 if (res.status >= 200 && res.status < 300) {
                     success = true;
                     console.log(`[Chat] ✅ MESAJ GÖNDERİLDİ! (${t.name})`);
                     break;
                 }
             } catch (err) {
-                const status = err.response?.status;
-                const msg = err.response?.data?.message || JSON.stringify(err.response?.data);
-                console.warn(`[Chat Debug] ${t.name} -> ${status} | ${msg}`);
+                console.warn(`[Chat Debug] ${t.name} -> ${err.response?.status}`);
             }
         }
-        if (!success) console.error(`[Chat Fatal] V6 da çalışmadı. Scope veya API sorunu olabilir.`);
+        if (!success) console.error(`[Chat Fatal] Scout denemesi başarısız.`);
 
     } catch (e) {
         console.error(`[Chat Global Error]:`, e.message);
