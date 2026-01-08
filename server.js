@@ -1172,14 +1172,6 @@ app.post('/webhook/kick', async (req, res) => {
         // --- LOGGING ---
         console.log(`[Webhook] ${eventType} received.`);
 
-        // Firebase debug log (Arayüzden görebilmek için)
-        await db.ref('logs/webhooks').push({
-            timestamp: Date.now(),
-            eventType,
-            eventId,
-            payloadShort: JSON.stringify(payload).substring(0, 500)
-        });
-
         if (typeof logWebhookReceived === 'function') {
             logWebhookReceived({ event: eventType, sender: payload.sender });
         }
