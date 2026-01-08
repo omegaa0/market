@@ -1134,84 +1134,105 @@ async function refreshChannelToken(broadcasterId) {
     }
 }
 
+// 🔑 UYGULAMA (APP/BOT) TOKENI ALMA - Bot Kimliği İçin Gerekli
+let cachedAppToken = null;
+let appTokenExpires = 0;
+
+async function getAppAccessToken() {
+    const { KICK_CLIENT_ID, KICK_CLIENT_SECRET } = process.env;
+    const CLIENT_ID = KICK_CLIENT_ID || "01KDQNP2M930Y7YYNM62TVWJCP";
+    const CLIENT_SECRET = KICK_CLIENT_SECRET;
+
+    if (cachedAppToken && Date.now() < appTokenExpires) return cachedAppToken;
+
+    try {
+        const params = new URLSearchParams();
+        params.append('grant_type', 'client_credentials');
+        params.append('client_id', CLIENT_ID);
+        params.append('client_secret', CLIENT_SECRET);
+        params.append('scope', 'chat:write');
+
+        const response = await axios.post('https://id.kick.com/oauth/token', params);
+        if (response.data.access_token) {
+            cachedAppToken = response.data.access_token;
+            appTokenExpires = Date.now() + (response.data.expires_in * 1000) - 60000;
+            console.log("[Auth] Uygulama (Bot) Tokenı başarıyla alındı.");
+            return cachedAppToken;
+        }
+    } catch (e) {
+        console.error("[Auth Error] App Token alınamadı:", e.response?.data || e.message);
+    }
+    return null;
+}
 
 
 
-// KİCK RESMİ PUBLIC API GÖNDERİMİ (V9 - Kesin Çözüm)
+
+// KİCK BOT KİMLİĞİ İLE GÖNDERİM (V10 - Developer Bot Mode)
 async function sendChatMessage(message, broadcasterId) {
     if (!message || !broadcasterId) return;
 
     try {
         const { KICK_CLIENT_ID } = process.env;
-        // Varsayılan Client ID, eğer env'de yoksa fallback olarak kullanılır
         const CLIENT_ID = KICK_CLIENT_ID || "01KDQNP2M930Y7YYNM62TVWJCP";
+
+        // 1. ADIM: Botun kendi token'ını al (Client Credentials)
+        // Eğer bu başarısız olursa yayıncı token'ına fallback yaparız.
+        let botToken = await getAppAccessToken();
 
         const snap = await db.ref('channels/' + broadcasterId).once('value');
         const chan = snap.val();
 
-        if (!chan || !chan.access_token) {
-            console.error(`[Chat] ${broadcasterId} için access_token mevcut değil.`);
+        // Eğer bot token'ı yoksa yayıncı token'ını kullan (Eski usul)
+        const finalToken = botToken || chan?.access_token;
+
+        if (!finalToken) {
+            console.error(`[Chat] ${broadcasterId} için hiçbir token bulunamadı.`);
             return;
         }
 
-        const channelSlug = chan.slug || chan.username || broadcasterId;
-        console.log(`[Chat Debug] V9 Başlatılıyor... Kanal: ${channelSlug}`);
+        const channelSlug = chan?.slug || chan?.username || broadcasterId;
+        console.log(`[Chat Debug] V10 (Bot Kimliği) Başlatılıyor... Kanal: ${channelSlug}`);
 
         const HEADERS = {
-            'Authorization': `Bearer ${chan.access_token}`,
+            'Authorization': `Bearer ${finalToken}`,
             'X-Kick-Client-Id': CLIENT_ID,
             'Content-Type': 'application/json',
             'Accept': 'application/json',
             'User-Agent': 'KickBot/1.0'
         };
 
-        // 1. ADIM: Broadcaster User ID Alınması (Numeric ID)
-        // Public API'de chatroom_id yerine genellikle broadcaster_user_id istenir.
+        // 2. ADIM: Broadcaster User ID Alınması
         let numericBroadcasterId = null;
         try {
+            // Token kimin olursa olsun, kanal bilgisini çekmek için headers kullanabiliriz
             const chanRes = await axios.get(`https://api.kick.com/public/v1/channels/${channelSlug}`, { headers: HEADERS });
             if (chanRes.data && chanRes.data.data) {
-                // Public API response yapısı: data.id veya data.user_id
                 numericBroadcasterId = chanRes.data.data.user_id || chanRes.data.data.id;
-                console.log(`[Chat ID] Public API'den Broadcaster ID bulundu: ${numericBroadcasterId}`);
             }
         } catch (e) {
-            console.error(`[Chat ID Error] Kanal bilgisi alınamadı: ${e.message}`);
-            // Fallback: Veritabanındaki broadcasterId (zaten numeric olmalı)
             numericBroadcasterId = parseInt(broadcasterId);
         }
 
-        if (!numericBroadcasterId) {
-            console.error("[Chat Fatal] Broadcaster ID tespit edilemedi.");
-            return;
-        }
+        if (!numericBroadcasterId) return;
 
-        // 2. ADIM: Mesaj Gönderimi (RESMİ ENDPOINT SAVAŞI)
-        // Araştırmalar 2024/2025'te endpoint'in /public/v1/chat olduğunu gösteriyor.
+        // 3. ADIM: Mesaj Gönderimi (RESMİ BOT ENDPOINT)
         const trials = [
             {
-                name: "Public V1 Chat (Official)",
+                name: "Official Bot Flow",
                 url: 'https://api.kick.com/public/v1/chat',
                 body: {
-                    type: "user", // Botlar için "user" veya bazı durumlarda "bot"
+                    type: "bot", // Bot hesabıyla yazması için "bot" tipi kritik!
                     broadcaster_user_id: numericBroadcasterId,
                     content: message
                 }
             },
             {
-                name: "Public V1 Bot (Alt)",
+                name: "Bot acting as User",
                 url: 'https://api.kick.com/public/v1/chat',
                 body: {
-                    type: "bot",
+                    type: "user",
                     broadcaster_user_id: numericBroadcasterId,
-                    content: message
-                }
-            },
-            {
-                name: "Legacy Chat-Messages",
-                url: 'https://api.kick.com/public/v1/chat-messages',
-                body: {
-                    chatroom_id: numericBroadcasterId, // Chatroom ID genellikle user_id ile aynıdır
                     content: message
                 }
             }
@@ -1220,29 +1241,24 @@ async function sendChatMessage(message, broadcasterId) {
         let success = false;
         for (const t of trials) {
             try {
-                console.log(`[Chat Trial] ${t.name} deneniyor...`);
-                const res = await axios.post(t.url, t.body, { headers: HEADERS, timeout: 5000 });
-
+                const res = await axios.post(t.url, t.body, { headers: HEADERS });
                 if (res.status >= 200 && res.status < 300) {
                     success = true;
-                    console.log(`[Chat] ✅ MESAJ GÖNDERİLDİ! (${t.name})`);
+                    console.log(`[Chat] ✅ MESAJ GÖNDERİLDİ! (${t.name}) - Bot hesabı kullanıldı.`);
                     break;
                 }
             } catch (err) {
-                const status = err.response?.status || "TIMEOUT";
-                const errorData = JSON.stringify(err.response?.data || {});
-                console.warn(`[Chat Debug] ${t.name} Başarısız: ${status} | Body: ${errorData}`);
+                console.warn(`[Chat Debug] ${t.name} -> ${err.response?.status}`);
             }
         }
 
-        if (!success) {
-            console.error("[Chat Fatal] Hiçbir resmi endpoint çalışmadı. Lütfen Kick Developer Portal scopes (chat:write) kontrol edin.");
-        }
+        if (!success) console.error("[Chat Fatal] Bot kimliğiyle gönderim başarısız.");
 
     } catch (e) {
-        console.error(`[Chat Global Error] Beklenmedik hata:`, e.message);
+        console.error(`[Chat Error]:`, e.message);
     }
 }
+
 
 
 async function timeoutUser(broadcasterId, targetUsername, duration) {
