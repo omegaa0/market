@@ -206,8 +206,6 @@ async function addLog(action, details, channelId = 'Global') {
     }
 }
 
-
-
 // =====================================================
 // KICK WEBHOOK SİSTEMİ - Takipçi Bildirimlerini Dinle
 // =====================================================
@@ -375,26 +373,26 @@ let botMasterSwitch = true; // Omegacyr için master switch
 const INITIAL_STOCKS = {
     "APPLE": { price: 5000, trend: 1, history: [] },
     "BITCOIN": { price: 45000, trend: 1, history: [] },
-    "GOLD": { price: 2500, trend: -1, history: [] },
+    "GOLD": { price: 2500, trend: 1, history: [] },
     "SILVER": { price: 850, trend: 1, history: [] },
     "PLATINUM": { price: 3200, trend: 1, history: [] },
     "KICK": { price: 100, trend: 1, history: [] },
-    "ETHER": { price: 15000, trend: -1, history: [] },
+    "ETHER": { price: 15000, trend: 1, history: [] },
     "TESLA": { price: 7500, trend: 1, history: [] },
     "NVIDIA": { price: 12000, trend: 1, history: [] },
-    "GOOGLE": { price: 6200, trend: -1, history: [] },
+    "GOOGLE": { price: 6200, trend: 1, history: [] },
     "AMAZON": { price: 5800, trend: 1, history: [] }
 };
 
 // --- EMLAK SİSTEMİ (GLOBAL PAZAR) ---
 const REAL_ESTATE_TYPES = [
-    { name: "Küçük Esnaf Dükkanı", minPrice: 1999999, maxPrice: 3500000, minInc: 15000, maxInc: 25000, type: "low" },
-    { name: "Pide Salonu", minPrice: 2500000, maxPrice: 4500000, minInc: 20000, maxInc: 35000, type: "low" },
-    { name: "Lüks Rezidans Katı", minPrice: 5000000, maxPrice: 12000000, minInc: 45000, maxInc: 85000, type: "med" },
-    { name: "İş Merkezi", minPrice: 15000000, maxPrice: 25000000, minInc: 120000, maxInc: 220000, type: "med" },
-    { name: "Butik Otel", minPrice: 20000000, maxPrice: 35000000, minInc: 180000, maxInc: 320000, type: "med" },
-    { name: "Gece Kulübü", minPrice: 10000000, maxPrice: 18000000, minInc: 90000, maxInc: 160000, type: "med" },
-    { name: "Alışveriş Merkezi", minPrice: 40000000, maxPrice: 50000000, minInc: 450000, maxInc: 750000, type: "high" }
+    { name: "Küçük Esnaf Dükkanı", minPrice: 2000000, maxPrice: 4000000, minInc: 3000, maxInc: 5000, type: "low" },
+    { name: "Pide Salonu", minPrice: 4500000, maxPrice: 8000000, minInc: 5000, maxInc: 7500, type: "low" },
+    { name: "Lüks Rezidans Katı", minPrice: 9000000, maxPrice: 15000000, minInc: 8000, maxInc: 11000, type: "med" },
+    { name: "Gece Kulübü", minPrice: 16000000, maxPrice: 20000000, minInc: 12000, maxInc: 14000, type: "med" },
+    { name: "Butik Otel", minPrice: 22000000, maxPrice: 30000000, minInc: 15000, maxInc: 17000, type: "med" },
+    { name: "İş Merkezi", minPrice: 32000000, maxPrice: 40000000, minInc: 17000, maxInc: 18500, type: "high" },
+    { name: "Alışveriş Merkezi", minPrice: 42000000, maxPrice: 50000000, minInc: 19000, maxInc: 20000, type: "high" }
 ];
 
 async function getCityMarket(cityId) {
@@ -473,6 +471,18 @@ async function updateGlobalStocks() {
     }
 }
 
+// Borsa veritabanını başlat
+async function initializeBorsa() {
+    try {
+        const snap = await db.ref('global_stocks').once('value');
+        if (!snap.exists()) {
+            console.log("[Borsa] Veritabanı boş, INITIAL_STOCKS yükleniyor...");
+            await db.ref('global_stocks').set(INITIAL_STOCKS);
+        }
+    } catch (e) { console.error("[Borsa] Başlatma Hatası:", e.message); }
+}
+initializeBorsa();
+
 // Borsa Saatlik Geçmiş Kaydı (Grafiklerin daha gerçekçi olması için)
 async function saveHourlyStockHistory() {
     try {
@@ -540,9 +550,6 @@ function generatePKCE() {
     return { verifier, challenge };
 }
 
-// ---------------------------------------------------------
-// CLIENT-SIDE STATS SYNC (Cloudflare Bypass)
-// ---------------------------------------------------------
 app.post('/dashboard-api/sync-stats', async (req, res) => {
     try {
         const { channelId, key, followers, subscribers } = req.body;
@@ -732,11 +739,24 @@ app.post('/api/real-estate/buy', async (req, res) => {
 app.get('/api/kick/pfp/:username', async (req, res) => {
     try {
         const username = req.params.username.toLowerCase();
-        const data = await fetchKickV2Channel(username);
-        if (data && data.user && data.user.profile_pic) {
-            return res.json({ pfp: data.user.profile_pic });
+        const fallbackPfp = `https://ui-avatars.com/api/?name=${username}&background=random&color=fff&size=512`;
+
+        try {
+            // Priority 1: fetchKickV2Channel helper
+            const data = await fetchKickV2Channel(username);
+            const pfp = data?.user?.profile_pic || data?.user?.profile_picture || data?.profile_pic;
+            if (pfp) return res.json({ pfp });
+
+            // Priority 2: Direct public V1
+            const v1Res = await axios.get(`https://api.kick.com/public/v1/channels/${username}`).catch(() => null);
+            const pfpV1 = v1Res?.data?.data?.user?.profile_pic || v1Res?.data?.data?.user?.profile_picture;
+            if (pfpV1) return res.json({ pfp: pfpV1 });
+
+        } catch (e1) {
+            console.warn(`PFP fetching issue for ${username}: ${e1.message}`);
         }
-        res.status(404).json({ error: "Not found" });
+
+        res.json({ pfp: fallbackPfp });
     } catch (e) {
         res.status(500).json({ error: e.message });
     }
@@ -1153,7 +1173,7 @@ async function getAppAccessToken() {
         params.append('grant_type', 'client_credentials');
         params.append('client_id', CLIENT_ID);
         params.append('client_secret', CLIENT_SECRET);
-        // Note: client_credentials için scope genellikle gerekmez veya otomatik atanır
+        params.append('scope', 'chat:write'); // Bazı app'lerde bu zorunludur
 
         const response = await axios.post('https://id.kick.com/oauth/token', params);
         if (response.data.access_token) {
@@ -1245,7 +1265,7 @@ async function sendChatMessage(message, broadcasterId) {
                     break;
                 }
             } catch (err) {
-                console.warn(`[Chat Debug] ${t.name} -> ${err.response?.status}`);
+                console.warn(`[Chat Debug] ${t.name} -> ${err.response?.status} (${JSON.stringify(err.response?.data || 'No Body')})`);
             }
         }
 
@@ -2334,12 +2354,16 @@ app.post('/webhook/kick', async (req, res) => {
             }
         }
 
-        else if (settings.zenginler !== false && lowMsg === '!zenginler') {
+        else if (settings.zenginler !== false && (lowMsg === '!zenginler' || lowMsg === '!zengin')) {
             const snap = await db.ref('users').once('value');
-            const sorted = Object.entries(snap.val() || {})
-                .filter(([_, d]) => !d.is_infinite)
+            const val = snap.val() || {};
+            const sorted = Object.entries(val)
+                .filter(([_, d]) => d && !d.is_infinite)
                 .sort((a, b) => (b[1].balance || 0) - (a[1].balance || 0))
                 .slice(0, 5);
+
+            if (sorted.length === 0) return await reply("Henüz zengin birini bulamadım! 🕵️");
+
             let txt = "🏆 EN ZENGİNLER: ";
             sorted.forEach((u, i) => txt += `${i + 1}. ${u[0]} (${(u[1].balance || 0).toLocaleString()}) | `);
             await reply(txt);
@@ -2347,6 +2371,7 @@ app.post('/webhook/kick', async (req, res) => {
 
         else if (settings.hava !== false && (lowMsg === '!hava' || lowMsg.startsWith('!hava '))) {
             const city = args.join(' ');
+            if (!city) return await reply(`@${user}, Kullanım: !hava [şehir]`);
             const cityLower = city.toLowerCase();
             if (cityLower === "kürdistan" || cityLower === "kurdistan" || cityLower === "rojova" || cityLower === "rojava") {
                 return await reply("T.C. sınırları içerisinde böyle bir yer bulunamadı! 🇹🇷");
@@ -4284,17 +4309,18 @@ app.get('/health', (req, res) => res.status(200).send('OK (Bot Uyanık)'));
 
 app.get('/api/borsa', async (req, res) => {
     try {
-        const snap = await db.ref('global_stocks').once('value').catch(err => {
-            console.error("Firebase Read Error (Borsa API):", err.message);
-            return null;
-        });
+        const snap = await db.ref('global_stocks').once('value');
+        const data = snap.val();
 
-        const data = snap ? snap.val() : null;
-        // Eğer Firebase boşsa veya hata verdiyse INITIAL_STOCKS'u (güncel halini) gönder
-        res.json(data || INITIAL_STOCKS);
+        // Eğer Firebase verisi yoksa INITIAL_STOCKS'u yerleştir ve döndür
+        if (!data) {
+            await db.ref('global_stocks').set(INITIAL_STOCKS);
+            return res.json(INITIAL_STOCKS);
+        }
+        res.json(data);
     } catch (e) {
         console.error("Borsa API Route Error:", e);
-        res.json(INITIAL_STOCKS); // En kötü ihtimalle başlangıç değerlerini JSON olarak gönder (hata verme)
+        res.json(INITIAL_STOCKS);
     }
 });
 
