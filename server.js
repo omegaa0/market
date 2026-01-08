@@ -762,6 +762,7 @@ async function sendChatMessage(message, broadcasterId) {
 
         const url = `https://api.kick.com/public/v1/chat/messages`;
         await axios.post(url, {
+            broadcaster_user_id: parseInt(broadcasterId),
             content: message,
             type: "text"
         }, {
