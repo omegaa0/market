@@ -852,54 +852,48 @@ async function sendChatMessage(message, broadcasterId) {
             return;
         }
 
-        // KESİN CLIENT ID (Dashboard ile birebir aynı olmalı)
-        const MY_CLIENT_ID = "01KDQNP2M930Y7YYNM62TVWJCP";
-
         const headers = {
             'Authorization': `Bearer ${chan.access_token}`,
-            'X-Kick-Client-Id': MY_CLIENT_ID,
+            'X-Kick-Client-Id': "01KDQNP2M930Y7YYNM62TVWJCP",
             'Content-Type': 'application/json',
             'Accept': 'application/json',
-            'User-Agent': 'KickBot/1.0'
+            'User-Agent': 'Mozilla/5.0'
         };
 
-        // 1. ADIM: Token'ı Teşhis Et
         try {
             const whoami = await axios.get('https://api.kick.com/public/v1/users', { headers });
-            const username = whoami.data?.data?.[0]?.username || whoami.data?.username || "Bilinmiyor";
-            console.log(`[Chat Auth] ✅ Token Geçerli! Sahibi: ${username}`);
+            const userObj = whoami.data?.data?.[0] || whoami.data;
+            console.log(`[Chat Auth] ✅ Token OK! Sahibi: ${userObj?.username} (ID: ${userObj?.id})`);
         } catch (e) {
-            console.error(`[Chat Auth] ❌ TOKEN REDDEDİLDİ: ${e.response?.status} - ${JSON.stringify(e.response?.data || e.message)}`);
-            console.log(`[KRİTİK] Lütfen botun Dashboard sayfasına gidip '/login' butonuna basarak girişi tazeleyin!`);
-            return; // Token geçersizse mesaj atmayı deneme
+            console.error(`[Chat Auth] ❌ Token Hatalı: ${e.response?.status}`);
+            return;
         }
 
-        // 2. ADIM: Mesajı Gönder
         const bid = parseInt(broadcasterId);
-        const testRoutes = [
+        const variations = [
             { url: 'https://api.kick.com/public/v1/chat-messages', body: { broadcaster_user_id: bid, content: message } },
+            { url: 'https://api.kick.com/public/v1/chat-messages', body: { broadcaster_user_id: String(bid), content: message } },
             { url: 'https://api.kick.com/public/v1/chat-messages', body: { chatroom_id: bid, message: message } }
         ];
 
         let success = false;
-        for (const r of testRoutes) {
+        let lastErr = "";
+        for (const v of variations) {
             try {
-                const res = await axios.post(r.url, r.body, { headers, timeout: 8000 });
+                const res = await axios.post(v.url, v.body, { headers, timeout: 8000 });
                 if (res.status >= 200 && res.status < 300) {
                     success = true;
-                    console.log(`[Chat] ✅ MESAJ GİTTİ! (${r.url})`);
+                    console.log(`[Chat] ✅ MESAJ GİTTİ! URL: ${v.url}`);
                     break;
                 }
             } catch (err) {
-                // Hata detayını görmemiz gerekebilir
+                lastErr = `${err.response?.status}: ${JSON.stringify(err.response?.data || err.message)}`;
             }
         }
 
-        if (!success) {
-            console.error(`[Chat Fatal] Adresler 404/403 döndü. Lütfen Botun kanalda MODERATÖR olduğunu kontrol edin.`);
-        }
+        if (!success) console.error(`[Chat Fatal] Hata: ${lastErr}`);
     } catch (e) {
-        console.error(`[Chat Fatal Error]:`, e.message);
+        console.error(`[Chat Error]:`, e.message);
     }
 }
 
