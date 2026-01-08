@@ -875,13 +875,15 @@ async function sendChatMessage(message, broadcasterId) {
                 // 2. Kanal Bilgisi (Chatroom ID nedir?)
                 // Public V1 channels endpoint'i bazen sorunlu, V1 direkt slug deneyelim
                 try {
-                    const chanRes = await axios.get(`https://kick.com/api/v2/channels/${u.slug || u.name}`); // V2 public read-only'dir
-                    if (chanRes.data && chanRes.data.chatroom) {
-                        realChatroomId = chanRes.data.chatroom.id;
+                    // RESMİ PUBLIC V1 KANAL SORGUSU (Token Gerekli)
+                    const chanRes = await axios.get(`https://api.kick.com/public/v1/channels/${u.slug || u.name}`, { headers });
+                    const cData = chanRes.data?.data || chanRes.data;
+                    if (cData && cData.chatroom) {
+                        realChatroomId = cData.chatroom.id;
                         console.log(`[Chat Info] UserID: ${u.user_id} -> Real ChatroomID: ${realChatroomId}`);
                     }
                 } catch (chErr) {
-                    console.error(`[Chat Info Error] Kanal verisi çekilemedi: ${chErr.message}`);
+                    console.error(`[Chat Info Error] Kanal verisi (V1) çekilemedi: ${chErr.response?.status}`);
                 }
             }
         } catch (e) {
