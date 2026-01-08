@@ -846,31 +846,24 @@ async function sendChatMessage(message, broadcasterId) {
     try {
         const snap = await db.ref('channels/' + broadcasterId).once('value');
         const chan = snap.val();
+        if (!chan || !chan.access_token) return;
 
-        if (!chan) {
-            console.error(`[Chat Error] Kanal verisi bulunamadı: ${broadcasterId}`);
-            return;
-        }
-        if (!chan.access_token) {
-            console.error(`[Chat Error] Access token eksik: ${broadcasterId}`);
-            return;
-        }
+        // KICK OFFICIAL API - ULTRA VARYASYONLAR
+        const bid_int = parseInt(broadcasterId);
+        const bid_str = String(broadcasterId);
 
-        // KICK OFFICIAL API ENDPOINTS (2025/2026 - FULL VARIATIONS)
         const endpoints = [
-            // 1. Resmi Yeni Format (Hyphenated)
-            { url: `https://api.kick.com/public/v1/chat-messages`, body: { broadcaster_user_id: parseInt(broadcasterId), content: message, type: "text" } },
-            // 2. Resmi Alternatif (Slashed)
-            { url: `https://api.kick.com/public/v1/chat/messages`, body: { broadcaster_user_id: parseInt(broadcasterId), content: message, type: "text" } },
-            // 3. Basitleştirilmiş Body
-            { url: `https://api.kick.com/public/v1/chat-messages`, body: { content: message, type: "text" } },
-            // 4. Doğrudan Kanal ID'li
-            { url: `https://api.kick.com/public/v1/chat-messages/${broadcasterId}`, body: { content: message, type: "text" } }
+            // 1. Standart: broadcaster_user_id (INT)
+            { url: `https://api.kick.com/public/v1/chat-messages`, body: { broadcaster_user_id: bid_int, content: message, type: "text" } },
+            // 2. Standart: broadcaster_user_id (STRING)
+            { url: `https://api.kick.com/public/v1/chat-messages`, body: { broadcaster_user_id: bid_str, content: message, type: "text" } },
+            // 3. ChatroomID alternatifi (INT)
+            { url: `https://api.kick.com/public/v1/chat-messages`, body: { chatroom_id: bid_int, content: message, type: "text" } },
+            // 4. Slashed API
+            { url: `https://api.kick.com/public/v1/chat/messages`, body: { broadcaster_user_id: bid_int, content: message, type: "text" } }
         ];
 
         let success = false;
-        let lastError = null;
-
         for (const ep of endpoints) {
             try {
                 const response = await axios.post(ep.url, ep.body, {
@@ -878,33 +871,27 @@ async function sendChatMessage(message, broadcasterId) {
                         'Authorization': `Bearer ${chan.access_token}`,
                         'Content-Type': 'application/json',
                         'Accept': 'application/json',
-                        'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36'
+                        'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36'
                     },
-                    timeout: 8000
+                    timeout: 7000
                 });
 
-                if (response.status === 200 || response.status === 201 || response.status === 204) {
+                if (response.status >= 200 && response.status < 300) {
                     success = true;
-                    console.log(`[Chat] ✅ Mesaj başarıyla gönderildi (${ep.url})`);
+                    console.log(`[Chat] ✅ BAŞARILI: ${ep.url}`);
                     break;
                 }
             } catch (err) {
-                lastError = err;
-                const errData = err.response?.data ? JSON.stringify(err.response.data) : err.message;
-                console.log(`[Chat Attempt] ❌ ${ep.url} başarısız: ${err.response?.status} - ${errData}`);
-
-                if (err.response?.status === 401) {
-                    await refreshChannelToken(broadcasterId);
-                    // Token yenilendiğinde bir sonraki ep denenecek
-                }
+                if (err.response?.status === 401) await refreshChannelToken(broadcasterId);
+                // 404 hatasında bir sonraki endpoint'e devam et
             }
         }
 
-        if (!success && lastError) {
-            console.error(`[Chat Fatal] ${broadcasterId} için mesaj gönderilemedi.`);
+        if (!success) {
+            console.error(`[Chat Fatal] ${broadcasterId} için hiçbir varyasyon çalışmadı.`);
         }
     } catch (e) {
-        console.error(`[Chat Error Fatal] ${broadcasterId}:`, e.message);
+        console.error(`[Chat Error Fatal]:`, e.message);
     }
 }
 
