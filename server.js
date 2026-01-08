@@ -274,6 +274,7 @@ app.get('/ai-view/:id', (req, res) => {
 async function registerKickWebhook(broadcasterId, accessToken) {
     try {
         const webhookUrl = `${REDIRECT_URI.replace('/auth/kick/callback', '')}/webhook/kick`;
+        console.log(`[Webhook] Kayıt denemesi: ${webhookUrl} (Kanal: ${broadcasterId})`);
 
         // Takipçi ve diğer event'lere abone ol
         const response = await axios.post('https://api.kick.com/public/v1/events/subscriptions', {
@@ -293,11 +294,12 @@ async function registerKickWebhook(broadcasterId, accessToken) {
             headers: {
                 'Authorization': `Bearer ${accessToken}`,
                 'Content-Type': 'application/json',
-                'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36'
+                'Accept': 'application/json',
+                'User-Agent': 'Mozilla/5.0'
             }
         });
 
-        console.log(`[Webhook] ✅ Kanal ${broadcasterId} için webhook kaydedildi!`);
+        console.log(`[Webhook] ✅ Kanal ${broadcasterId} için webhook BAŞARIYLA kaydedildi!`);
 
         // Kayıt bilgisini veritabanına yaz
         await db.ref(`channels/${broadcasterId}/webhook`).update({
@@ -1004,26 +1006,26 @@ async function clearChat(broadcasterId) {
 app.post('/webhook/kick', async (req, res) => {
     try {
         const payload = req.body;
-        console.log(`[Webhook DEBUG] Event Alındı: ${payload.event || 'NoEvent'}`);
+        console.log(`\n--- [Webhook Gelen Veri] ---`);
+        console.log(`Olay: ${payload.event || 'Bilinmiyor'}`);
+        console.log(`Gövde: ${JSON.stringify(payload).substring(0, 500)}`);
 
-        const event = payload.data || payload;
-
-        // --- CHALLENGE RESPONSE (If Kick ever adds it) ---
         if (payload.challenge) return res.send(payload.challenge);
-
         res.status(200).send('OK');
+
+        const ev = payload.data || payload;
 
         // Robust Broadcaster ID Discovery
         let broadcasterId =
             payload.broadcaster_user_id ||
             payload.broadcaster_id ||
-            event.broadcaster_user_id ||
-            event.broadcaster_id ||
-            event.broadcaster?.user_id ||
-            event.broadcaster?.id ||
-            event.channel?.user_id ||
-            event.channel?.id ||
-            event.chatroom_id;
+            ev.broadcaster_user_id ||
+            ev.broadcaster_id ||
+            ev.broadcaster?.user_id ||
+            ev.broadcaster?.id ||
+            ev.channel?.user_id ||
+            ev.channel?.id ||
+            ev.chatroom_id;
 
         if (!broadcasterId) {
             console.log("⚠️ Broadcaster ID bulunamadı. Payload keys:", Object.keys(payload));
@@ -1111,16 +1113,13 @@ app.post('/webhook/kick', async (req, res) => {
             console.log(`🔄 Kanal slug güncellendi: ${currentSlug}`);
         }
 
-        const user = event.sender?.username || event.user?.username || event.username;
-        const rawMsg = event.content || event.message;
+        // Mesaj ve Kullanıcı Ayıklama (Varyasyonlara hazır)
+        const user = (ev.sender?.username || ev.user?.username || ev.username || "").toLowerCase();
+        const rawMsg = ev.content || ev.message || "";
 
-        console.log(`[Webhook DEBUG] User: ${user}, Msg: ${rawMsg}`);
+        if (!user || user === "botrix") return;
 
-        if (!user || !rawMsg) {
-            console.log(`[Webhook DEBUG] Mesaj veya kullanıcı eksik, işlem durduruldu.`);
-            return;
-        }
-        if (user.toLowerCase() === "aloskegangbot" || user.toLowerCase() === "botrix") return;
+        console.log(`[Webhook Analiz] Kullanıcı: ${user}, Mesaj: ${rawMsg}, KanalID: ${broadcasterId}`);
 
         const lowMsg = rawMsg.trim().toLowerCase();
         const args = rawMsg.trim().split(/\s+/).slice(1);
