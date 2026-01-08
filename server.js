@@ -275,10 +275,8 @@ app.get('/ai-view/:id', (req, res) => {
 async function registerKickWebhook(broadcasterId, accessToken) {
     try {
         console.log(`[Webhook] Kayıt denemesi (Kanal: ${broadcasterId})`);
-        console.log(`[Webhook] ÖNEMLİ: Webhook URL'nizi kick.com/settings/developer adresinden ayarladığınızdan emin olun!`);
 
         // Kick Resmi API - POST /public/v1/events/subscriptions
-        // Webhook URL, Kick Developer Settings'den alınır, API'de belirtilmez
         const response = await axios.post('https://api.kick.com/public/v1/events/subscriptions', {
             broadcaster_user_id: parseInt(broadcasterId),
             events: [
@@ -298,29 +296,46 @@ async function registerKickWebhook(broadcasterId, accessToken) {
             }
         });
 
-        console.log(`[Webhook] ✅ Kanal ${broadcasterId} için webhook BAŞARIYLA kaydedildi!`);
-        console.log(`[Webhook] Yanıt:`, JSON.stringify(response.data).substring(0, 300));
+        console.log(`[Webhook] ✅ Kanal ${broadcasterId} için Kick'e abone olundu.`);
 
-        // Kayıt bilgisini veritabanına yaz
+        // Kayıt bilgisini ve Kick'ten gelen subscription ID'leri sakla
         await db.ref(`channels/${broadcasterId}/webhook`).update({
             registered: true,
-            registered_at: Date.now(),
-            subscription_ids: response.data?.data?.map(s => s.subscription_id) || []
+            last_registration: Date.now(),
+            subscription_ids: response.data?.data?.map(s => s.subscription_id) || [],
+            last_status: 'SUCCESS'
         });
 
-        return true;
+        return { success: true, data: response.data };
     } catch (e) {
-        console.error(`[Webhook] ❌ Kayıt hatası (${broadcasterId}):`, e.response?.status, e.response?.data || e.message);
+        const errorMsg = e.response?.data?.message || e.response?.data?.error || e.message;
+        const statusCode = e.response?.status;
 
-        // Hata detaylarını kaydet
+        console.error(`[Webhook Error] ${broadcasterId}:`, statusCode, errorMsg);
+
         await db.ref(`channels/${broadcasterId}/webhook`).update({
-            last_error: e.response?.data?.message || e.message,
-            last_error_at: Date.now()
+            registered: false,
+            last_error: errorMsg,
+            last_error_code: statusCode,
+            last_error_at: Date.now(),
+            last_status: 'FAILED'
         });
 
-        return false;
+        return { success: false, error: errorMsg, code: statusCode };
     }
 }
+
+// Manuel Kayıt Endpoint'i (Hata ayıklama için)
+app.get('/admin/register-webhook/:broadcasterId', async (req, res) => {
+    const { broadcasterId } = req.params;
+    const snap = await db.ref('channels/' + broadcasterId).once('value');
+    const chan = snap.val();
+
+    if (!chan || !chan.access_token) return res.status(404).json({ error: "Kanal veya token bulunamadı." });
+
+    const result = await registerKickWebhook(broadcasterId, chan.access_token);
+    res.json(result);
+});
 
 // Tüm kanallar için webhook kaydet
 async function registerAllWebhooks() {
@@ -833,11 +848,12 @@ async function sendChatMessage(message, broadcasterId) {
         const chan = snap.val();
         if (!chan || !chan.access_token) return;
 
+        // KICK OFFICIAL API ENDPOINTS (2025)
         const endpoints = [
-            { url: `https://api.kick.com/public/v1/chat/messages`, body: { broadcaster_user_id: parseInt(broadcasterId), content: message, type: "text" } },
-            { url: `https://api.kick.com/public/v1/chat/messages`, body: { content: message, type: "text" } },
-            { url: `https://api.kick.com/public/v1/chat-messages`, body: { chatroom_id: parseInt(broadcasterId), content: message, type: "text" } },
-            { url: `https://api.kick.com/public/v1/chat-messages/${broadcasterId}`, body: { content: message, type: "text" } }
+            // Official V1 Public API (Standard Payload)
+            { url: `https://api.kick.com/public/v1/chat-messages`, body: { broadcaster_user_id: parseInt(broadcasterId), content: message } },
+            // Alternative payload
+            { url: `https://api.kick.com/public/v1/chat-messages`, body: { content: message } }
         ];
 
         let success = false;
@@ -849,8 +865,7 @@ async function sendChatMessage(message, broadcasterId) {
                     headers: {
                         'Authorization': `Bearer ${chan.access_token}`,
                         'Content-Type': 'application/json',
-                        'Accept': 'application/json',
-                        'User-Agent': 'Mozilla/5.0'
+                        'Accept': 'application/json'
                     },
                     timeout: 5000
                 });
@@ -858,12 +873,16 @@ async function sendChatMessage(message, broadcasterId) {
                 break;
             } catch (err) {
                 lastError = err;
-                if (err.response?.status === 401) await refreshChannelToken(broadcasterId);
+                // Unauthorized error -> refresh token once
+                if (err.response?.status === 401) {
+                    await refreshChannelToken(broadcasterId);
+                    // No retry here to avoid loops, let the next attempt handle it
+                }
             }
         }
 
         if (!success && lastError) {
-            console.error(`[Chat Error] ${broadcasterId} - Tüm varyasyonlar başarısız:`, lastError.response?.status, lastError.response?.data || lastError.message);
+            console.error(`[Chat Error] ${broadcasterId}:`, lastError.response?.status, lastError.response?.data || lastError.message);
         }
     } catch (e) {
         console.error(`[Chat Error Fatal] ${broadcasterId}:`, e.message);
@@ -1130,51 +1149,57 @@ async function clearChat(broadcasterId) {
 
 // ---------------------------------------------------------
 // ---------------------------------------------------------
-// 4. WEBHOOK (KOMUTLAR & OTO KAYIT) - KICK RESMİ API FORMAT
+// 4. OFFICIAL KICK WEBHOOK HANDLER
 // ---------------------------------------------------------
 app.post('/webhook/kick', async (req, res) => {
     try {
         const payload = req.body;
+        const headers = req.headers;
 
-        // Kick Resmi API Header'ları
-        const eventType = req.headers['kick-event-type'] || payload.event || 'unknown';
-        const eventVersion = req.headers['kick-event-version'] || '1';
+        // Kick Headers (Express handles lowercase)
+        const eventType = headers['kick-event-type'] || payload.event || headers['kick-event'] || 'unknown';
+        const eventId = headers['kick-event-id'] || 'no-id';
 
-        console.log(`\n--- [Webhook] Event: ${eventType} (v${eventVersion}) ---`);
-        console.log(`Payload: ${JSON.stringify(payload).substring(0, 600)}`);
-
-        // Challenge/Verification handshake
+        // --- CHALLENGE / VERIFICATION ---
         if (payload.challenge) {
-            console.log('[Webhook] Challenge alındı, yanıt gönderiliyor...');
-            return res.send(payload.challenge);
+            console.log(`[Webhook] Challenge verification: ${payload.challenge}`);
+            return res.status(200).send(payload.challenge);
         }
+
+        // --- OK RESPONSE (Immediate) ---
         res.status(200).send('OK');
 
-        // =========================================================
-        // KICK RESMİ API PAYLOAD YAPISI (docs.kick.com/events)
-        // =========================================================
-        // chat.message.sent => { message_id, broadcaster, sender, content, emotes, created_at }
-        // broadcaster/sender => { user_id, username, is_verified, profile_picture, channel_slug, identity }
+        // --- LOGGING ---
+        console.log(`[Webhook] ${eventType} received.`);
 
-        // Broadcaster ID bul (Resmi API formatı)
+        // Firebase debug log (Arayüzden görebilmek için)
+        await db.ref('logs/webhooks').push({
+            timestamp: Date.now(),
+            eventType,
+            eventId,
+            payloadShort: JSON.stringify(payload).substring(0, 500)
+        });
+
+        if (typeof logWebhookReceived === 'function') {
+            logWebhookReceived({ event: eventType, sender: payload.sender });
+        }
+
+        // --- BROADCASTER DISCOVERY ---
         let broadcasterId =
             payload.broadcaster?.user_id ||
             payload.broadcaster_user_id ||
-            payload.broadcaster?.id ||
             (payload.data && payload.data.broadcaster?.user_id) ||
             null;
 
         if (!broadcasterId) {
-            console.log("⚠️ Broadcaster ID bulunamadı. Payload keys:", Object.keys(payload));
-            return;
+            // chat.message.sent payload root identifies broadcaster
+            if (payload.broadcaster && payload.broadcaster.user_id) {
+                broadcasterId = payload.broadcaster.user_id;
+            }
         }
-        broadcasterId = String(broadcasterId);
 
-        // Event Type kontrolü ve webhook sayacı
-        console.log(`[Webhook] Kanal: ${broadcasterId}, Event: ${eventType}`);
-        if (typeof logWebhookReceived === 'function') {
-            logWebhookReceived({ event: eventType, sender: payload.sender });
-        }
+        if (!broadcasterId) return;
+        broadcasterId = String(broadcasterId);
 
         const channelRef = await db.ref('channels/' + broadcasterId).once('value');
         const channelData = channelRef.val();
