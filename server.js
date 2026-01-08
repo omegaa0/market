@@ -853,14 +853,14 @@ async function sendChatMessage(message, broadcasterId) {
         const bid_str = String(broadcasterId);
 
         const endpoints = [
-            // 1. Standart: broadcaster_user_id (INT)
+            // 1. Resmi Yeni Format (Hyphenated)
             { url: `https://api.kick.com/public/v1/chat-messages`, body: { broadcaster_user_id: bid_int, content: message, type: "text" } },
-            // 2. Standart: broadcaster_user_id (STRING)
-            { url: `https://api.kick.com/public/v1/chat-messages`, body: { broadcaster_user_id: bid_str, content: message, type: "text" } },
+            // 2. Resmi Alternatif (Slashed)
+            { url: `https://api.kick.com/public/v1/chat/messages`, body: { broadcaster_user_id: bid_int, content: message, type: "text" } },
             // 3. ChatroomID alternatifi (INT)
             { url: `https://api.kick.com/public/v1/chat-messages`, body: { chatroom_id: bid_int, content: message, type: "text" } },
-            // 4. Slashed API
-            { url: `https://api.kick.com/public/v1/chat/messages`, body: { broadcaster_user_id: bid_int, content: message, type: "text" } }
+            // 4. İÇ SYSTEM FALLBACK (V2) - Bu adres genellikle 404 vermez
+            { url: `https://kick.com/api/v2/messages/send/${bid_int}`, body: { content: message, type: "text" } }
         ];
 
         let success = false;
@@ -882,13 +882,17 @@ async function sendChatMessage(message, broadcasterId) {
                     break;
                 }
             } catch (err) {
-                if (err.response?.status === 401) await refreshChannelToken(broadcasterId);
-                // 404 hatasında bir sonraki endpoint'e devam et
+                // Hata 401 ise token yenile ama döngüye devam et
+                if (err.response?.status === 401) {
+                    console.log(`[Chat] Token süresi dolmuş, yenileniyor...`);
+                    await refreshChannelToken(broadcasterId);
+                }
+                // 404 veya diğer hatalarda bir sonraki endpoint'e geç
             }
         }
 
         if (!success) {
-            console.error(`[Chat Fatal] ${broadcasterId} için hiçbir varyasyon çalışmadı.`);
+            console.error(`[Chat Fatal] ${broadcasterId} (${chan.username}) için hiçbir varyasyon çalışmadı. Lütfen botun bu kanalda yetkili (moderator) olduğundan ve /login yapıldığından emin olun.`);
         }
     } catch (e) {
         console.error(`[Chat Error Fatal]:`, e.message);
