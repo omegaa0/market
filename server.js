@@ -873,31 +873,36 @@ async function sendChatMessage(message, broadcasterId) {
 
         const bid = parseInt(broadcasterId);
 
-        // 🛠️ TÜM RESMİ VARYASYONLARI DENE
-        const testWays = [
+        // 🛠️ TÜM KOMBİNASYONLARI SIRAYLA DENE (BİRİ ELBET TUTACAK)
+        const trials = [
+            // 1. Resmi Public V1 (En yaygın)
             { url: 'https://api.kick.com/public/v1/chat-messages', body: { broadcaster_user_id: bid, content: message } },
-            { url: 'https://api.kick.com/public/v1/chat-messages', body: { chatroom_id: bid, message: message } }
+            // 2. Chatroom ID varyasyonu
+            { url: 'https://api.kick.com/public/v1/chat-messages', body: { chatroom_id: bid, message: message } },
+            // 3. Slashed Public V1 (Bazı botlar bunu kullanıyor)
+            { url: 'https://api.kick.com/public/v1/chat/messages', body: { broadcaster_user_id: bid, content: message } },
+            // 4. İç V2 Yolu (Kurtarıcı)
+            { url: `https://kick.com/api/v2/messages/send/${bid}`, body: { content: message, type: "text" } }
         ];
 
         let success = false;
-        let lastError = "";
+        let lastErrorMsg = "";
 
-        for (const way of testWays) {
+        for (const t of trials) {
             try {
-                const res = await axios.post(way.url, way.body, { headers, timeout: 8000 });
+                const res = await axios.post(t.url, t.body, { headers, timeout: 8000 });
                 if (res.status >= 200 && res.status < 300) {
                     success = true;
-                    console.log(`[Chat] ✅ MESAJ GÜNDERİLDİ! (${way.url})`);
+                    console.log(`[Chat] ✅ MESAJ GÜNDERİLDİ! URL: ${t.url}`);
                     break;
                 }
             } catch (err) {
-                lastError = `${way.url} -> ${err.response?.status}: ${JSON.stringify(err.response?.data || err.message)}`;
+                lastErrorMsg = `${t.url} -> ${err.response?.status}: ${JSON.stringify(err.response?.data || err.message)}`;
             }
         }
 
         if (!success) {
-            console.error(`[Chat Fatal] Başarısız: ${lastError}`);
-            console.log(`[Analiz] Eğer 404 ise Adres/Uygulama hatası, 403 ise Moderatörlük/Scope eksiğidir.`);
+            console.error(`[Chat Fatal] ÇÖZÜLEMEYEN HATA: ${lastErrorMsg}`);
         }
     } catch (e) {
         console.error(`[Chat Global Error]:`, e.message);
