@@ -860,27 +860,41 @@ async function sendChatMessage(message, broadcasterId) {
             'User-Agent': 'KickBot/1.0'
         };
 
-        // 🔍 TEŞHİS: TOKEN KİME AİT?
+        // 🔍 TEŞHİS & CHATROOM ID BULMA
+        let realChatroomId = null;
         let senderId = null;
+
         try {
+            // 1. Kimlik Bilgisi (Token kimin?)
             const who = await axios.get('https://api.kick.com/public/v1/users', { headers });
-            // Loglardan öğrendik: { data: [ { user_id: ..., name: ... } ] }
             const u = who.data?.data?.[0];
             if (u) {
                 console.log(`[Chat Auth] ✅ Token OK! Sahibi: ${u.name} (ID: ${u.user_id})`);
                 senderId = u.user_id;
+
+                // 2. Kanal Bilgisi (Chatroom ID nedir?)
+                // Public V1 channels endpoint'i bazen sorunlu, V1 direkt slug deneyelim
+                try {
+                    const chanRes = await axios.get(`https://kick.com/api/v2/channels/${u.slug || u.name}`); // V2 public read-only'dir
+                    if (chanRes.data && chanRes.data.chatroom) {
+                        realChatroomId = chanRes.data.chatroom.id;
+                        console.log(`[Chat Info] UserID: ${u.user_id} -> Real ChatroomID: ${realChatroomId}`);
+                    }
+                } catch (chErr) {
+                    console.error(`[Chat Info Error] Kanal verisi çekilemedi: ${chErr.message}`);
+                }
             }
         } catch (e) {
             console.error(`[Chat Auth] ❌ Kimlik Belirlenemedi: ${e.response?.status}`);
         }
 
-        const bid = parseInt(broadcasterId);
+        // Eğer chatroom ID bulamadıysak mecburen user ID'yi deneriz (ama muhtemelen 404 verir)
+        const targetId = realChatroomId || parseInt(broadcasterId);
 
-        // 🛠️ SADECE PUBLIC V1 (V2 Cookie ister, Public Token ile çalışmaz)
+        // 🛠️ PUBLIC V1 DENEME
         const trials = [
-            { url: 'https://api.kick.com/public/v1/chat-messages', body: { broadcaster_user_id: bid, content: message, type: "bot" } },
-            { url: 'https://api.kick.com/public/v1/chat-messages', body: { chatroom_id: bid, content: message } },
-            { url: 'https://api.kick.com/public/v1/chat-messages', body: { broadcaster_user_id: bid, content: message, sender_id: senderId } }
+            { url: 'https://api.kick.com/public/v1/chat-messages', body: { chatroom_id: targetId, content: message } },
+            { url: 'https://api.kick.com/public/v1/chat-messages', body: { broadcaster_user_id: targetId, content: message, type: "bot" } }
         ];
 
         let success = false;
@@ -897,6 +911,10 @@ async function sendChatMessage(message, broadcasterId) {
             } catch (err) {
                 lastErrorMsg = `${t.url} -> ${err.response?.status}: ${JSON.stringify(err.response?.data || err.message)}`;
             }
+        }
+
+        if (!success) {
+            console.error(`[Chat Fatal] HATA: ${lastErrorMsg}`);
         }
 
         if (!success) {
