@@ -1150,7 +1150,7 @@ async function getAppAccessToken() {
         params.append('grant_type', 'client_credentials');
         params.append('client_id', CLIENT_ID);
         params.append('client_secret', CLIENT_SECRET);
-        params.append('scope', 'chat:write');
+        // Scope kaldırıldı (client_credentials için genellikle opsiyoneldir veya önceden tanımlıdır)
 
         const response = await axios.post('https://id.kick.com/oauth/token', params);
         if (response.data.access_token) {
@@ -1499,7 +1499,7 @@ app.post('/webhook/kick', async (req, res) => {
         const subReward = parseInt(settings.sub_reward) || 5000;
 
         if (eventName === "channel.subscription.new" || eventName === "channel.subscription.renewal" || eventName === "subscription.new") {
-            const subUser = event.username;
+            const subUser = payload.username || payload.user?.username || payload.data?.username;
             if (subUser && subUser.toLowerCase() !== "botrix") {
                 // Goal Bar Update
                 await db.ref(`channels/${broadcasterId}/stats/subscribers`).transaction(val => (val || 0) + 1);
@@ -1519,9 +1519,9 @@ app.post('/webhook/kick', async (req, res) => {
         }
 
         if (eventName === "channel.subscription.gifts" || eventName === "subscription.gifts") {
-            const gifter = event.username;
+            const gifter = payload.username || payload.user?.username || payload.data?.username;
             if (gifter && gifter.toLowerCase() === "botrix") return;
-            const count = parseInt(event.total) || 1;
+            const count = parseInt(payload.total || payload.data?.total) || 1;
             const totalReward = subReward * count;
             if (gifter) {
                 await db.ref('users/' + gifter.toLowerCase()).transaction(u => {
@@ -1539,7 +1539,7 @@ app.post('/webhook/kick', async (req, res) => {
         }
 
         if (eventName === "channel.followed" || eventName === "channel.follow") {
-            const follower = event.username || event.user_name || event.user?.username;
+            const follower = payload.username || payload.user_name || payload.user?.username || payload.data?.username;
             if (follower && follower.toLowerCase() === "botrix") return;
             // Goal Bar Update
             await db.ref(`channels/${broadcasterId}/stats/followers`).transaction(val => (val || 0) + 1);
@@ -2568,7 +2568,7 @@ app.post('/webhook/kick', async (req, res) => {
         }
 
         else if (isEnabled('ai') && (lowMsg.startsWith('!ai ') || lowMsg === '!ai')) {
-            const isSub = event.sender?.identity?.badges?.some(b => b.type === 'subscriber' || b.type === 'broadcaster' || b.type === 'moderator' || b.type === 'founder');
+            const isSub = payload.sender?.identity?.badges?.some(b => b.type === 'subscriber' || b.type === 'broadcaster' || b.type === 'moderator' || b.type === 'founder');
             if (!isSub) return await reply(`🤫 @${user}, Bu komut sadece ABONELERE özeldir! ✨`);
 
             const prompt = args.join(' ');
