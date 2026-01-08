@@ -409,17 +409,13 @@ const INITIAL_STOCKS = {
 
 // --- EMLAK SİSTEMİ (GLOBAL PAZAR) ---
 const REAL_ESTATE_TYPES = [
-    { name: "Küçük Esnaf Dükkanı", minPrice: 250000, maxPrice: 450000, minInc: 3000, maxInc: 4500, type: "low" },
-    { name: "Pide Salonu", minPrice: 400000, maxPrice: 750000, minInc: 4000, maxInc: 6000, type: "low" },
-    { name: "Bakkal Amca", minPrice: 150000, minInc: 3000, maxInc: 4000, type: "low" },
-    { name: "Eczane", minPrice: 600000, maxPrice: 1200000, minInc: 5000, maxInc: 7000, type: "low" },
-    { name: "Lüks Rezidans Katı", minPrice: 2500000, maxPrice: 5000000, minInc: 7500, maxInc: 10000, type: "med" },
-    { name: "İş Merkezi", minPrice: 8000000, maxPrice: 15000000, minInc: 9000, maxInc: 12000, type: "med" },
-    { name: "Butik Otel", minPrice: 12000000, maxPrice: 25000000, minInc: 10000, maxInc: 13000, type: "med" },
-    { name: "Gece Kulübü", minPrice: 5000000, maxPrice: 10000000, minInc: 11000, maxInc: 15000, type: "med" },
-    { name: "Alışveriş Merkezi", minPrice: 75000000, maxPrice: 150000000, minInc: 15000, maxInc: 18000, type: "high" },
-    { name: "Havalimanı Terminali", minPrice: 250000000, maxPrice: 500000000, minInc: 18000, maxInc: 22000, type: "high" },
-    { name: "Şehir Limanı", minPrice: 150000000, maxPrice: 350000000, minInc: 16000, maxInc: 20000, type: "high" }
+    { name: "Küçük Esnaf Dükkanı", minPrice: 1999999, maxPrice: 3500000, minInc: 15000, maxInc: 25000, type: "low" },
+    { name: "Pide Salonu", minPrice: 2500000, maxPrice: 4500000, minInc: 20000, maxInc: 35000, type: "low" },
+    { name: "Lüks Rezidans Katı", minPrice: 5000000, maxPrice: 12000000, minInc: 45000, maxInc: 85000, type: "med" },
+    { name: "İş Merkezi", minPrice: 15000000, maxPrice: 25000000, minInc: 120000, maxInc: 220000, type: "med" },
+    { name: "Butik Otel", minPrice: 20000000, maxPrice: 35000000, minInc: 180000, maxInc: 320000, type: "med" },
+    { name: "Gece Kulübü", minPrice: 10000000, maxPrice: 18000000, minInc: 90000, maxInc: 160000, type: "med" },
+    { name: "Alışveriş Merkezi", minPrice: 40000000, maxPrice: 50000000, minInc: 450000, maxInc: 750000, type: "high" }
 ];
 
 async function getCityMarket(cityId) {
@@ -430,8 +426,8 @@ async function getCityMarket(cityId) {
 
         if (!data) {
             data = [];
-            // 5 ile 30 arası rastgele mülk sayısı
-            const count = Math.floor(Math.random() * 26) + 5;
+            // Bir şehirde en az 10 mülk olsun (10 ile 25 arası)
+            const count = Math.floor(Math.random() * 16) + 10;
 
             for (let i = 1; i <= count; i++) {
                 const tpl = REAL_ESTATE_TYPES[Math.floor(Math.random() * REAL_ESTATE_TYPES.length)];
@@ -718,6 +714,51 @@ async function sendChatMessage(content, broadcasterId) {
         if (e.response?.status === 401) { await refreshChannelToken(broadcasterId); return sendChatMessage(content, broadcasterId); }
     }
 }
+
+// ---------------------------------------------------------
+// PROXY: KICK PROFILE PIC (CORS BYPASS)
+// ---------------------------------------------------------
+app.get('/api/kick/pfp/:username', async (req, res) => {
+    try {
+        const username = req.params.username.toLowerCase();
+        const data = await fetchKickV2Channel(username);
+        if (data && data.user && data.user.profile_pic) {
+            return res.json({ pfp: data.user.profile_pic });
+        }
+        res.status(404).json({ error: "Not found" });
+    } catch (e) {
+        res.status(500).json({ error: e.message });
+    }
+});
+
+// ---------------------------------------------------------
+// BORSA RESET (ONLY FOR OMEGACYRA)
+// ---------------------------------------------------------
+app.post('/api/borsa/reset', async (req, res) => {
+    const { requester } = req.body;
+    if (requester !== 'omegacyra') return res.status(403).json({ success: false, error: "Yetkisiz işlem!" });
+
+    try {
+        console.log("!!! BORSA RESETLENİYOR (Requester: omegacyra) !!!");
+        const usersSnap = await db.ref('users').once('value');
+        const users = usersSnap.val() || {};
+
+        const updates = {};
+        for (const [uname, udata] of Object.entries(users)) {
+            if (udata.stocks) {
+                updates[`users/${uname}/stocks`] = null;
+            }
+        }
+
+        if (Object.keys(updates).length > 0) {
+            await db.ref().update(updates);
+        }
+
+        res.json({ success: true, message: "Tüm borsa hisseleri sıfırlandı!" });
+    } catch (e) {
+        res.status(500).json({ success: false, error: e.message });
+    }
+});
 
 async function fetchKickGraphQL(slug) {
     try {
@@ -2193,12 +2234,48 @@ EK TALİMAT: ${aiInst}`;
                 }
             }
 
+            else if (isEnabled('gundem') && lowMsg === '!gündem') {
+                const GROK_KEY = process.env.GROK_API_KEY;
+                if (!GROK_KEY) return await reply(`⚠️ @${user}, Gündem araştırma sistemi şu an hazır değil.`);
+
+                try {
+                    await reply(`🔍 @${user}, Türkiye Twitter (X) gündemini araştırıyorum...`);
+
+                    const response = await axios.post('https://api.x.ai/v1/chat/completions', {
+                        messages: [
+                            {
+                                role: "system",
+                                content: "Sen bir Twitter/X gündem analistisin. Grok olarak internete ve gerçek zamanlı Twitter verilerine erişimin var. Türkiye'deki güncel trending topicleri (popüler konuları) araştır ve en önemli 3-4 konuyu kısa başlıklar ve 1'er cümlelik özetlerle bildir. Cevabın Türkçe olsun ve bir Kick chat'i için kısa ve öz olsun (maksimum 400 karakter). Önemli konuların yanına uygun emojiler ekle."
+                            },
+                            { role: "user", content: "Şu anki Türkiye Twitter gündeminde ne var?" }
+                        ],
+                        model: "grok-3",
+                        temperature: 0.7
+                    }, {
+                        headers: {
+                            'Content-Type': 'application/json',
+                            'Authorization': `Bearer ${GROK_KEY}`
+                        },
+                        timeout: 30000
+                    });
+
+                    const replyText = response.data.choices[0].message.content;
+                    const finalReply = replyText.length > 400 ? replyText.substring(0, 397) + "..." : replyText;
+                    await reply(`📈 @${user}, Türkiye Gündemi (X):\n${finalReply}`);
+                } catch (error) {
+                    console.error("Gundem Grok Error:", error.response?.data || error.message);
+                    await reply(`⚠️ @${user}, Gündemi şu an çekemedim, bir problem oluştu.`);
+                }
+            }
+
 
             // --- YENİ BAKİYE HARCAMA KOMUTLARI: TTS & SES ---
-            else if (lowMsg.startsWith('!tts')) {
-                const text = args.join(' ');
-                if (!text) return await reply(`@${user}, !tts [mesaj] şeklinde kullanmalısın!`);
-                if (text.length > 100) return await reply(`@${user}, Mesaj çok uzun! (Maks 100 karakter)`);
+            else if (isEnabled('tts') && lowMsg.startsWith('!tts')) {
+                const text = args.join(' ').trim();
+                const chosenVoice = "standart"; // Chat komutu her zaman standart ses kullanır.
+
+                if (!text) return await reply(`@${user}, !tts [mesaj] şeklinde kullanmalısın! Örn: !tts Merhaba`);
+                if (text.length > 500) return await reply(`@${user}, Mesaj çok uzun! (Maks 500 karakter)`);
 
                 const ttsCost = settings.tts_cost || 2500;
                 const snap = await userRef.once('value');
@@ -2209,6 +2286,7 @@ EK TALİMAT: ${aiInst}`;
                 if (!isInf) await userRef.transaction(u => { if (u) u.balance -= ttsCost; return u; });
                 await db.ref(`channels/${broadcasterId}/stream_events/tts`).push({
                     text: `@${user} diyor ki: ${text}`,
+                    voice: chosenVoice,
                     played: false,
                     timestamp: Date.now(),
                     broadcasterId: broadcasterId
@@ -2411,7 +2489,7 @@ EK TALİMAT: ${aiInst}`;
             }
 
             // --- ADMIN / MOD ---
-            else if (lowMsg.startsWith('!sustur')) {
+            else if (isEnabled('sustur') && lowMsg.startsWith('!sustur')) {
                 const target = args[0]?.replace('@', '').toLowerCase();
                 if (target) {
                     const muteCost = settings.mute_cost || 10000;
@@ -3879,7 +3957,8 @@ db.ref('channels').on('child_added', (snapshot) => {
         if (event && !event.notified && event.source === 'market') {
             const userMatch = event.text.match(/@(\w+)/);
             const buyer = userMatch ? userMatch[1] : "Bir kullanıcı";
-            await sendChatMessage(`🎙️ @${buyer}, Market'ten TTS (Sesli Mesaj) gönderdi!`, channelId);
+            const voiceNote = event.voice ? ` [${event.voice.toUpperCase()}]` : "";
+            await sendChatMessage(`🎙️ @${buyer}, Market'ten TTS (Sesli Mesaj) gönderdi!${voiceNote}`, channelId);
             await db.ref(`channels/${channelId}/stream_events/tts/${snap.key}`).update({ notified: true });
             // OVERLAY ALERT
             await db.ref(`channels/${channelId}/stream_events/alerts`).push({

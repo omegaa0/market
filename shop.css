@@ -239,6 +239,22 @@ header {
     border-color: rgba(5, 234, 106, 0.3);
 }
 
+.item-card.disabled {
+    opacity: 0.5;
+    pointer-events: none;
+    filter: grayscale(0.8);
+}
+
+.disabled-label {
+    background: var(--danger);
+    color: white;
+    font-size: 0.7rem;
+    font-weight: 800;
+    padding: 4px 10px;
+    border-radius: 6px;
+    letter-spacing: 1px;
+}
+
 .item-icon {
     font-size: 40px;
     margin-bottom: 20px;
@@ -377,6 +393,42 @@ header {
     .side-gif {
         display: none;
     }
+}
+
+/* BORSA ENHANCEMENTS */
+.borsa-card {
+    padding: 20px !important;
+    background: rgba(0, 0, 0, 0.2) !important;
+}
+
+.borsa-input {
+    width: 100% !important;
+    background: rgba(255, 255, 255, 0.05) !important;
+    border: 1px solid var(--glass-border) !important;
+    padding: 8px !important;
+    font-size: 0.9rem !important;
+    margin-bottom: 10px !important;
+    text-align: center;
+    border-radius: 8px !important;
+}
+
+/* TURKEY MAP WHITE STYLE */
+#turkey-map img {
+    opacity: 1 !important;
+    filter: brightness(0) invert(1) !important;
+    /* Forces it to be stark white */
+    transition: all 0.5s;
+}
+
+.map-wrapper {
+    background: #f0f0f0 !important;
+    /* Light background for the white map */
+}
+
+#map-overlay div {
+    background: rgba(0, 0, 0, 0.5) !important;
+    /* Dark dots on white map */
+    border: 1px solid white !important;
 }
 
 /* STAT MINI (PROFILE & PORTFOLIO) */

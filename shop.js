@@ -90,12 +90,11 @@ async function fetchKickPFP(username) {
         const pfpImg = document.getElementById('user-pfp');
         const fallback = document.getElementById('user-pfp-fallback');
 
-        // We use a proxy because Kick API has CORS protection
-        const res = await fetch(`https://kick.com/api/v2/channels/${username}`);
+        // Use our server proxy to bypass CORS
+        const res = await fetch(`/api/kick/pfp/${username}`);
         const data = await res.json();
-
-        if (data.user && data.user.profile_pic) {
-            pfpImg.src = data.user.profile_pic;
+        if (data.pfp) {
+            pfpImg.src = data.pfp;
             pfpImg.style.display = 'block';
             fallback.style.display = 'none';
         }
@@ -229,12 +228,12 @@ async function loadChannelMarket(channelId) {
     const chanName = channelData.username || "Kick Kanalı";
     document.getElementById('chan-name').innerText = chanName;
 
-    // Broadcaster PFP Fetch
+    // Broadcaster PFP Fetch via Proxy
     try {
-        const res = await fetch(`https://kick.com/api/v2/channels/${chanName}`);
+        const res = await fetch(`/api/kick/pfp/${chanName}`);
         const data = await res.json();
-        if (data.user && data.user.profile_pic) {
-            document.getElementById('chan-pfp').src = data.user.profile_pic;
+        if (data.pfp) {
+            document.getElementById('chan-pfp').src = data.pfp;
         }
     } catch (e) { console.log("Broadcaster PFP error", e); }
 
@@ -251,40 +250,44 @@ async function loadChannelMarket(channelId) {
     const marketGrid = document.getElementById('market-items');
     if (marketGrid) marketGrid.innerHTML = "";
 
+    const isEnabled = (cmd) => settings[cmd] !== false;
+
     // 1. MUTE
     const muteCost = settings.mute_cost || 10000;
-    renderItem("🚫 Kullanıcı Sustur", "Hedeflenen kişiyi 2 dakika boyunca susturur.", muteCost, "mute");
+    renderItem("🚫 Kullanıcı Sustur", "Hedeflenen kişiyi 2 dakika boyunca susturur.", muteCost, "mute", "", "", 0, !isEnabled('sustur'));
 
     // 2. TTS
     const ttsCost = settings.tts_cost || 2500;
-    renderItem("🎙️ TTS (Sesli Mesaj)", "Mesajınızı yayında seslendirir.", ttsCost, "tts");
+    renderItem("🎙️ TTS (Sesli Mesaj)", "Mesajınızı yayında farklı seslerle seslendirir. (Maks 500 karakter)", ttsCost, "tts", "", "", 0, !isEnabled('tts'));
 
     // 3. SR
     const srCost = settings.sr_cost || 5000;
-    renderItem("🎵 Şarkı İsteği (!sr)", "YouTube'dan istediğiniz şarkıyı açar.", srCost, "sr");
+    renderItem("🎵 Şarkı İsteği (!sr)", "YouTube'dan istediğiniz şarkıyı açar.", srCost, "sr", "", "", 0, !isEnabled('sr'));
 
     // 4. SOUNDS
     Object.entries(sounds).forEach(([name, data]) => {
-        renderItem(`🎵 Ses: !ses ${name}`, "Kanalda özel ses efekti çalar.", data.cost, "sound", name, data.url, data.duration || 0);
+        renderItem(`🎵 Ses: !ses ${name}`, "Kanalda özel ses efekti çalar.", data.cost, "sound", name, data.url, data.duration || 0, !isEnabled('ses'));
     });
 }
 
-function renderItem(name, desc, price, type, trigger = "", soundUrl = "", duration = 0) {
+function renderItem(name, desc, price, type, trigger = "", soundUrl = "", duration = 0, isDisabled = false) {
     const marketGrid = document.getElementById('market-items');
     if (!marketGrid) return;
 
     const card = document.createElement('div');
-    card.className = 'item-card';
+    card.className = `item-card ${isDisabled ? 'disabled' : ''}`;
     const icon = type === 'tts' ? '🎙️' : (type === 'mute' ? '🚫' : (type === 'sr' ? '🎵' : '🎼'));
+
     card.innerHTML = `
         <div style="display:flex; justify-content:space-between; align-items:flex-start;">
             <div class="item-icon">${icon}</div>
-            ${type === 'sound' ? `
+            ${type === 'sound' && !isDisabled ? `
                 <div style="display:flex; gap:10px;">
                     <button onclick="previewShopSound('${soundUrl}', ${duration})" style="background:none; border:none; color:var(--primary); cursor:pointer; font-size:1.5rem; padding:0;">▶️</button>
                     <button onclick="stopAllPreviews()" style="background:none; border:none; color:var(--danger); cursor:pointer; font-size:1.5rem; padding:0;">⏹️</button>
                 </div>
             ` : ''}
+            ${isDisabled ? `<span class="disabled-label">DEVREDIŞI</span>` : ''}
         </div>
         <h3>${name}</h3>
         <p>${desc}</p>
@@ -292,7 +295,9 @@ function renderItem(name, desc, price, type, trigger = "", soundUrl = "", durati
             <span class="price-tag" style="margin:0;">${parseInt(price).toLocaleString()} 💰</span>
             ${duration > 0 ? `<small style="color:#666">${duration}sn</small>` : ''}
         </div>
-        <button class="buy-btn" onclick="executePurchase('${type}', '${trigger}', ${price})">Hemen Uygula</button>
+        <button class="buy-btn" ${isDisabled ? 'disabled' : ''} onclick="executePurchase('${type}', '${trigger}', ${price})">
+            ${isDisabled ? 'Kapalı' : 'Hemen Uygula'}
+        </button>
     `;
     marketGrid.appendChild(card);
 }
@@ -333,8 +338,8 @@ async function executePurchase(type, trigger, price) {
 
     let userInput = "";
     if (type === 'tts') {
-        userInput = prompt("Mesajınızı girin:");
-        if (!userInput) return;
+        openTTSModal(price);
+        return;
     } else if (type === 'mute') {
         userInput = prompt("Susturulacak kullanıcının adını girin (Örn: aloske):");
         if (!userInput) return;
@@ -356,7 +361,7 @@ async function executePurchase(type, trigger, price) {
 
     if (type === 'tts') {
         await db.ref(`channels/${currentChannelId}/stream_events/tts`).push({
-            text: `@${currentUser} (Market) diyor ki: ${userInput}`,
+            text: `@${currentUser} diyor ki: ${userInput}`,
             played: false, notified: false, source: "market", timestamp: Date.now(), broadcasterId: currentChannelId
         });
     } else if (type === 'sound') {
@@ -381,6 +386,48 @@ async function executePurchase(type, trigger, price) {
         });
     }
     showToast("İşlem Başarılı! 🚀", "success");
+}
+
+function openTTSModal(price) {
+    const modal = document.getElementById('tts-modal');
+    modal.classList.remove('hidden');
+    modal.style.display = 'flex';
+    document.getElementById('tts-input').value = "";
+    document.getElementById('confirm-tts-buy').onclick = () => finalizeTTSPurchase(price);
+}
+
+function closeTTSModal() {
+    const modal = document.getElementById('tts-modal');
+    modal.classList.add('hidden');
+    modal.style.display = 'none';
+}
+
+async function finalizeTTSPurchase(price) {
+    const text = document.getElementById('tts-input').value.trim();
+    const voice = document.getElementById('tts-voice-select').value;
+
+    if (!text) return showToast("Mesaj boş olamaz!", "error");
+    if (text.length > 500) return showToast("Mesaj çok uzun!", "error");
+
+    const userSnap = await db.ref('users/' + currentUser).once('value');
+    const userData = userSnap.val() || { balance: 0 };
+    if (!userData.is_infinite && (userData.balance || 0) < price) {
+        return showToast("Bakiye yetersiz! ❌", "error");
+    }
+
+    if (!userData.is_infinite) {
+        await db.ref('users/' + currentUser).transaction(u => { if (u) u.balance -= price; return u; });
+    }
+
+    await db.ref(`channels/${currentChannelId}/stream_events/tts`).push({
+        text: `@${currentUser} diyor ki: ${text}`,
+        voice: voice,
+        played: false, notified: false, source: "market", timestamp: Date.now(), broadcasterId: currentChannelId
+    });
+
+    closeTTSModal();
+    showToast("TTS Mesajın yayına gönderildi! 🎙️", "success");
+    loadProfile();
 }
 
 function logout() {
@@ -423,6 +470,42 @@ function switchTab(id) {
 }
 
 let borsaActive = false;
+let stockHistory = {}; // { CODE: [p1, p2, p3... p20] }
+
+function drawStockChart(canvas, history, trend) {
+    if (!canvas || !history || history.length < 2) return;
+    const ctx = canvas.getContext('2d');
+    const w = canvas.width;
+    const h = canvas.height;
+    ctx.clearRect(0, 0, w, h);
+
+    ctx.beginPath();
+    ctx.strokeStyle = trend === 1 ? '#05ea6a' : '#ff4d4d';
+    ctx.lineWidth = 2;
+    ctx.lineJoin = 'round';
+
+    const min = Math.min(...history);
+    const max = Math.max(...history);
+    const range = max - min || 1;
+
+    history.forEach((val, i) => {
+        const x = (i / (history.length - 1)) * w;
+        const y = h - ((val - min) / range) * h * 0.8 - (h * 0.1);
+        if (i === 0) ctx.moveTo(x, y);
+        else ctx.lineTo(x, y);
+    });
+    ctx.stroke();
+
+    // Area
+    ctx.lineTo(w, h);
+    ctx.lineTo(0, h);
+    const grad = ctx.createLinearGradient(0, 0, 0, h);
+    grad.addColorStop(0, trend === 1 ? 'rgba(5,234,106,0.1)' : 'rgba(255,77,77,0.1)');
+    grad.addColorStop(1, 'transparent');
+    ctx.fillStyle = grad;
+    ctx.fill();
+}
+
 async function loadBorsa() {
     const container = document.getElementById('borsa-items');
     if (!container) return;
@@ -430,21 +513,33 @@ async function loadBorsa() {
     if (borsaActive) return;
     borsaActive = true;
 
+    if (currentUser === 'omegacyra') {
+        const resetBtn = document.createElement('button');
+        resetBtn.innerHTML = "🚨 TÜM HİSSELERİ SIFIRLA (ADMİN)";
+        resetBtn.className = "primary-btn";
+        resetBtn.style.background = "#ff4d4d";
+        resetBtn.style.color = "white";
+        resetBtn.style.marginBottom = "20px";
+        resetBtn.onclick = async () => {
+            if (!confirm("Tüm kullanıcıların tüm hisselerini silmek istediğine emin misin?")) return;
+            const res = await fetch('/api/borsa/reset', {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({ requester: 'omegacyra' })
+            });
+            const d = await res.json();
+            if (d.success) showToast(d.message, "success");
+        };
+        container.parentElement.insertBefore(resetBtn, container);
+    }
+
     container.innerHTML = `<div style="text-align:center; width:100%; padding:60px;"><div class="loader"></div><p style="margin-top:10px;">Borsa verileri yükleniyor...</p></div>`;
 
     const renderStocks = (stocks) => {
         if (!stocks) return;
 
-        // --- HATA KONTROLÜ ---
         if (stocks.error) {
-            console.error("Borsa Error Data:", stocks.error);
-            container.innerHTML = `
-                <div style="grid-column: 1 / -1; text-align:center; padding: 40px; background: rgba(255,50,50,0.05); border-radius: 15px; border: 1px solid rgba(255,50,50,0.2);">
-                    <div style="font-size: 2rem; margin-bottom: 10px;">⚠️</div>
-                    <h3 style="color:#ff4d4d;">Borsa Bağlantı Hatası</h3>
-                    <p style="font-size:0.8rem;">${stocks.error}</p>
-                </div>
-            `;
+            container.innerHTML = `<div class="error-box">${stocks.error}</div>`;
             return;
         }
 
@@ -458,57 +553,57 @@ async function loadBorsa() {
 
         entries.forEach(([code, data]) => {
             if (!data || typeof data !== 'object') return;
+
+            // Update history
+            if (!stockHistory[code]) stockHistory[code] = [];
+            stockHistory[code].push(data.price);
+            if (stockHistory[code].length > 20) stockHistory[code].shift();
+
             const trend = data.trend === 1 ? '📈' : '📉';
             const color = data.trend === 1 ? '#05ea6a' : '#ff4d4d';
             const diff = data.oldPrice ? (((data.price - data.oldPrice) / data.oldPrice) * 100).toFixed(2) : "0.00";
 
             const card = document.createElement('div');
-            card.className = 'item-card';
+            card.className = 'item-card borsa-card';
             card.innerHTML = `
-                <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:15px;">
-                    <span style="font-size:1.5rem;">🏦</span>
-                    <span style="color:${color}; font-weight:800; font-size:0.8rem; background:rgba(0,0,0,0.3); padding:4px 8px; border-radius:6px; border:1px solid ${color}33;">
+                <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:10px;">
+                    <span style="font-weight:800; font-size:1.1rem; color:var(--primary);">${code}</span>
+                    <span style="color:${color}; font-weight:800; font-size:0.75rem;">
                         ${data.trend === 1 ? '+' : ''}${diff}% ${trend}
                     </span>
                 </div>
-                <h3 style="margin:5px 0; font-size:1.2rem;">${code}</h3>
-                <div class="price-val" data-code="${code}" style="font-size:1.7rem; font-weight:800; color:white; margin:15px 0; transition: color 0.3s ease;">
-                    ${(data.price || 0).toLocaleString()} <span style="font-size:0.9rem; color:var(--primary);">💰</span>
+                
+                <canvas id="chart-${code}" width="200" height="60" style="width:100%; height:60px; margin:10px 0;"></canvas>
+
+                <div class="price-val" data-code="${code}" style="font-size:1.5rem; font-weight:800; color:white; margin:10px 0;">
+                    ${(data.price || 0).toLocaleString()} <span style="font-size:0.8rem; color:var(--primary);">💰</span>
                 </div>
-                <div style="display:grid; grid-template-columns: 1fr 1fr; gap:10px;">
-                    <button class="buy-btn" onclick="executeBorsaBuy('${code}', ${data.price})" style="background:var(--primary); color:black; font-weight:800; padding:10px;">AL</button>
-                    <button class="buy-btn" onclick="executeBorsaSell('${code}', ${data.price})" style="background:rgba(255,255,255,0.05); color:white; border:1px solid var(--glass-border); padding:10px;">SAT</button>
+
+                <div class="borsa-controls" style="margin-top:15px;">
+                    <input type="number" id="input-${code}" class="borsa-input" value="1" min="1" placeholder="Adet">
+                    <div style="display:grid; grid-template-columns: 1fr 1fr; gap:8px;">
+                        <button class="buy-btn" onclick="executeBorsaBuy('${code}', ${data.price})" style="background:var(--primary); color:black; font-weight:800; padding:8px;">AL</button>
+                        <button class="buy-btn" onclick="executeBorsaSell('${code}', ${data.price})" style="background:rgba(255,255,255,0.05); color:white; border:1px solid var(--glass-border); padding:8px;">SAT</button>
+                    </div>
                 </div>
             `;
             container.appendChild(card);
+            drawStockChart(document.getElementById(`chart-${code}`), stockHistory[code], data.trend);
         });
     };
 
-    // 1. Firebase Listener
     db.ref('global_stocks').on('value', snap => {
         if (snap.exists()) renderStocks(snap.val());
     });
-
-    // 2. HTTP Fallback (Emniyet için 1sn sonra API'yi sorgula eğer veri gelmediyse)
-    setTimeout(async () => {
-        if (container.querySelector('.loader')) {
-            try {
-                const res = await fetch('/api/borsa');
-                const data = await res.json();
-                if (container.querySelector('.loader')) renderStocks(data);
-            } catch (e) {
-                console.error("Borsa API Fallback Error:", e);
-            }
-        }
-    }, 1500);
 }
 
 async function executeBorsaBuy(code, price) {
     if (!currentUser) return;
-    const amount = prompt(`${code} hissesinden kaç adet almak istersin?`);
-    if (!amount || isNaN(amount) || amount <= 0) return;
+    const input = document.getElementById(`input-${code}`);
+    const amount = parseInt(input.value);
+    if (!amount || isNaN(amount) || amount <= 0) return showToast("Geçersiz miktar!", "error");
 
-    const total = price * parseInt(amount);
+    const total = price * amount;
     if (!confirm(`${amount} adet ${code} için ${total.toLocaleString()} 💰 ödenecek. Onaylıyor musun?`)) return;
 
     db.ref('users/' + currentUser).once('value', async (snap) => {
@@ -519,36 +614,39 @@ async function executeBorsaBuy(code, price) {
             if (user) {
                 if (!user.is_infinite) user.balance -= total;
                 if (!user.stocks) user.stocks = {};
-                user.stocks[code] = (user.stocks[code] || 0) + parseInt(amount);
+                user.stocks[code] = (user.stocks[code] || 0) + amount;
             }
             return user;
         });
         showToast(`${amount} adet ${code} alındı!`, "success");
+        loadProfile();
     });
 }
 
 async function executeBorsaSell(code, price) {
     if (!currentUser) return;
+    const input = document.getElementById(`input-${code}`);
+    const amount = parseInt(input.value);
+
     db.ref('users/' + currentUser).once('value', async (snap) => {
         const u = snap.val() || {};
         const owned = u.stocks?.[code] || 0;
 
         if (owned <= 0) return showToast("Bu hisseden elinde yok!", "error");
+        if (!amount || isNaN(amount) || amount <= 0) return showToast("Geçersiz miktar!", "error");
+        if (amount > owned) return showToast("Elindekinden fazlasını satamazsın!", "error");
 
-        const amount = prompt(`Kaç adet satmak istersin? (Mevcut: ${owned})`);
-        if (!amount || isNaN(amount) || amount <= 0) return;
-        if (parseInt(amount) > owned) return showToast("Elindekinden fazlasını satamazsın!", "error");
-
-        const total = price * parseInt(amount);
+        const total = price * amount;
         await db.ref('users/' + currentUser).transaction(user => {
             if (user) {
                 user.balance = (user.balance || 0) + total;
-                user.stocks[code] -= parseInt(amount);
+                user.stocks[code] -= amount;
                 if (user.stocks[code] <= 0) delete user.stocks[code];
             }
             return user;
         });
         showToast(`${amount} adet ${code} satıldı! Kazanç: ${total.toLocaleString()} 💰`, "success");
+        loadProfile();
     });
 }
 

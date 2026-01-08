@@ -246,7 +246,7 @@
                         style="display: grid; grid-template-columns: 1.5fr 1fr; gap: 25px; margin-top:20px; align-items: flex-start;">
                         <!-- Harita Alanı (Sticky) -->
                         <div class="map-wrapper glass-panel"
-                            style="position:sticky; top:20px; padding: 20px; overflow: hidden; background: #0e0e0e; min-height: 500px; display: flex; align-items: center; justify-content: center; border-radius: 20px; border: 1px solid rgba(255,255,255,0.05);">
+                            style="position:sticky; top:20px; padding: 20px; overflow: hidden; min-height: 500px; display: flex; align-items: center; justify-content: center; border-radius: 20px;">
 
                             <div id="turkey-map"
                                 style="width: 100%; max-width: 850px; aspect-ratio: 1000 / 450; position: relative; margin: 0 auto; z-index: 1;">
@@ -308,6 +308,38 @@
                         <!-- JS fills -->
                     </div>
                 </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- TTS MODAL -->
+    <div id="tts-modal" class="hidden"
+        style="position:fixed; top:0; left:0; width:100%; height:100%; background:rgba(0,0,0,0.85); z-index:10000; display:flex; align-items:center; justify-content:center; backdrop-filter:blur(10px);">
+        <div class="glass-panel" style="width:100%; max-width:500px; padding:30px; position:relative;">
+            <button onclick="closeTTSModal()"
+                style="position:absolute; top:20px; right:20px; background:none; border:none; color:#666; cursor:pointer; font-size:1.5rem;">&times;</button>
+            <h2 style="margin-bottom:20px; color:var(--primary);">🎙️ TTS Mesajı Gönder</h2>
+
+            <label style="display:block; margin-bottom:10px; font-weight:600; font-size:0.9rem; color:#aaa;">Mesajınız
+                (Maks 500 Karakter)</label>
+            <textarea id="tts-input" maxlength="500" placeholder="Yayında okunacak mesajı yazın..."
+                style="width:100%; height:120px; background:rgba(255,255,255,0.05); border:1px solid var(--glass-border); border-radius:12px; padding:15px; color:white; font-family:inherit; resize:none; font-size:1rem; margin-bottom:20px;"></textarea>
+
+            <label style="display:block; margin-bottom:10px; font-weight:600; font-size:0.9rem; color:#aaa;">Ses
+                Seçimi</label>
+            <select id="tts-voice-select"
+                style="width:100%; background:rgba(255,255,255,0.05); border:1px solid var(--glass-border); border-radius:12px; padding:12px; color:white; font-size:1rem; margin-bottom:30px; cursor:pointer;">
+                <option value="standart">Standart (Normal)</option>
+                <option value="karadeniz">Karadeniz (Hızlı & Hareketli) 🌊</option>
+                <option value="kalin">Kalın (Derin Ses)</option>
+                <option value="ince">İnce (Tiz Ses)</option>
+                <option value="cocuk">Çocuk (Sevimli)</option>
+                <option value="robot">Robotik (Mekanik)</option>
+            </select>
+
+            <div style="display:flex; gap:15px;">
+                <button onclick="closeTTSModal()" class="secondary-btn" style="flex:1;">İptal</button>
+                <button id="confirm-tts-buy" class="primary-btn" style="flex:2;">Bakiye Harca & Gönder</button>
             </div>
         </div>
     </div>
