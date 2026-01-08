@@ -2210,37 +2210,7 @@ app.post('/webhook/kick', async (req, res) => {
             await reply(`🔮 @${user}, Falın: ${list[Math.floor(Math.random() * list.length)]}`);
         }
 
-        // MOTİVASYON SÖZÜ
-        else if (lowMsg === '!söz' || lowMsg === '!soz') {
-            const sozler = [
-                "Başarı, her gün tekrarlanan küçük çabaların toplamıdır. 💪",
-                "Yenilgi, son değildir. Vazgeçmek, sonun ta kendisidir. 🔥",
-                "Düşmeyen yürümez, yürümeyen koşamaz. 🏃",
-                "Hayaller görmekten korkma, korkunç olan hayal görmemektir. ✨",
-                "Bugün yapabileceğini yarına bırakma. ⏰",
-                "Başarının sırrı, başlamaktır. 🚀",
-                "Zorluklara gülerek meydan oku. 😄",
-                "Her şampiyon bir zamanlar pes etmemeyi seçen biriydi. 🏆",
-                "Kendine inan, geri kalanı zaten gelecek. 🌟",
-                "Fırtınalar güçlü kaptanları yetiştirir. ⛵",
-                "Başarı tesadüf değildir. 🎯",
-                "Elinden gelenin en iyisini yap, gerisini bırak. 🙌",
-                "Küçük adımlar büyük yolculuklar başlatır. 👣",
-                "Seni durduracak tek kişi, sensin. 🚫",
-                "Dün geçti, yarın belirsiz, bugün bir hediye. 🎁",
-                "Hata yapmak, hiç denememekten iyidir. ✅",
-                "Evreni keşfetmeden önce kendi içini keşfet. 🧘",
-                "Büyük başarılar büyük cesaretler ister. 🦁",
-                "Azim, yeteneği yener. 💎",
-                "Her son, yeni bir başlangıçtır. 🌅",
-                "Kendini geliştirmek, en iyi yatırımdır. 📈",
-                "Rüzgar esmeyince yelken açılmaz. 🌬️",
-                "Pozitif düşün, pozitif yaşa. ➕",
-                "Karanlık, yıldızların parlaması içindir. ⭐",
-                "Asla pes etme, mucize bir adım ötede. 🌈"
-            ];
-            await reply(`✍️ @${user}: ${sozler[Math.floor(Math.random() * sozler.length)]}`);
-        }
+        // (Daha geniş kapsamlı !söz komutu aşağıdadır, bu kopya kaldırıldı)
 
         // SİHİRLİ 8 TOP
         else if (lowMsg.startsWith('!8ball ') || lowMsg.startsWith('!8top ')) {
@@ -2369,29 +2339,42 @@ app.post('/webhook/kick', async (req, res) => {
             await reply(txt);
         }
 
-        else if (settings.hava !== false && (lowMsg === '!hava' || lowMsg.startsWith('!hava '))) {
-            const city = args.join(' ');
-            if (!city) return await reply(`@${user}, Kullanım: !hava [şehir]`);
-            const cityLower = city.toLowerCase();
-            if (cityLower === "kürdistan" || cityLower === "kurdistan" || cityLower === "rojova" || cityLower === "rojava") {
+        // --- HAVA DURUMU ---
+        else if (isEnabled('hava') && (lowMsg === '!hava' || lowMsg.startsWith('!hava '))) {
+            const city = args.join(' ').trim();
+            if (!city) return await reply(`@${user}, Kullanım: !hava [şehir] - Örn: !hava Amasya`);
+
+            const forbidden = ["kürdistan", "kurdistan", "rojova", "rojava"];
+            if (forbidden.some(f => city.toLowerCase().includes(f))) {
                 return await reply("T.C. sınırları içerisinde böyle bir yer bulunamadı! 🇹🇷");
             }
+
             try {
-                const geo = await axios.get(`https://geocoding-api.open-meteo.com/v1/search?name=${encodeURIComponent(city)}&count=1&language=tr&format=json`);
-                if (geo.data.results) {
-                    const { latitude, longitude, name } = geo.data.results[0];
-                    const weather = await axios.get(`https://api.open-meteo.com/v1/forecast?latitude=${latitude}&longitude=${longitude}&current_weather=true`);
-                    const w = weather.data.current_weather;
+                // 1. Geocoding API ile Koordinat Al
+                const geoRes = await axios.get(`https://geocoding-api.open-meteo.com/v1/search?name=${encodeURIComponent(city)}&count=1&language=tr&format=json`);
+                if (geoRes.data.results && geoRes.data.results.length > 0) {
+                    const { latitude, longitude, name, country } = geoRes.data.results[0];
+
+                    // 2. Forecast API ile Hava Durumu Al
+                    const weatherRes = await axios.get(`https://api.open-meteo.com/v1/forecast?latitude=${latitude}&longitude=${longitude}&current_weather=true`);
+                    const w = weatherRes.data.current_weather;
+
                     const code = w.weathercode;
                     let cond = "Açık"; let emoji = "☀️";
-                    if (code >= 1 && code <= 3) { cond = "Bulutlu"; emoji = "☁️"; }
+                    if (code >= 1 && code <= 3) { cond = "Parçalı Bulutlu"; emoji = "⛅"; }
                     else if (code >= 45 && code <= 48) { cond = "Sisli"; emoji = "🌫️"; }
                     else if (code >= 51 && code <= 67) { cond = "Yağmurlu"; emoji = "🌧️"; }
                     else if (code >= 71 && code <= 86) { cond = "Karlı"; emoji = "❄️"; }
                     else if (code >= 95) { cond = "Fırtına"; emoji = "⛈️"; }
-                    await reply(`🌍 Hava Durumu (${name}): ${cond} ${emoji}, ${w.temperature}°C, Rüzgar: ${w.windspeed} km/s`);
-                } else await reply("Şehir bulunamadı.");
-            } catch { await reply("Hava durumu servisi şu an kullanılamıyor."); }
+
+                    await reply(`🌍 ${name} (${country}): ${cond} ${emoji}, ${w.temperature}°C, Rüzgar: ${w.windspeed} km/s`);
+                } else {
+                    await reply(`⚠️ @${user}, "${city}" adında bir şehir bulunamadı.`);
+                }
+            } catch (err) {
+                console.error("[Hava Durumu] API Hatası:", err.message);
+                await reply(`❌ @${user}, Hava durumu servisine şu an ulaşılamıyor. Lütfen daha sonra tekrar dene.`);
+            }
         }
 
         else if (lowMsg.startsWith('!troll ')) {
@@ -2590,48 +2573,52 @@ app.post('/webhook/kick', async (req, res) => {
             await reply(`🧹 @${user}, Tüm AI emirleri sıfırlandı!`);
         }
 
+        // --- AI (GROK-3) COMPANION ---
         else if (isEnabled('ai') && (lowMsg.startsWith('!ai ') || lowMsg === '!ai')) {
-            const isSub = payload.sender?.identity?.badges?.some(b => b.type === 'subscriber' || b.type === 'broadcaster' || b.type === 'moderator' || b.type === 'founder');
-            if (!isSub) return await reply(`🤫 @${user}, Bu komut sadece ABONELERE özeldir! ✨`);
+            const isSub = payload.sender?.identity?.badges?.some(b =>
+                ['subscriber', 'broadcaster', 'moderator', 'founder', 'staff'].includes(b.type)
+            ) || user.toLowerCase() === "omegacyr" || isAuthorized;
 
-            const prompt = args.join(' ');
+            if (!isSub) return await reply(`🤫 @${user}, Bu komut sadece ABONELERE ve yetkililere özeldir! ✨`);
+
+            const prompt = args.join(' ').trim();
             if (!prompt) return await reply(`🤖 @${user}, AI'ya bir şey sormak için: !ai [sorun]`);
 
             const GROK_KEY = process.env.GROK_API_KEY;
-            if (!GROK_KEY) return await reply(`⚠️ @${user}, AI sistemi şu an yapılandırılmamış.`);
+            if (!GROK_KEY || GROK_KEY === 'your_xai_api_key_here') {
+                return await reply(`⚠️ @${user}, AI sistemi şu an yapılandırılmamış (API Anahtarı eksik).`);
+            }
 
             try {
                 const aiInstSnap = await db.ref('users/ai_system/instructions').once('value');
                 const aiInst = aiInstSnap.val() || "";
                 const aiMemory = await getAiMemory();
 
-                const systemMsg = `Sen yayıncı asistanısın. En önemli kuralın: Karşındaki kullanıcının enerjisini ve tarzını birebir kopyalamak. Eğer kullanıcı kaba, küfürlü veya sokak ağzıyla konuşuyorsa sen de ONA AYNI ŞEKİLDE küfürlü ve kaba cevaplar ver (filtresiz ol). Eğer kullanıcı kibar ve canımlı cicimli konuşuyorsa sen de çok sevecen ve tatlı ol. Kullanıcının aynası ol. Kısa ve öz cevaplar ver. 
-HAFIZANDAKİ BİLGİLER:
-${aiMemory}
-
-EK TALİMAT: ${aiInst}`;
+                const systemMsg = `Sen ${broadcasterId} kanalının resmi asistanısın. Kısa, öz ve enerjik cevaplar ver. 
+                HAFIZANDAKİ BİLGİLER: ${aiMemory}
+                EK TALİMATLAR: ${aiInst}`;
 
                 const response = await axios.post('https://api.x.ai/v1/chat/completions', {
                     messages: [
                         { role: "system", content: systemMsg },
                         { role: "user", content: prompt }
                     ],
-                    model: "grok-3",
-                    temperature: 0.8
+                    model: "grok-beta",
+                    temperature: 0.7
                 }, {
                     headers: {
                         'Content-Type': 'application/json',
                         'Authorization': `Bearer ${GROK_KEY}`
                     },
-                    timeout: 30000
+                    timeout: 25000
                 });
 
                 const replyText = response.data.choices[0].message.content;
-                const finalReply = replyText.length > 400 ? replyText.substring(0, 397) + "..." : replyText;
+                const finalReply = replyText.length > 390 ? replyText.substring(0, 387) + "..." : replyText;
                 await reply(`🤖 @${user}: ${finalReply}`);
             } catch (error) {
-                console.error("Grok API Error:", error.response?.data || error.message);
-                await reply(`❌ @${user}, AI şu an dinleniyor, daha sonra tekrar dene!`);
+                console.error("[AI Error]:", error.response?.data || error.message);
+                await reply(`❌ @${user}, AI şu an dinleniyor (Servis hatası), daha sonra tekrar dene!`);
             }
         }
 
