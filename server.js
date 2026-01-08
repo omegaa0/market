@@ -754,6 +754,82 @@ async function generateAiImage(prompt, imageId) {
     }
 }
 
+async function sendChatMessage(message, broadcasterId) {
+    try {
+        const snap = await db.ref('channels/' + broadcasterId).once('value');
+        const chan = snap.val();
+        if (!chan || !chan.access_token) return;
+
+        const url = `https://api.kick.com/public/v1/chat/messages`;
+        await axios.post(url, {
+            content: message,
+            type: "text"
+        }, {
+            headers: {
+                'Authorization': `Bearer ${chan.access_token}`,
+                'Content-Type': 'application/json',
+                'User-Agent': 'Mozilla/5.0'
+            }
+        });
+    } catch (e) {
+        if (e.response?.status === 401) {
+            await refreshChannelToken(broadcasterId);
+        }
+        console.error(`[Chat Error] ${broadcasterId}:`, e.response?.data || e.message);
+    }
+}
+
+async function fetchKickGraphQL(slug) {
+    try {
+        const query = `query Channel($slug: String!) {
+            channel(slug: $slug) {
+                user { username }
+                livestream { is_live viewers viewer_count session_title }
+                followersCount
+            }
+        }`;
+        const response = await axios.post('https://kick.com/api/internal/v1/graphql', {
+            query,
+            variables: { slug }
+        }, {
+            headers: {
+                'Content-Type': 'application/json',
+                'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36'
+            },
+            timeout: 5000
+        });
+        return response.data?.data?.channel;
+    } catch (e) {
+        return null;
+    }
+}
+
+async function syncChannelStats() {
+    try {
+        const channelsSnap = await db.ref('channels').once('value');
+        const channels = channelsSnap.val() || {};
+
+        for (const [id, chan] of Object.entries(channels)) {
+            if (!chan.username) continue;
+
+            const gql = await fetchKickGraphQL(chan.username);
+            if (gql) {
+                const updates = {
+                    last_sync: Date.now(),
+                    followers: gql.followersCount || 0
+                };
+                if (gql.livestream) {
+                    updates.viewers = gql.livestream.viewer_count || 0;
+                    updates.is_live = gql.livestream.is_live;
+                }
+                await db.ref(`channels/${id}/stats`).update(updates);
+            }
+        }
+    } catch (e) {
+        console.error("Sync Stats Error:", e.message);
+    }
+}
+
 async function refreshChannelToken(broadcasterId) {
     const snap = await db.ref('channels/' + broadcasterId).once('value');
     if (!snap.val()) return;
