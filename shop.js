@@ -568,18 +568,31 @@ function drawStockChart(canvas, history, trend) {
     ctx.fill();
 
     // FİYAT SIRALAMASI (Sağ Tarafa Çizelge)
-    ctx.fillStyle = '#666';
-    ctx.font = '8px monospace';
-    ctx.textAlign = 'right';
-
     const labels = [
-        { v: max, y: h * 0.1 + 8 },
-        { v: (max + min) / 2, y: h / 2 + 4 },
-        { v: min, y: h * 0.9 }
+        { v: max, y: h * 0.15 },
+        { v: (max + min) / 2, y: h / 2 },
+        { v: min, y: h * 0.85 }
     ];
 
     labels.forEach(l => {
-        ctx.fillText(Math.round(l.v).toLocaleString(), w - 2, l.y);
+        // Label Background
+        ctx.fillStyle = 'rgba(0,0,0,0.3)';
+        ctx.fillRect(effectiveW + 2, l.y - 7, paddingRight - 4, 14);
+
+        // Label Text
+        ctx.fillStyle = '#888';
+        ctx.font = 'bold 9px monospace';
+        ctx.textAlign = 'center';
+        ctx.fillText(Math.round(l.v).toLocaleString(), effectiveW + (paddingRight / 2), l.y + 3);
+
+        // Dashed Guide Line
+        ctx.beginPath();
+        ctx.setLineDash([5, 5]);
+        ctx.strokeStyle = 'rgba(255,255,255,0.05)';
+        ctx.moveTo(0, l.y);
+        ctx.lineTo(effectiveW, l.y);
+        ctx.stroke();
+        ctx.setLineDash([]); // Reset
     });
 }
 

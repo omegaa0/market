@@ -402,14 +402,14 @@ let cycleDuration = 0;
 
 // --- EMLAK SİSTEMİ (GLOBAL PAZAR) ---
 const REAL_ESTATE_TYPES = [
-    { name: "Küçük Esnaf Dükkanı", minPrice: 1999999, maxPrice: 3500000, minInc: 15000, maxInc: 25000, type: "low" },
-    { name: "Pide Salonu", minPrice: 2500000, maxPrice: 4500000, minInc: 20000, maxInc: 35000, type: "low" },
-    { name: "Lüks Rezidans Katı", minPrice: 5000000, maxPrice: 12000000, minInc: 45000, maxInc: 85000, type: "med" },
-    { name: "İş Merkezi", minPrice: 15000000, maxPrice: 25000000, minInc: 120000, maxInc: 220000, type: "med" },
-    { name: "Butik Otel", minPrice: 20000000, maxPrice: 35000000, minInc: 180000, maxInc: 320000, type: "med" },
-    { name: "Gece Kulübü", minPrice: 10000000, maxPrice: 18000000, minInc: 90000, maxInc: 160000, type: "med" },
-    { name: "Alışveriş Merkezi", minPrice: 40000000, maxPrice: 50000000, minInc: 450000, maxInc: 750000, type: "high" },
-    { name: "Havalimanı Terminali", minPrice: 85000000, maxPrice: 100000000, minInc: 1200000, maxInc: 2500000, type: "high" }
+    { name: "Küçük Esnaf Dükkanı", minPrice: 1999999, maxPrice: 5000000, minInc: 3000, maxInc: 5000, type: "low" },
+    { name: "Pide Salonu", minPrice: 3500000, maxPrice: 8000000, minInc: 4500, maxInc: 7000, type: "low" },
+    { name: "Lüks Rezidans Katı", minPrice: 8000000, maxPrice: 15000000, minInc: 8000, maxInc: 12000, type: "med" },
+    { name: "İş Merkezi", minPrice: 15000000, maxPrice: 25000000, minInc: 10000, maxInc: 15000, type: "med" },
+    { name: "Butik Otel", minPrice: 20000000, maxPrice: 35000000, minInc: 12000, maxInc: 18000, type: "med" },
+    { name: "Gece Kulübü", minPrice: 15000000, maxPrice: 30000000, minInc: 11000, maxInc: 16000, type: "med" },
+    { name: "Alışveriş Merkezi", minPrice: 35000000, maxPrice: 45000000, minInc: 18000, maxInc: 22000, type: "high" },
+    { name: "Havalimanı Terminali", minPrice: 45000000, maxPrice: 55000000, minInc: 22000, maxInc: 25000, type: "high" }
 ];
 
 async function getCityMarket(cityId) {
@@ -537,6 +537,35 @@ setInterval(saveHourlyStockHistory, 3600000); // 1 Saat
 // Borsa güncelleme (Her 2 saniyede bir - Daha ağır ekonomi için)
 setInterval(updateGlobalStocks, 2000);
 updateGlobalStocks(); // Server açıldığında hemen ilk verileri oluştur
+
+app.post('/api/borsa/reset', async (req, res) => {
+    try {
+        const { requester } = req.body;
+        if (requester !== 'omegacyr') {
+            return res.status(403).json({ success: false, error: "Yetkisiz erişim!" });
+        }
+
+        console.log("🚨 BORSA SIFIRLAMA BAŞLATILDI (Omegacyr tarafından)");
+        const usersSnap = await db.ref('users').once('value');
+        const users = usersSnap.val() || {};
+
+        const updates = {};
+        for (const username in users) {
+            if (users[username].stocks) {
+                updates[`users/${username}/stocks`] = null;
+            }
+        }
+
+        if (Object.keys(updates).length > 0) {
+            await db.ref().update(updates);
+        }
+
+        res.json({ success: true, message: "Tüm kullanıcıların borsa portföyleri başarıyla sıfırlandı." });
+    } catch (e) {
+        console.error("Borsa Reset Error:", e.message);
+        res.status(500).json({ success: false, error: e.message });
+    }
+});
 
 // --- EMLAK GELİR DAĞITIMI (Her 1 Saat) ---
 async function distributeRealEstateIncome() {
