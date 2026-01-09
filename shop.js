@@ -606,9 +606,12 @@ async function loadBorsa() {
                 card.innerHTML = `
                     <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:10px;">
                         <span style="font-weight:800; font-size:1.1rem; color:var(--primary);">${code}</span>
-                        <span class="trend-val" style="color:${statusColor}; font-weight:800; font-size:0.75rem;">
-                            ${data.trend === 1 ? '+' : ''}${priceDiff}% ${trendIcon}
-                        </span>
+                        <div style="text-align:right;">
+                            <span class="trend-val" style="color:${statusColor}; font-weight:800; font-size:0.75rem;">
+                                ${data.trend === 1 ? '+' : ''}${priceDiff}% ${trendIcon}
+                            </span>
+                            <div style="font-size:0.6rem; color:#666; margin-top:2px;">SAATLİK DEĞİŞİM</div>
+                        </div>
                     </div>
                     
                     <canvas id="chart-${code}" width="200" height="60" style="width:100%; height:60px; margin:10px 0;"></canvas>
@@ -651,14 +654,14 @@ async function loadBorsa() {
         }
     });
 
-    // Auto-refresh chart displays if data is already there
+    // Auto-refresh chart displays (Slower refresh to match server)
     setInterval(() => {
         const borsaTab = document.getElementById('tab-borsa');
         if (borsaTab && borsaTab.classList.contains('hidden')) return;
         db.ref('global_stocks').once('value').then(snap => {
             if (snap.exists()) renderStocks(snap.val());
         });
-    }, 5000);
+    }, 30000);
 }
 
 async function executeBorsaBuy(code, price) {
@@ -823,8 +826,22 @@ async function claimQuest(questId) {
 async function loadProfile() {
     if (!currentUser) return;
     const container = document.getElementById('profile-card');
-    db.ref('users/' + currentUser).once('value', snap => {
+    try {
+        const snap = await db.ref('users/' + currentUser).once('value');
         const u = snap.val() || { balance: 0 };
+
+        // Update display name and balance elements
+        const dispName = document.getElementById('display-name');
+        const heroName = document.getElementById('hero-name');
+        const balanceEl = document.getElementById('user-balance');
+
+        if (dispName) dispName.innerText = (u.display_name || currentUser).toUpperCase();
+        if (heroName) heroName.innerText = (u.display_name || currentUser).toUpperCase();
+        if (balanceEl) balanceEl.innerText = `${(u.balance || 0).toLocaleString()} 💰`;
+
+        // Updated PFP Logic with Proxy
+        fetchKickPFP(currentUser, 'user-pfp', 'user-pfp-fallback');
+
         container.innerHTML = `
             <div style="display:flex; flex-direction:column; gap:25px;">
                 <div style="display:grid; grid-template-columns: 1fr 1fr; gap:20px;">
@@ -911,7 +928,10 @@ async function loadProfile() {
                 </div>
             </div>
         `;
-    });
+    } catch (e) {
+        console.error("Load Profile Error:", e);
+        container.innerHTML = "<p>Profil yüklenirken bir hata oluştu.</p>";
+    }
 }
 
 const EMLAK_CITIES = [
@@ -1006,9 +1026,18 @@ function loadEmlak() {
 }
 
 function renderEmlakMap() {
+    // Clear current map markers
     const overlay = document.getElementById('map-overlay');
     if (!overlay) return;
-    overlay.innerHTML = "";
+    overlay.innerHTML = '';
+
+    // Turkey Map - Improved Visuals & Quality
+    const mapImg = document.getElementById('map-img');
+    if (mapImg) {
+        mapImg.src = "https://raw.githubusercontent.com/bariserece/turkiye-haritasi/master/turkiye.svg";
+        mapImg.style.filter = "invert(0.9) sepia(1) hue-rotate(100deg) saturate(4) brightness(1.2)";
+        mapImg.style.opacity = "0.85";
+    }
 
     EMLAK_CITIES.forEach(city => {
         const dot = document.createElement('div');

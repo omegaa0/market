@@ -386,13 +386,13 @@ const INITIAL_STOCKS = {
 
 // --- EMLAK SİSTEMİ (GLOBAL PAZAR) ---
 const REAL_ESTATE_TYPES = [
-    { name: "Küçük Esnaf Dükkanı", minPrice: 1999999, maxPrice: 4000000, minInc: 5000, maxInc: 7000, type: "low" },
-    { name: "Pide Salonu", minPrice: 4500000, maxPrice: 8000000, minInc: 7000, maxInc: 9000, type: "low" },
-    { name: "Lüks Rezidans Katı", minPrice: 9000000, maxPrice: 15000000, minInc: 9000, maxInc: 12000, type: "med" },
-    { name: "Gece Kulübü", minPrice: 16000000, maxPrice: 20000000, minInc: 12000, maxInc: 14000, type: "med" },
-    { name: "Butik Otel", minPrice: 22000000, maxPrice: 30000000, minInc: 15000, maxInc: 17000, type: "med" },
-    { name: "İş Merkezi", minPrice: 32000000, maxPrice: 40000000, minInc: 17000, maxInc: 18500, type: "high" },
-    { name: "Alışveriş Merkezi", minPrice: 42000000, maxPrice: 50000000, minInc: 19000, maxInc: 20000, type: "high" }
+    { name: "Küçük Esnaf Dükkanı", minPrice: 2000000, maxPrice: 5000000, minInc: 5000, maxInc: 7000, type: "low" },
+    { name: "Pide Salonu", minPrice: 5500000, maxPrice: 10000000, minInc: 7000, maxInc: 10000, type: "low" },
+    { name: "Lüks Rezidans Katı", minPrice: 12000000, maxPrice: 18000000, minInc: 10000, maxInc: 13000, type: "med" },
+    { name: "Gece Kulübü", minPrice: 20000000, maxPrice: 28000000, minInc: 13000, maxInc: 15500, type: "med" },
+    { name: "Butik Otel", minPrice: 30000000, maxPrice: 38000000, minInc: 16000, maxInc: 18000, type: "med" },
+    { name: "İş Merkezi", minPrice: 40000000, maxPrice: 45000000, minInc: 18000, maxInc: 19500, type: "high" },
+    { name: "Alışveriş Merkezi", minPrice: 46000000, maxPrice: 50000000, minInc: 19500, maxInc: 20000, type: "high" }
 ];
 
 async function getCityMarket(cityId) {
@@ -442,12 +442,14 @@ async function updateGlobalStocks() {
         for (const [code, data] of Object.entries(stocks)) {
             const oldPrice = data.price || INITIAL_STOCKS[code]?.price || 100;
 
-            // Daha agresif saniyelik hareket: -%1.5 ile +%1.5 arası
-            const changePercent = (Math.random() * 3 - 1.5) / 100;
+            // Daha gerçekçi ve yavaş hareket: -%0.5 ile +%0.5 arası
+            // Şans faktörü: %10 ihtimalle hareket eder
+            if (Math.random() > 0.1) continue;
+
+            const changePercent = (Math.random() * 1.0 - 0.5) / 100;
             let change = oldPrice * changePercent;
 
-            // Minimum 1 birim hareket sağla (eğer değişim 0 değilse)
-            if (Math.abs(change) < 0.5 && changePercent !== 0) {
+            if (Math.abs(change) < 1 && changePercent !== 0) {
                 change = changePercent > 0 ? 1 : -1;
             }
 
@@ -506,9 +508,9 @@ async function saveHourlyStockHistory() {
 }
 setInterval(saveHourlyStockHistory, 3600000); // 1 Saat
 
-// Borsa güncelleme (Her 1 saniyede bir)
-setInterval(updateGlobalStocks, 1000);
-updateGlobalStocks(); // Server açıldığında hemen ilk verileri oluştur
+// Borsa güncelleme (Her 10 saniyede bir - Daha yavaş)
+setInterval(updateGlobalStocks, 10000);
+updateGlobalStocks();
 
 // --- EMLAK GELİR DAĞITIMI (Her 1 Saat) ---
 async function distributeRealEstateIncome() {
@@ -1162,24 +1164,39 @@ let cachedAppToken = null;
 let appTokenExpires = 0;
 
 async function getAppAccessToken() {
-    const { KICK_CLIENT_ID, KICK_CLIENT_SECRET } = process.env;
+    const { KICK_CLIENT_ID, KICK_CLIENT_SECRET, KICK_BOT_TOKEN } = process.env;
     const CLIENT_ID = KICK_CLIENT_ID || "01KDQNP2M930Y7YYNM62TVWJCP";
     const CLIENT_SECRET = KICK_CLIENT_SECRET;
 
+    // 1. ÖNCELİK: .env içindeki sabit KICK_BOT_TOKEN
+    if (KICK_BOT_TOKEN && KICK_BOT_TOKEN.trim().length > 10) {
+        return KICK_BOT_TOKEN.trim();
+    }
+
+    // 2. ÖNCELİK: Önbelleğe alınmış App Token
     if (cachedAppToken && Date.now() < appTokenExpires) return cachedAppToken;
 
+    // 3. ÖNCELİK: Client Credentials ile yeni token al
     try {
+        if (!CLIENT_SECRET) {
+            console.warn("[Auth Warning] KICK_CLIENT_SECRET eksik, bot tokenı alınamadı.");
+            return null;
+        }
+
         const params = new URLSearchParams();
         params.append('grant_type', 'client_credentials');
         params.append('client_id', CLIENT_ID);
         params.append('client_secret', CLIENT_SECRET);
-        params.append('scope', 'chat:write'); // Bazı app'lerde bu zorunludur
+        params.append('scope', 'chat:write');
 
-        const response = await axios.post('https://id.kick.com/oauth/token', params);
-        if (response.data.access_token) {
+        const response = await axios.post('https://id.kick.com/oauth/token', params, {
+            headers: { 'Content-Type': 'application/x-www-form-urlencoded' }
+        });
+
+        if (response.data && response.data.access_token) {
             cachedAppToken = response.data.access_token;
             appTokenExpires = Date.now() + (response.data.expires_in * 1000) - 60000;
-            console.log("[Auth] Uygulama (Bot) Tokenı başarıyla alındı.");
+            console.log("[Auth] Uygulama (Bot) Tokenı başarıyla yenilendi.");
             return cachedAppToken;
         }
     } catch (e) {
@@ -1203,15 +1220,21 @@ async function sendChatMessage(message, broadcasterId) {
         const snap = await db.ref('channels/' + broadcasterId).once('value');
         const chan = snap.val();
 
-        const finalToken = botToken || chan?.access_token;
-        const channelSlug = chan?.slug || chan?.username || broadcasterId;
+        let finalToken = botToken;
+        let isUsingBot = true;
 
         if (!finalToken) {
-            console.error(`[Chat] ${broadcasterId} için token bulunamadı.`);
+            finalToken = chan?.access_token;
+            isUsingBot = false;
+            console.warn(`[Chat] ${broadcasterId} için BOT tokenı bulunamadı, BROADCASTER hesabına düşüldü.`);
+        }
+
+        if (!finalToken) {
+            console.error(`[Chat] ${broadcasterId} için hiçbir token bulunamadı.`);
             return;
         }
 
-        console.log(`[Chat Debug] Mesaj gönderiliyor... (Kanal: ${channelSlug}, Tip: ${botToken ? 'BOT' : 'USER'})`);
+        console.log(`[Chat Debug] Mesaj gönderiliyor... (Kanal: ${channelSlug}, Tip: ${isUsingBot ? 'BOT' : 'USER'})`);
 
         const HEADERS = {
             'Authorization': `Bearer ${finalToken}`,
@@ -1240,7 +1263,7 @@ async function sendChatMessage(message, broadcasterId) {
                 name: "Official Public Chat",
                 url: 'https://api.kick.com/public/v1/chat',
                 body: {
-                    type: botToken ? "bot" : "user",
+                    type: isUsingBot ? "bot" : "user",
                     broadcaster_user_id: numericBroadcasterId,
                     content: message
                 }
