@@ -395,14 +395,14 @@ let cycleDuration = 0;
 
 // --- EMLAK SİSTEMİ (GLOBAL PAZAR) ---
 const REAL_ESTATE_TYPES = [
-    { name: "Küçük Esnaf Dükkanı", minPrice: 1999999, maxPrice: 5000000, minInc: 3000, maxInc: 5000, type: "low" },
-    { name: "Pide Salonu", minPrice: 3500000, maxPrice: 8000000, minInc: 4500, maxInc: 7000, type: "low" },
-    { name: "Lüks Rezidans Katı", minPrice: 8000000, maxPrice: 15000000, minInc: 8000, maxInc: 12000, type: "med" },
-    { name: "İş Merkezi", minPrice: 15000000, maxPrice: 25000000, minInc: 10000, maxInc: 15000, type: "med" },
-    { name: "Butik Otel", minPrice: 20000000, maxPrice: 35000000, minInc: 12000, maxInc: 18000, type: "med" },
-    { name: "Gece Kulübü", minPrice: 15000000, maxPrice: 30000000, minInc: 11000, maxInc: 16000, type: "med" },
-    { name: "Alışveriş Merkezi", minPrice: 35000000, maxPrice: 45000000, minInc: 18000, maxInc: 22000, type: "high" },
-    { name: "Havalimanı Terminali", minPrice: 45000000, maxPrice: 55000000, minInc: 22000, maxInc: 25000, type: "high" }
+    { name: "Küçük Esnaf Dükkanı", minPrice: 500000, maxPrice: 1200000, minInc: 500, maxInc: 1500, type: "low" },
+    { name: "Pide Salonu", minPrice: 1000000, maxPrice: 2000000, minInc: 1200, maxInc: 2500, type: "low" },
+    { name: "Lüks Rezidans Katı", minPrice: 2000000, maxPrice: 4000000, minInc: 2500, maxInc: 4500, type: "med" },
+    { name: "İş Merkezi", minPrice: 3500000, maxPrice: 6000000, minInc: 4000, maxInc: 7000, type: "med" },
+    { name: "Butik Otel", minPrice: 5000000, maxPrice: 7500000, minInc: 6000, maxInc: 9000, type: "med" },
+    { name: "Gece Kulübü", minPrice: 6000000, maxPrice: 8500000, minInc: 7500, maxInc: 10000, type: "high" },
+    { name: "Alışveriş Merkezi", minPrice: 7500000, maxPrice: 9500000, minInc: 9000, maxInc: 12000, type: "high" },
+    { name: "Havalimanı Terminali", minPrice: 9000000, maxPrice: 10000000, minInc: 11000, maxInc: 13500, type: "high" }
 ];
 
 async function getCityMarket(cityId) {
@@ -416,10 +416,10 @@ async function getCityMarket(cityId) {
             for (let i = 1; i <= count; i++) {
                 const tpl = REAL_ESTATE_TYPES[Math.floor(Math.random() * REAL_ESTATE_TYPES.length)];
 
-                // Kesin fiyat aralığı kontrolü (1.9M - 55M)
+                // Kesin fiyat aralığı kontrolü (500K - 10M)
                 let price = Math.floor(tpl.minPrice + Math.random() * (tpl.maxPrice - tpl.minPrice));
-                if (price < 1999999) price = 1999999;
-                if (price > 55000000) price = 55000000;
+                if (price < 500000) price = 500000;
+                if (price > 10000000) price = 10000000;
 
                 data.push({
                     id: `${cityId.toLowerCase()}_${i}`,
@@ -2892,12 +2892,18 @@ EK TALİMAT: ${aiInst}`;
                     messages: [
                         {
                             role: "system",
-                            content: "Sen bir Twitter/X gündem analistisin. Grok olarak internete ve gerçek zamanlı Twitter verilerine erişimin var. Türkiye'deki güncel trending topicleri (popüler konuları) araştır ve en önemli 3-4 konuyu kısa başlıklar ve 1'er cümlelik özetlerle bildir. Cevabın Türkçe olsun ve bir Kick chat'i için kısa ve öz olsun (maksimum 400 karakter). Önemli konuların yanına uygun emojiler ekle."
+                            content: `Sen Grok'sun, X (Twitter) üzerindeki gerçek zamanlı veri akışına doğrudan erişimin var. Görevin, ŞU AN (Canlı) Türkiye gündeminde (Trending Topics) en çok konuşulan 3-4 konuyu belirlemek ve özetlemektir.
+                            ÖNEMLİ KURALLAR:
+                            1. Asla eski, bayat veya hayali haber uydurma.
+                            2. Sadece son 24 saat içindeki GERÇEK trendleri listele.
+                            3. Her madde için uygun bir emoji kullan.
+                            4. Cevabın çok kısa ve özet olsun (Maksimum 350 karakter).
+                            5. Format: "🔥 BAŞLIK: Tek cümlelik özet"`
                         },
-                        { role: "user", content: "Şu anki Türkiye Twitter gündeminde ne var?" }
+                        { role: "user", content: `Şu anki tarih: ${new Date().toLocaleString('tr-TR')} - Türkiye Twitter gündemindeki en önemli olaylar neler?` }
                     ],
-                    model: "grok-3",
-                    temperature: 0.7
+                    model: "grok-2-latest",
+                    temperature: 0.5
                 }, {
                     headers: {
                         'Content-Type': 'application/json',
@@ -3014,9 +3020,15 @@ EK TALİMAT: ${aiInst}`;
 
             if (!isInf) await userRef.transaction(u => { if (u) u.balance -= soundCost; return u; });
 
-            // DÜZELTME: Overlay 'custom_sound' yolunu dinliyor, 'soundId' değil 'sound' bekliyor
-            await db.ref(`channels/${broadcasterId}/stream_events/custom_sound`).push({
-                sound: soundTrigger, // Overlay HTML'de 'sound' kullanılıyor
+            // DÜZELTME: Overlay 'sound' yolunu dinliyor, 'soundId' değil 'sound' bekliyor
+            // (server.js'den gelen düzeltme: custom_sound YANLIŞTI, overlay.html sound dinliyor)
+            await db.ref(`channels/${broadcasterId}/stream_events/sound`).push({
+                sound: soundTrigger, // Overlay HTML'de 'Sound' -> 'sound' property beklentisi olabilir veya 'url'
+                // Overlay logic: if (data.sound) playSound(data.sound)
+                // Wait, overlay.html logic (step 945):
+                // if (data.sound) { playSound('custom', data.sound); }
+                // So property MUST be 'sound'. Key is 'sound'
+                sound: soundTrigger,
                 url: sound.url,
                 volume: sound.volume || 100,
                 duration: sound.duration || 0,
@@ -4607,12 +4619,20 @@ app.post('/api/borsa/reset', async (req, res) => {
 // ---------------------------------------------------------
 // 7. BACKGROUND EVENT LISTENERS (SHOP MUTE ETC)
 // ---------------------------------------------------------
+// --- DUPLICATE PREVENTION ---
+const processedWebhooks = new Set();
+setInterval(() => processedWebhooks.clear(), 300000); // 5 dakikada bir temizle
+
 db.ref('channels').on('child_added', (snapshot) => {
     const channelId = snapshot.key;
     // Market Susturma (Mute) Dinleyicisi
     db.ref(`channels/${channelId}/stream_events/mute`).on('child_added', async (snap) => {
         const event = snap.val();
         if (event && !event.executed) {
+            // Idempotency Check
+            if (processedWebhooks.has(snap.key)) return;
+            processedWebhooks.add(snap.key);
+
             console.log(`🚫 MARKET MUTE: ${event.user} -> ${event.target} (${channelId})`);
             const res = await timeoutUser(channelId, event.target, 2); // 2 Dakika
             if (res.success) {
@@ -4634,11 +4654,17 @@ db.ref('channels').on('child_added', (snapshot) => {
     db.ref(`channels/${channelId}/stream_events/tts`).on('child_added', async (snap) => {
         const event = snap.val();
         if (event && !event.notified && event.source === 'market') {
+            // Idempotency Check
+            if (processedWebhooks.has(snap.key)) return;
+            processedWebhooks.add(snap.key);
+
             const userMatch = event.text.match(/@(\w+)/);
             const buyer = userMatch ? userMatch[1] : "Bir kullanıcı";
             const voiceNote = event.voice ? ` [${event.voice.toUpperCase()}]` : "";
+
             await sendChatMessage(`🎙️ @${buyer}, Market'ten TTS (Sesli Mesaj) gönderdi!${voiceNote}`, channelId);
             await db.ref(`channels/${channelId}/stream_events/tts/${snap.key}`).update({ notified: true });
+
             // OVERLAY ALERT
             await db.ref(`channels/${channelId}/stream_events/alerts`).push({
                 title: "🎙️ TTS GÖNDERİLDİ",
@@ -4654,9 +4680,14 @@ db.ref('channels').on('child_added', (snapshot) => {
     db.ref(`channels/${channelId}/stream_events/sound`).on('child_added', async (snap) => {
         const event = snap.val();
         if (event && !event.notified && event.source === 'market') {
+            // Idempotency Check
+            if (processedWebhooks.has(snap.key)) return;
+            processedWebhooks.add(snap.key);
+
             const buyer = event.buyer || "Bir kullanıcı";
             await sendChatMessage(`🎵 @${buyer}, Market'ten !ses ${event.soundId} efektini çaldı!`, channelId);
             await db.ref(`channels/${channelId}/stream_events/sound/${snap.key}`).update({ notified: true });
+
             // OVERLAY ALERT
             await db.ref(`channels/${channelId}/stream_events/alerts`).push({
                 title: "🎵 SES ÇALINDI",
