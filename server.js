@@ -446,7 +446,13 @@ async function getCityMarket(cityId) {
     }
 }
 
+// Borsa güncelleme (Concurrency Lock ile)
+let isUpdatingStocks = false;
+
 async function updateGlobalStocks() {
+    if (isUpdatingStocks) return; // Zaten çalışıyorsa bekle
+    isUpdatingStocks = true;
+
     try {
         const stockRef = db.ref('global_stocks');
         const snap = await stockRef.once('value');
@@ -454,7 +460,6 @@ async function updateGlobalStocks() {
 
         if (!stocks) {
             stocks = INITIAL_STOCKS;
-            // İlk açılışta geçmiş verisi simüle et
             for (let code in stocks) {
                 let h = [];
                 let p = stocks[code].price;
@@ -466,7 +471,7 @@ async function updateGlobalStocks() {
             }
         }
 
-        // Piyasa Meta Verilerini Çek (Döngünün sıfırlanmaması için)
+        // Piyasa Meta Verilerini Çek
         const metaRef = db.ref('market_meta');
         const metaSnap = await metaRef.once('value');
         let meta = metaSnap.val();
@@ -480,7 +485,7 @@ async function updateGlobalStocks() {
         if (cycleDuration <= 0) {
             const cycles = ["NORMAL", "BULLISH", "BEARISH", "VOLATILE", "STAGNANT"];
             currentMarketCycle = cycles[Math.floor(Math.random() * cycles.length)];
-            cycleDuration = Math.floor(Math.random() * 300) + 300; // 5-10 dk (2s per tick)
+            cycleDuration = Math.floor(Math.random() * 300) + 300; // 5-10 dk
             console.log(`🔄 Yeni Piyasa Döngüsü: ${currentMarketCycle} (${cycleDuration} tik)`);
         }
         cycleDuration--;
@@ -495,11 +500,10 @@ async function updateGlobalStocks() {
             let vol = baseData.volatility;
             let drift = baseData.drift;
 
-            // Döngüye göre ayarla (Daha stabil oranlar)
-            // 2 saniyede bir tetiklendiği için çok küçük oranlar verilmeli
-            if (currentMarketCycle === "BULLISH") drift += 0.0005; // Önceden 0.005 idi (çok hızlıydı) -> Şimdi %0.05
+            // Döngüye göre ayarla
+            if (currentMarketCycle === "BULLISH") drift += 0.0005;
             if (currentMarketCycle === "BEARISH") drift -= 0.0005;
-            if (currentMarketCycle === "VOLATILE") vol *= 1.5; // 2x yerine 1.5x
+            if (currentMarketCycle === "VOLATILE") vol *= 1.5;
             if (currentMarketCycle === "STAGNANT") { vol *= 0.1; drift = 0; }
 
             // Brownian Motion
@@ -508,10 +512,8 @@ async function updateGlobalStocks() {
 
             let newPrice = Math.round(oldPrice * (1 + changePercent));
 
-            // Ani Çöküş/Fırlama Şansı (Artık çok daha nadir)
-            // Olasılık %0.1 -> %0.02 (5 kat azaldı)
             if (Math.random() < 0.0002) {
-                const modifier = Math.random() > 0.5 ? 1.15 : 0.85; // %20 yerine %15 değişim
+                const modifier = Math.random() > 0.5 ? 1.15 : 0.85;
                 newPrice = Math.round(newPrice * modifier);
                 console.log(`[Piyasa Olayı] ${code} Ani hareket: %${Math.round((modifier - 1) * 100)}`);
             }
@@ -522,7 +524,7 @@ async function updateGlobalStocks() {
             stocks[code] = {
                 ...data,
                 price: newPrice,
-                oldPrice: oldPrice, // Frontend'de değişim yüzdesi için
+                oldPrice: oldPrice,
                 trend: newPrice > oldPrice ? 1 : (newPrice < oldPrice ? -1 : (data.trend || 1)),
                 lastUpdate: Date.now(),
                 marketStatus: currentMarketCycle
@@ -532,6 +534,8 @@ async function updateGlobalStocks() {
         await stockRef.set(stocks);
     } catch (e) {
         console.error("Borsa Update Error:", e.message);
+    } finally {
+        isUpdatingStocks = false;
     }
 }
 
@@ -551,14 +555,14 @@ async function saveHourlyStockHistory() {
             updates[`${code}/history`] = history;
         }
         await stockRef.update(updates);
-        console.log(`📈 Borsa saatlik geçmiş güncellendi. Mod: ${currentMarketCycle}`);
+        console.log(`📈 Borsa saatlik geçmiş güncellendi.`);
     } catch (e) { console.error("Hourly History Error:", e.message); }
 }
 setInterval(saveHourlyStockHistory, 3600000); // 1 Saat
 
-// Borsa güncelleme (Her 2 saniyede bir - Daha ağır ekonomi için)
+// Borsa güncelleme (Her 2 saniyede bir)
 setInterval(updateGlobalStocks, 2000);
-updateGlobalStocks(); // Server açıldığında hemen ilk verileri oluştur
+updateGlobalStocks(); // İlk çalıştırma
 
 app.post('/api/borsa/reset', async (req, res) => {
     try {
@@ -590,19 +594,13 @@ app.post('/api/borsa/reset', async (req, res) => {
 });
 
 // HARİTA PROXY (Bağlantı Sorunlarını Aşmak İçin)
-app.get('/api/map/turkey', async (req, res) => {
-    try {
-        const response = await axios({
-            url: 'https://upload.wikimedia.org/wikipedia/commons/1/1b/Turkey_provinces_blank_map.svg', // Direkt SVG
-            method: 'GET',
-            responseType: 'stream',
-            headers: { 'User-Agent': 'Mozilla/5.0' }
-        });
-        res.setHeader('Content-Type', 'image/svg+xml'); // Content-Type SVG olarak güncellendi
-        response.data.pipe(res);
-    } catch (e) {
-        console.error("Map Proxy Error:", e.message);
-        // Fallback to another source if main proxy fails
+app.get('/api/map/turkey', (req, res) => {
+    const mapPath = path.join(__dirname, 'turkey_map_final.png');
+    if (fs.existsSync(mapPath)) {
+        res.setHeader('Content-Type', 'image/png');
+        res.sendFile(mapPath);
+    } else {
+        // Fallback (dosya yoksa)
         res.redirect('https://cdn.pixabay.com/photo/2013/07/12/12/48/turkey-146313_1280.png');
     }
 });
