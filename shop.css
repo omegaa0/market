@@ -368,28 +368,31 @@ header {
     position: fixed;
     top: 50%;
     transform: translateY(-50%);
-    width: 200px;
-    /* Adjust size as needed */
-    z-index: 1;
+    width: 220px;
+    /* Biraz daha büyütüldü */
+    z-index: 100;
+    /* Daha üstte dursun */
     pointer-events: none;
-    opacity: 0.8;
+    opacity: 0.9;
+    filter: drop-shadow(0 0 20px rgba(5, 234, 106, 0.2));
 }
 
 .side-gif.left {
-    left: 20px;
+    left: 40px;
 }
 
 .side-gif.right {
-    right: 20px;
+    right: 40px;
 }
 
 .side-gif img {
     width: 100%;
     height: auto;
-    border-radius: 12px;
+    border-radius: 20px;
+    border: 2px solid rgba(255, 255, 255, 0.1);
 }
 
-@media (max-width: 1400px) {
+@media (max-width: 1200px) {
     .side-gif {
         display: none;
     }

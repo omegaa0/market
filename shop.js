@@ -284,8 +284,15 @@ async function loadChannelMarket(channelId) {
 
     const leftGifEl = document.querySelector('.side-gif.left img');
     const rightGifEl = document.querySelector('.side-gif.right img');
-    if (leftGifEl) leftGifEl.src = leftGif;
-    if (rightGifEl) rightGifEl.src = rightGif;
+
+    if (leftGifEl) {
+        leftGifEl.src = leftGif;
+        leftGifEl.onerror = () => { leftGifEl.src = defaultGif; };
+    }
+    if (rightGifEl) {
+        rightGifEl.src = rightGif;
+        rightGifEl.onerror = () => { rightGifEl.src = defaultGif; };
+    }
 
     document.getElementById('market-status').innerText = `${chanName} market ürünleri yönetiliyor.`;
     const marketGrid = document.getElementById('market-items');
@@ -589,10 +596,12 @@ async function loadBorsa() {
         // Piyasa Durumu Bilgisi
         let statusBox = document.getElementById('market-cycle-status');
         if (!statusBox) {
+            // İlk başarılı yüklemede "yükleniyor" yazısını temizle
+            container.innerHTML = "";
             statusBox = document.createElement('div');
             statusBox.id = 'market-cycle-status';
             statusBox.style = "grid-column: 1 / -1; background: rgba(255,255,255,0.03); padding: 15px; border-radius: 12px; margin-bottom: 20px; border: 1px solid var(--glass-border); text-align: center;";
-            container.prepend(statusBox);
+            container.appendChild(statusBox);
         }
         const cycle = entries[0][1].marketStatus || "NORMAL";
         const cycleMap = {
