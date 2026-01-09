@@ -451,8 +451,8 @@ async function updateGlobalStocks() {
         const snap = await stockRef.once('value');
         let stocks = snap.val();
 
-        if (!stocks || !stocks["APPLE"]) {
-            console.log("⚠️ Borsa verisi bulunamadı, başlangıç değerleri yükleniyor...");
+        if (!stocks || Object.keys(stocks).length === 0) {
+            console.log("⚠️ Borsa verisi bulunamadı, başlangıç değerleri yükleniyor... (İlk Kurulum)");
             stocks = JSON.parse(JSON.stringify(INITIAL_STOCKS)); // Deep copy to avoid reference issues
             for (let code in stocks) {
                 let h = [];
@@ -1411,7 +1411,7 @@ async function getAppAccessToken() {
         params.append('grant_type', 'client_credentials');
         params.append('client_id', CLIENT_ID);
         params.append('client_secret', CLIENT_SECRET);
-        params.append('scope', 'chat:write');
+        // SCOPE KALDIRILDI: 'invalid_scope' hatası veriyor
 
         const response = await axios.post('https://id.kick.com/oauth/token', params);
         if (response.data.access_token) {
@@ -2907,7 +2907,7 @@ EK TALİMAT: ${aiInst}`;
                             role: "user", content: `Şu anki tarih ve saat: ${new Date().toLocaleString('tr-TR')}
                         Lütfen tam şu anda Türkiye'de Twitter'da en çok konuşulan (TT olan) 3 başlığı ve neden konuşulduğunu 1 cümleyle özetle.` }
                     ],
-                    model: "grok-beta",
+                    model: "grok-3",
                     temperature: 0
                 }, {
                     headers: {
