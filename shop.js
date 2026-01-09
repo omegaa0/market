@@ -85,48 +85,31 @@ function renderFreeCommands() {
     });
 }
 
-/**
- * Robust PFP Fetcher with Fallback Support
- * Handles both user and broadcaster avatars with automatic fallback to text initials
- */
-async function fetchKickPFP(username, imgId, fallbackId) {
-    const imgEl = document.getElementById(imgId);
-    const fallbackEl = document.getElementById(fallbackId);
-    if (!imgEl) return;
-
+async function fetchKickPFP(username) {
+    if (!username || username === "Misafir") return;
     try {
-        // Initial state
-        imgEl.style.display = 'none';
-        if (fallbackEl) {
-            fallbackEl.style.display = 'flex';
-            fallbackEl.innerText = username ? username[0].toUpperCase() : '?';
-        }
+        const pfpImg = document.getElementById('user-pfp');
+        const fallback = document.getElementById('user-pfp-fallback');
 
-        if (!username) return;
-
-        const res = await fetch(`/api/kick/pfp/${username.toLowerCase()}`);
+        // Use our server proxy to bypass CORS
+        const res = await fetch(`/api/kick/pfp/${username}`);
+        if (!res.ok) throw new Error("PFP not found");
         const data = await res.json();
 
         if (data.pfp) {
-            const preloader = new Image();
-            preloader.onload = () => {
-                imgEl.src = data.pfp;
-                imgEl.style.display = 'block';
-                if (fallbackEl) fallbackEl.style.display = 'none';
-                console.log(`[PFP] Loaded for ${username}`);
+            pfpImg.src = data.pfp;
+            pfpImg.onload = () => {
+                pfpImg.style.display = 'block';
+                if (fallback) fallback.style.display = 'none';
             };
-            preloader.onerror = () => {
-                console.warn(`[PFP] Image load failed for ${username}: ${data.pfp}`);
-                if (fallbackEl) {
-                    fallbackEl.style.display = 'flex';
-                    fallbackEl.innerText = username ? username[0].toUpperCase() : '?';
-                }
-                imgEl.style.display = 'none';
+            pfpImg.onerror = () => {
+                pfpImg.style.display = 'none';
+                if (fallback) fallback.style.display = 'flex';
             };
-            preloader.src = data.pfp;
         }
     } catch (e) {
-        console.warn(`[PFP] Fetch error for ${username}:`, e);
+        console.log("PFP fetch error (CORS or server)", e);
+        // Fallback remains visible
     }
 }
 
@@ -216,7 +199,9 @@ function login(user) {
     if (heroName) heroName.innerText = user.toUpperCase();
 
     // Setup PFP
-    fetchKickPFP(user, 'user-pfp', 'user-pfp-fallback');
+    const fallback = document.getElementById('user-pfp-fallback');
+    if (fallback) fallback.innerText = user[0].toUpperCase();
+    fetchKickPFP(user);
 
     db.ref('users/' + user).on('value', (snap) => {
         const data = snap.val() || { balance: 0, auth_channel: null };
@@ -253,7 +238,37 @@ async function loadChannelMarket(channelId) {
     document.getElementById('chan-name').innerText = chanName;
 
     // Broadcaster PFP Fetch via Proxy
-    fetchKickPFP(chanName, 'chan-pfp', 'chan-pfp-fallback');
+    try {
+        const chanPfpImg = document.getElementById('chan-pfp');
+        const chanPfpFallback = document.getElementById('chan-pfp-fallback');
+
+        const res = await fetch(`/api/kick/pfp/${chanName}`);
+        if (!res.ok) throw new Error("PFP error");
+        const data = await res.json();
+
+        if (data.pfp) {
+            chanPfpImg.src = data.pfp;
+            chanPfpImg.onload = () => {
+                chanPfpImg.style.display = 'block';
+                if (chanPfpFallback) chanPfpFallback.style.display = 'none';
+            };
+            chanPfpImg.onerror = () => {
+                chanPfpImg.style.display = 'none';
+                if (chanPfpFallback) chanPfpFallback.style.display = 'flex';
+            };
+        } else {
+            throw new Error("No pfp data");
+        }
+    } catch (e) {
+        console.log("Broadcaster PFP error", e);
+        const chanPfpImg = document.getElementById('chan-pfp');
+        const chanPfpFallback = document.getElementById('chan-pfp-fallback');
+        if (chanPfpImg) chanPfpImg.style.display = 'none';
+        if (chanPfpFallback) {
+            chanPfpFallback.innerText = chanName[0].toUpperCase();
+            chanPfpFallback.style.display = 'flex';
+        }
+    }
 
     // Side GIFs Update
     const leftGif = settings.left_gif || "https://media.giphy.com/media/v1.Y2lkPTc5MGI3NjExOHlxYnV4YzB6MzB6bmR4bmR4bmR4bmR4bmR4bmR4bmR4bmR4bmR4JmVwPXYxX2ludGVybmFsX2dpZl9ieV9pZCZjdD1n/3o7TKMGpxPucV0G3S0/giphy.gif";
@@ -561,16 +576,7 @@ async function loadBorsa() {
             return;
         }
 
-        const entriesList = Object.entries(stocks);
-        if (entriesList.length === 0) {
-            container.innerHTML = "<p style='text-align:center; padding:20px;'>Hizmet dışı.</p>";
-            return;
-        }
-
-        const loader = container.querySelector('.loader');
-        if (loader) container.innerHTML = ""; // First time clear
-
-        entriesList.forEach(([code, data]) => {
+        entries.forEach(([code, data]) => {
             if (!data || typeof data !== 'object') return;
 
             // Update history for chart (last 20 points from real-time)
@@ -578,27 +584,25 @@ async function loadBorsa() {
             stockHistory[code].push(data.price);
             if (stockHistory[code].length > 20) stockHistory[code].shift();
 
-            const trendIcon = data.trend === 1 ? '📈' : '📉';
-            const statusColor = data.trend === 1 ? '#05ea6a' : '#ff4d4d';
-            const priceDiff = data.oldPrice ? (((data.price - data.oldPrice) / data.oldPrice) * 100).toFixed(2) : "0.00";
+            const trend = data.trend === 1 ? '📈' : '📉';
+            const color = data.trend === 1 ? '#05ea6a' : '#ff4d4d';
+            const diff = data.oldPrice ? (((data.price - data.oldPrice) / data.oldPrice) * 100).toFixed(2) : "0.00";
 
             let card = document.querySelector(`.borsa-card[data-code="${code}"]`);
             if (card) {
-                const trendDisplay = card.querySelector('.trend-val');
-                const priceDisplay = card.querySelector('.price-val');
-                const buyButton = card.querySelector('.btn-buy-main');
-                const sellButton = card.querySelector('.btn-sell-main');
+                // Sadece değişen kısımları güncelle (Input değerini koru)
+                const trendEl = card.querySelector('.trend-val');
+                const priceEl = card.querySelector('.price-val');
+                const buyBtn = card.querySelector('.btn-buy-main');
+                const sellBtn = card.querySelector('.btn-sell-main');
 
-                if (trendDisplay) {
-                    trendDisplay.innerHTML = `${data.trend === 1 ? '+' : ''}${priceDiff}% ${trendIcon}`;
-                    trendDisplay.style.color = statusColor;
-                }
-                if (priceDisplay) {
-                    priceDisplay.innerHTML = `${(data.price || 0).toLocaleString()} <span style="font-size:0.8rem; color:var(--primary);">💰</span>`;
-                }
+                trendEl.innerHTML = `${data.trend === 1 ? '+' : ''}${diff}% ${trend}`;
+                trendEl.style.color = color;
+                priceEl.innerHTML = `${(data.price || 0).toLocaleString()} <span style="font-size:0.8rem; color:var(--primary);">💰</span>`;
 
-                if (buyButton) buyButton.onclick = () => executeBorsaBuy(code, data.price);
-                if (sellButton) sellButton.onclick = () => executeBorsaSell(code, data.price);
+                // Butonlardaki fiyatları güncelle
+                buyBtn.onclick = () => executeBorsaBuy(code, data.price);
+                sellBtn.onclick = () => executeBorsaSell(code, data.price);
             } else {
                 card = document.createElement('div');
                 card.className = 'item-card borsa-card';
@@ -606,12 +610,9 @@ async function loadBorsa() {
                 card.innerHTML = `
                     <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:10px;">
                         <span style="font-weight:800; font-size:1.1rem; color:var(--primary);">${code}</span>
-                        <div style="text-align:right;">
-                            <span class="trend-val" style="color:${statusColor}; font-weight:800; font-size:0.75rem;">
-                                ${data.trend === 1 ? '+' : ''}${priceDiff}% ${trendIcon}
-                            </span>
-                            <div style="font-size:0.6rem; color:#666; margin-top:2px;">SAATLİK DEĞİŞİM</div>
-                        </div>
+                        <span class="trend-val" style="color:${color}; font-weight:800; font-size:0.75rem;">
+                            ${data.trend === 1 ? '+' : ''}${diff}% ${trend}
+                        </span>
                     </div>
                     
                     <canvas id="chart-${code}" width="200" height="60" style="width:100%; height:60px; margin:10px 0;"></canvas>
@@ -635,33 +636,8 @@ async function loadBorsa() {
     };
 
     db.ref('global_stocks').on('value', snap => {
-        const val = snap.val();
-        if (val && typeof val === 'object') {
-            console.log("[Borsa] Data received from Firebase");
-            renderStocks(val);
-        } else {
-            console.log("[Borsa] Firebase empty, trying API fallback...");
-            fetch('/api/borsa')
-                .then(res => res.json())
-                .then(data => {
-                    if (data && !data.error) renderStocks(data);
-                    else container.innerHTML = "<p style='text-align:center;'>Borsa verisi şu an pasif.</p>";
-                })
-                .catch(e => {
-                    console.error("Borsa API Error:", e);
-                    container.innerHTML = "<p style='text-align:center;'>Bağlantı hatası.</p>";
-                });
-        }
+        if (snap.exists()) renderStocks(snap.val());
     });
-
-    // Auto-refresh chart displays (Slower refresh to match server)
-    setInterval(() => {
-        const borsaTab = document.getElementById('tab-borsa');
-        if (borsaTab && borsaTab.classList.contains('hidden')) return;
-        db.ref('global_stocks').once('value').then(snap => {
-            if (snap.exists()) renderStocks(snap.val());
-        });
-    }, 30000);
 }
 
 async function executeBorsaBuy(code, price) {
@@ -826,22 +802,8 @@ async function claimQuest(questId) {
 async function loadProfile() {
     if (!currentUser) return;
     const container = document.getElementById('profile-card');
-    try {
-        const snap = await db.ref('users/' + currentUser).once('value');
+    db.ref('users/' + currentUser).once('value', snap => {
         const u = snap.val() || { balance: 0 };
-
-        // Update display name and balance elements
-        const dispName = document.getElementById('display-name');
-        const heroName = document.getElementById('hero-name');
-        const balanceEl = document.getElementById('user-balance');
-
-        if (dispName) dispName.innerText = (u.display_name || currentUser).toUpperCase();
-        if (heroName) heroName.innerText = (u.display_name || currentUser).toUpperCase();
-        if (balanceEl) balanceEl.innerText = `${(u.balance || 0).toLocaleString()} 💰`;
-
-        // Updated PFP Logic with Proxy
-        fetchKickPFP(currentUser, 'user-pfp', 'user-pfp-fallback');
-
         container.innerHTML = `
             <div style="display:flex; flex-direction:column; gap:25px;">
                 <div style="display:grid; grid-template-columns: 1fr 1fr; gap:20px;">
@@ -928,10 +890,7 @@ async function loadProfile() {
                 </div>
             </div>
         `;
-    } catch (e) {
-        console.error("Load Profile Error:", e);
-        container.innerHTML = "<p>Profil yüklenirken bir hata oluştu.</p>";
-    }
+    });
 }
 
 const EMLAK_CITIES = [
@@ -1026,18 +985,9 @@ function loadEmlak() {
 }
 
 function renderEmlakMap() {
-    // Clear current map markers
     const overlay = document.getElementById('map-overlay');
     if (!overlay) return;
-    overlay.innerHTML = '';
-
-    // Turkey Map - Improved Visuals & Quality
-    const mapImg = document.getElementById('map-img');
-    if (mapImg) {
-        mapImg.src = "https://raw.githubusercontent.com/bariserece/turkiye-haritasi/master/turkiye.svg";
-        mapImg.style.filter = "invert(0.9) sepia(1) hue-rotate(100deg) saturate(4) brightness(1.2)";
-        mapImg.style.opacity = "0.85";
-    }
+    overlay.innerHTML = "";
 
     EMLAK_CITIES.forEach(city => {
         const dot = document.createElement('div');

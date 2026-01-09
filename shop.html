@@ -153,7 +153,8 @@
             <div class="user-profile">
                 <div class="avatar" id="user-avatar"
                     style="overflow:hidden; background: #111; display: flex; align-items: center; justify-content: center;">
-                    <img id="user-pfp" src="" style="width:100%; height:100%; object-fit:cover; display:none;">
+                    <img id="user-pfp" src="" style="width:100%; height:100%; object-fit:cover; display:none;"
+                        referrerpolicy="no-referrer">
                     <span id="user-pfp-fallback">?</span>
                 </div>
                 <div class="user-meta">
@@ -161,10 +162,11 @@
                     <div id="user-balance" class="balance-pill">0 💰</div>
                     <div id="channel-badge" class="channel-info hidden">
                         <div class="channel-avatar" id="chan-pfp-container"
-                            style="overflow:hidden; border: 2px solid var(--primary); display: flex; align-items: center; justify-content: center; background: #222;">
-                            <img id="chan-pfp" src="" style="width:100%; height:100%; object-fit:cover; display: none;">
+                            style="overflow:hidden; border: 2px solid var(--primary); display: flex; align-items: center; justify-content: center; background: #111;">
+                            <img id="chan-pfp" src="" style="width:100%; height:100%; object-fit:cover; display:none;"
+                                referrerpolicy="no-referrer">
                             <span id="chan-pfp-fallback"
-                                style="color: var(--primary); font-weight: 800; font-size: 14px;">?</span>
+                                style="color: black; font-weight: bold; font-size: 14px;">?</span>
                         </div>
                         <span id="chan-name" style="font-size: 0.8rem; color: #aaa; font-weight: 600;">Bağlı
                             Kanal</span>
@@ -254,11 +256,9 @@
                             <div id="turkey-map"
                                 style="width: 100%; max-width: 850px; aspect-ratio: 1000 / 450; position: relative; margin: 0 auto; z-index: 1;">
                                 <!-- SVG Harita (Sade Minimal Stil) -->
-                                <!-- SVG Harita (Neon Stil) -->
                                 <img src="https://upload.wikimedia.org/wikipedia/commons/b/b1/Turkey_provinces_blank_map.svg"
-                                    alt="Turkey Map" id="map-img"
-                                    style="width: 100%; height: 100%; object-fit: contain; display: block; opacity: 0.8; filter: invert(0.8) sepia(1) hue-rotate(100deg) saturate(3) brightness(1.1); transition: opacity 0.3s; border-radius:15px;"
-                                    onerror="this.src='https://raw.githubusercontent.com/bariserece/turkiye-haritasi/master/turkiye.svg'">
+                                    alt="Turkey Map"
+                                    style="width: 100%; height: 100%; object-fit: contain; display: block; opacity: 0.9; filter: invert(1) contrast(1.3);">
                                 <div id="map-overlay"
                                     style="position:absolute; top:0; left:0; width:100%; height:100%; pointer-events: auto;">
                                     <!-- İnteraktif Şehir Noktaları -->

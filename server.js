@@ -206,6 +206,8 @@ async function addLog(action, details, channelId = 'Global') {
     }
 }
 
+
+
 // =====================================================
 // KICK WEBHOOK SİSTEMİ - Takipçi Bildirimlerini Dinle
 // =====================================================
@@ -373,26 +375,26 @@ let botMasterSwitch = true; // Omegacyr için master switch
 const INITIAL_STOCKS = {
     "APPLE": { price: 5000, trend: 1, history: [] },
     "BITCOIN": { price: 45000, trend: 1, history: [] },
-    "GOLD": { price: 2500, trend: 1, history: [] },
+    "GOLD": { price: 2500, trend: -1, history: [] },
     "SILVER": { price: 850, trend: 1, history: [] },
     "PLATINUM": { price: 3200, trend: 1, history: [] },
     "KICK": { price: 100, trend: 1, history: [] },
-    "ETHER": { price: 15000, trend: 1, history: [] },
+    "ETHER": { price: 15000, trend: -1, history: [] },
     "TESLA": { price: 7500, trend: 1, history: [] },
     "NVIDIA": { price: 12000, trend: 1, history: [] },
-    "GOOGLE": { price: 6200, trend: 1, history: [] },
+    "GOOGLE": { price: 6200, trend: -1, history: [] },
     "AMAZON": { price: 5800, trend: 1, history: [] }
 };
 
 // --- EMLAK SİSTEMİ (GLOBAL PAZAR) ---
 const REAL_ESTATE_TYPES = [
-    { name: "Küçük Esnaf Dükkanı", minPrice: 2000000, maxPrice: 5000000, minInc: 5000, maxInc: 7000, type: "low" },
-    { name: "Pide Salonu", minPrice: 5500000, maxPrice: 10000000, minInc: 7000, maxInc: 10000, type: "low" },
-    { name: "Lüks Rezidans Katı", minPrice: 12000000, maxPrice: 18000000, minInc: 10000, maxInc: 13000, type: "med" },
-    { name: "Gece Kulübü", minPrice: 20000000, maxPrice: 28000000, minInc: 13000, maxInc: 15500, type: "med" },
-    { name: "Butik Otel", minPrice: 30000000, maxPrice: 38000000, minInc: 16000, maxInc: 18000, type: "med" },
-    { name: "İş Merkezi", minPrice: 40000000, maxPrice: 45000000, minInc: 18000, maxInc: 19500, type: "high" },
-    { name: "Alışveriş Merkezi", minPrice: 46000000, maxPrice: 50000000, minInc: 19500, maxInc: 20000, type: "high" }
+    { name: "Küçük Esnaf Dükkanı", minPrice: 1999999, maxPrice: 3500000, minInc: 15000, maxInc: 25000, type: "low" },
+    { name: "Pide Salonu", minPrice: 2500000, maxPrice: 4500000, minInc: 20000, maxInc: 35000, type: "low" },
+    { name: "Lüks Rezidans Katı", minPrice: 5000000, maxPrice: 12000000, minInc: 45000, maxInc: 85000, type: "med" },
+    { name: "İş Merkezi", minPrice: 15000000, maxPrice: 25000000, minInc: 120000, maxInc: 220000, type: "med" },
+    { name: "Butik Otel", minPrice: 20000000, maxPrice: 35000000, minInc: 180000, maxInc: 320000, type: "med" },
+    { name: "Gece Kulübü", minPrice: 10000000, maxPrice: 18000000, minInc: 90000, maxInc: 160000, type: "med" },
+    { name: "Alışveriş Merkezi", minPrice: 40000000, maxPrice: 50000000, minInc: 450000, maxInc: 750000, type: "high" }
 ];
 
 async function getCityMarket(cityId) {
@@ -442,14 +444,12 @@ async function updateGlobalStocks() {
         for (const [code, data] of Object.entries(stocks)) {
             const oldPrice = data.price || INITIAL_STOCKS[code]?.price || 100;
 
-            // Daha gerçekçi ve yavaş hareket: -%0.5 ile +%0.5 arası
-            // Şans faktörü: %10 ihtimalle hareket eder
-            if (Math.random() > 0.1) continue;
-
-            const changePercent = (Math.random() * 1.0 - 0.5) / 100;
+            // Daha agresif saniyelik hareket: -%1.5 ile +%1.5 arası
+            const changePercent = (Math.random() * 3 - 1.5) / 100;
             let change = oldPrice * changePercent;
 
-            if (Math.abs(change) < 1 && changePercent !== 0) {
+            // Minimum 1 birim hareket sağla (eğer değişim 0 değilse)
+            if (Math.abs(change) < 0.5 && changePercent !== 0) {
                 change = changePercent > 0 ? 1 : -1;
             }
 
@@ -472,18 +472,6 @@ async function updateGlobalStocks() {
         console.error("Borsa Update Error:", e.message);
     }
 }
-
-// Borsa veritabanını başlat
-async function initializeBorsa() {
-    try {
-        const snap = await db.ref('global_stocks').once('value');
-        if (!snap.exists()) {
-            console.log("[Borsa] Veritabanı boş, INITIAL_STOCKS yükleniyor...");
-            await db.ref('global_stocks').set(INITIAL_STOCKS);
-        }
-    } catch (e) { console.error("[Borsa] Başlatma Hatası:", e.message); }
-}
-initializeBorsa();
 
 // Borsa Saatlik Geçmiş Kaydı (Grafiklerin daha gerçekçi olması için)
 async function saveHourlyStockHistory() {
@@ -508,9 +496,9 @@ async function saveHourlyStockHistory() {
 }
 setInterval(saveHourlyStockHistory, 3600000); // 1 Saat
 
-// Borsa güncelleme (Her 10 saniyede bir - Daha yavaş)
-setInterval(updateGlobalStocks, 10000);
-updateGlobalStocks();
+// Borsa güncelleme (Her 1 saniyede bir)
+setInterval(updateGlobalStocks, 1000);
+updateGlobalStocks(); // Server açıldığında hemen ilk verileri oluştur
 
 // --- EMLAK GELİR DAĞITIMI (Her 1 Saat) ---
 async function distributeRealEstateIncome() {
@@ -552,6 +540,9 @@ function generatePKCE() {
     return { verifier, challenge };
 }
 
+// ---------------------------------------------------------
+// CLIENT-SIDE STATS SYNC (Cloudflare Bypass)
+// ---------------------------------------------------------
 app.post('/dashboard-api/sync-stats', async (req, res) => {
     try {
         const { channelId, key, followers, subscribers } = req.body;
@@ -657,14 +648,57 @@ async function fetchKickV2Channel(slug) {
     try {
         const res = await axios.get(`https://kick.com/api/v2/channels/${slug}`, {
             headers: {
-                'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36'
+                'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36',
+                'Accept': 'application/json'
             },
             timeout: 5000
         });
         return res.data;
     } catch (e) {
-        // Cloudflare engeli - sessiz hata
+        return null;
     }
+}
+
+// Robust PFP Fetcher with Fallbacks
+async function getKickPFP(username) {
+    if (!username || username === "Misafir" || username === "Kick Kanalı") return null;
+
+    // 1. Try V2 API
+    try {
+        const data = await fetchKickV2Channel(username);
+        if (data && data.user && data.user.profile_pic) return data.user.profile_pic;
+    } catch (e) { }
+
+    // 2. Try V1 API
+    try {
+        const res = await axios.get(`https://kick.com/api/v1/channels/${username}`, {
+            headers: { 'User-Agent': 'Mozilla/5.0', 'Accept': 'application/json' },
+            timeout: 3000
+        });
+        if (res.data && res.data.user && res.data.user.profile_pic) return res.data.user.profile_pic;
+    } catch (e) { }
+
+    // 3. Try Internal GraphQL (Most reliable)
+    try {
+        const query = `query Channel($slug: String!) {
+            channel(slug: $slug) {
+                user { profile_pic }
+            }
+        }`;
+        const gqlRes = await axios.post('https://kick.com/api/internal/v1/graphql', {
+            query,
+            variables: { slug: username.toLowerCase() }
+        }, {
+            headers: {
+                'Content-Type': 'application/json',
+                'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36'
+            },
+            timeout: 5000
+        });
+        const pfp = gqlRes.data?.data?.channel?.user?.profile_pic;
+        if (pfp) return pfp;
+    } catch (e) { }
+
     return null;
 }
 
@@ -741,24 +775,11 @@ app.post('/api/real-estate/buy', async (req, res) => {
 app.get('/api/kick/pfp/:username', async (req, res) => {
     try {
         const username = req.params.username.toLowerCase();
-        const fallbackPfp = `https://ui-avatars.com/api/?name=${username}&background=random&color=fff&size=512`;
-
-        try {
-            // Priority 1: fetchKickV2Channel helper
-            const data = await fetchKickV2Channel(username);
-            const pfp = data?.user?.profile_pic || data?.user?.profile_picture || data?.profile_pic;
-            if (pfp) return res.json({ pfp });
-
-            // Priority 2: Direct public V1
-            const v1Res = await axios.get(`https://api.kick.com/public/v1/channels/${username}`).catch(() => null);
-            const pfpV1 = v1Res?.data?.data?.user?.profile_pic || v1Res?.data?.data?.user?.profile_picture;
-            if (pfpV1) return res.json({ pfp: pfpV1 });
-
-        } catch (e1) {
-            console.warn(`PFP fetching issue for ${username}: ${e1.message}`);
+        const pfp = await getKickPFP(username);
+        if (pfp) {
+            return res.json({ pfp: pfp });
         }
-
-        res.json({ pfp: fallbackPfp });
+        res.status(404).json({ error: "Not found" });
     } catch (e) {
         res.status(500).json({ error: e.message });
     }
@@ -769,7 +790,7 @@ app.get('/api/kick/pfp/:username', async (req, res) => {
 // ---------------------------------------------------------
 app.post('/api/borsa/reset', async (req, res) => {
     const { requester } = req.body;
-    if (requester !== 'omegacyr') return res.status(403).json({ success: false, error: "Yetkisiz işlem!" });
+    if (requester !== 'omegacyra') return res.status(403).json({ success: false, error: "Yetkisiz işlem!" });
 
     try {
         console.log("!!! BORSA RESETLENİYOR (Requester: omegacyra) !!!");
@@ -1156,47 +1177,29 @@ async function refreshChannelToken(broadcasterId) {
     }
 }
 
-// ---------------------------------------------------------
-// 🔑 KICK OAUTH & APP TOKEN SİSTEMİ
-// ---------------------------------------------------------
-
+// 🔑 UYGULAMA (APP/BOT) TOKENI ALMA - Bot Kimliği İçin Gerekli
 let cachedAppToken = null;
 let appTokenExpires = 0;
 
 async function getAppAccessToken() {
-    const { KICK_CLIENT_ID, KICK_CLIENT_SECRET, KICK_BOT_TOKEN } = process.env;
+    const { KICK_CLIENT_ID, KICK_CLIENT_SECRET } = process.env;
     const CLIENT_ID = KICK_CLIENT_ID || "01KDQNP2M930Y7YYNM62TVWJCP";
     const CLIENT_SECRET = KICK_CLIENT_SECRET;
 
-    // 1. ÖNCELİK: .env içindeki sabit KICK_BOT_TOKEN
-    if (KICK_BOT_TOKEN && KICK_BOT_TOKEN.trim().length > 10) {
-        return KICK_BOT_TOKEN.trim();
-    }
-
-    // 2. ÖNCELİK: Önbelleğe alınmış App Token
     if (cachedAppToken && Date.now() < appTokenExpires) return cachedAppToken;
 
-    // 3. ÖNCELİK: Client Credentials ile yeni token al
     try {
-        if (!CLIENT_SECRET) {
-            console.warn("[Auth Warning] KICK_CLIENT_SECRET eksik, bot tokenı alınamadı.");
-            return null;
-        }
-
         const params = new URLSearchParams();
         params.append('grant_type', 'client_credentials');
         params.append('client_id', CLIENT_ID);
         params.append('client_secret', CLIENT_SECRET);
         params.append('scope', 'chat:write');
 
-        const response = await axios.post('https://id.kick.com/oauth/token', params, {
-            headers: { 'Content-Type': 'application/x-www-form-urlencoded' }
-        });
-
-        if (response.data && response.data.access_token) {
+        const response = await axios.post('https://id.kick.com/oauth/token', params);
+        if (response.data.access_token) {
             cachedAppToken = response.data.access_token;
             appTokenExpires = Date.now() + (response.data.expires_in * 1000) - 60000;
-            console.log("[Auth] Uygulama (Bot) Tokenı başarıyla yenilendi.");
+            console.log("[Auth] Uygulama (Bot) Tokenı başarıyla alındı.");
             return cachedAppToken;
         }
     } catch (e) {
@@ -1205,9 +1208,10 @@ async function getAppAccessToken() {
     return null;
 }
 
-// ---------------------------------------------------------
-// 💬 MESAJ GÖNDERME MOTORU (V11 - Ultimate Hybrid)
-// ---------------------------------------------------------
+
+
+
+// KİCK BOT KİMLİĞİ İLE GÖNDERİM (V10 - Developer Bot Mode)
 async function sendChatMessage(message, broadcasterId) {
     if (!message || !broadcasterId) return;
 
@@ -1215,26 +1219,23 @@ async function sendChatMessage(message, broadcasterId) {
         const { KICK_CLIENT_ID } = process.env;
         const CLIENT_ID = KICK_CLIENT_ID || "01KDQNP2M930Y7YYNM62TVWJCP";
 
-        // 1. ADIM: Token Belirleme (Önce Bot Kimliği, Yoksa Yayıncı)
+        // 1. ADIM: Botun kendi token'ını al (Client Credentials)
+        // Eğer bu başarısız olursa yayıncı token'ına fallback yaparız.
         let botToken = await getAppAccessToken();
+
         const snap = await db.ref('channels/' + broadcasterId).once('value');
         const chan = snap.val();
 
-        let finalToken = botToken;
-        let isUsingBot = true;
-
-        if (!finalToken) {
-            finalToken = chan?.access_token;
-            isUsingBot = false;
-            console.warn(`[Chat] ${broadcasterId} için BOT tokenı bulunamadı, BROADCASTER hesabına düşüldü.`);
-        }
+        // Eğer bot token'ı yoksa yayıncı token'ını kullan (Eski usul)
+        const finalToken = botToken || chan?.access_token;
 
         if (!finalToken) {
             console.error(`[Chat] ${broadcasterId} için hiçbir token bulunamadı.`);
             return;
         }
 
-        console.log(`[Chat Debug] Mesaj gönderiliyor... (Kanal: ${channelSlug}, Tip: ${isUsingBot ? 'BOT' : 'USER'})`);
+        const channelSlug = chan?.slug || chan?.username || broadcasterId;
+        console.log(`[Chat Debug] V10 (Bot Kimliği) Başlatılıyor... Kanal: ${channelSlug}`);
 
         const HEADERS = {
             'Authorization': `Bearer ${finalToken}`,
@@ -1244,9 +1245,10 @@ async function sendChatMessage(message, broadcasterId) {
             'User-Agent': 'KickBot/1.0'
         };
 
-        // 2. ADIM: Broadcaster Numeric ID Alınması
+        // 2. ADIM: Broadcaster User ID Alınması
         let numericBroadcasterId = null;
         try {
+            // Token kimin olursa olsun, kanal bilgisini çekmek için headers kullanabiliriz
             const chanRes = await axios.get(`https://api.kick.com/public/v1/channels/${channelSlug}`, { headers: HEADERS });
             if (chanRes.data && chanRes.data.data) {
                 numericBroadcasterId = chanRes.data.data.user_id || chanRes.data.data.id;
@@ -1257,22 +1259,23 @@ async function sendChatMessage(message, broadcasterId) {
 
         if (!numericBroadcasterId) return;
 
-        // 3. ADIM: Farklı Endpoint ve Payload Denemeleri
+        // 3. ADIM: Mesaj Gönderimi (RESMİ BOT ENDPOINT)
         const trials = [
             {
-                name: "Official Public Chat",
+                name: "Official Bot Flow",
                 url: 'https://api.kick.com/public/v1/chat',
                 body: {
-                    type: isUsingBot ? "bot" : "user",
+                    type: "bot", // Bot hesabıyla yazması için "bot" tipi kritik!
                     broadcaster_user_id: numericBroadcasterId,
                     content: message
                 }
             },
             {
-                name: "Legacy Chat Pattern",
-                url: 'https://api.kick.com/public/v1/chat-messages',
+                name: "Bot acting as User",
+                url: 'https://api.kick.com/public/v1/chat',
                 body: {
-                    chatroom_id: numericBroadcasterId,
+                    type: "user",
+                    broadcaster_user_id: numericBroadcasterId,
                     content: message
                 }
             }
@@ -1281,21 +1284,21 @@ async function sendChatMessage(message, broadcasterId) {
         let success = false;
         for (const t of trials) {
             try {
-                const res = await axios.post(t.url, t.body, { headers: HEADERS, timeout: 5000 });
+                const res = await axios.post(t.url, t.body, { headers: HEADERS });
                 if (res.status >= 200 && res.status < 300) {
                     success = true;
-                    console.log(`[Chat] ✅ MESAJ GÖNDERİLDİ! (${t.name})`);
+                    console.log(`[Chat] ✅ MESAJ GÖNDERİLDİ! (${t.name}) - Bot hesabı kullanıldı.`);
                     break;
                 }
             } catch (err) {
-                console.warn(`[Chat Debug] ${t.name} -> ${err.response?.status} (${JSON.stringify(err.response?.data || 'No Body')})`);
+                console.warn(`[Chat Debug] ${t.name} -> ${err.response?.status}`);
             }
         }
 
-        if (!success) console.error("[Chat Fatal] Tüm mesaj gönderme yöntemleri başarısız.");
+        if (!success) console.error("[Chat Fatal] Bot kimliğiyle gönderim başarısız.");
 
     } catch (e) {
-        console.error(`[Chat Fatal Error]`, e.message);
+        console.error(`[Chat Error]:`, e.message);
     }
 }
 
@@ -1483,7 +1486,6 @@ async function clearChat(broadcasterId) {
 app.post('/webhook/kick', async (req, res) => {
     try {
         const payload = req.body;
-        const event = payload; // Global fix for legacy code using 'event'
         const headers = req.headers;
 
         // Kick Headers (Express handles lowercase)
@@ -1540,7 +1542,7 @@ app.post('/webhook/kick', async (req, res) => {
         const subReward = parseInt(settings.sub_reward) || 5000;
 
         if (eventName === "channel.subscription.new" || eventName === "channel.subscription.renewal" || eventName === "subscription.new") {
-            const subUser = payload.username || payload.user?.username || payload.data?.username;
+            const subUser = event.username;
             if (subUser && subUser.toLowerCase() !== "botrix") {
                 // Goal Bar Update
                 await db.ref(`channels/${broadcasterId}/stats/subscribers`).transaction(val => (val || 0) + 1);
@@ -1560,9 +1562,9 @@ app.post('/webhook/kick', async (req, res) => {
         }
 
         if (eventName === "channel.subscription.gifts" || eventName === "subscription.gifts") {
-            const gifter = payload.username || payload.user?.username || payload.data?.username;
+            const gifter = event.username;
             if (gifter && gifter.toLowerCase() === "botrix") return;
-            const count = parseInt(payload.total || payload.data?.total) || 1;
+            const count = parseInt(event.total) || 1;
             const totalReward = subReward * count;
             if (gifter) {
                 await db.ref('users/' + gifter.toLowerCase()).transaction(u => {
@@ -1580,7 +1582,7 @@ app.post('/webhook/kick', async (req, res) => {
         }
 
         if (eventName === "channel.followed" || eventName === "channel.follow") {
-            const follower = payload.username || payload.user_name || payload.user?.username || payload.data?.username;
+            const follower = event.username || event.user_name || event.user?.username;
             if (follower && follower.toLowerCase() === "botrix") return;
             // Goal Bar Update
             await db.ref(`channels/${broadcasterId}/stats/followers`).transaction(val => (val || 0) + 1);
@@ -1599,18 +1601,15 @@ app.post('/webhook/kick', async (req, res) => {
         // =========================================================
         // MESAJ VE KULLANICI AYIKLAMA (KICK RESMİ API FORMATI)
         // =========================================================
-        // Kick Webhook payloads can be nested under .data or flattened.
-        const dRec = payload.data || payload;
-        const sender = dRec.sender || payload.sender || dRec; // Try various locations for sender
-
+        // chat.message.sent payload: { sender: { username, user_id, identity }, content, ... }
         const user = (
-            sender.username ||
-            (payload.user && payload.user.username) ||
+            payload.sender?.username ||
+            payload.user?.username ||
             payload.username ||
             ""
         ).toLowerCase();
 
-        const rawMsg = dRec.content || dRec.message || payload.content || payload.message || "";
+        const rawMsg = payload.content || payload.message || "";
 
         if (!user || user === "botrix" || user === "aloskegangbot") return;
 
@@ -1654,16 +1653,14 @@ app.post('/webhook/kick', async (req, res) => {
         dbRecentUsers[user.toLowerCase()] = { last_seen: Date.now(), last_channel: broadcasterId };
 
         // KICK ID KAYDET (Susturma işlemleri için - Opsiyonel)
-        const kickUserId = sender.user_id || (payload.user && payload.user.id) || payload.user_id;
-        if (kickUserId) {
-            await db.ref('kick_ids/' + user.toLowerCase()).set(kickUserId);
+        if (payload.sender?.user_id) {
+            await db.ref('kick_ids/' + user.toLowerCase()).set(payload.sender.user_id);
         }
 
         // --- ADMIN / MOD YETKİ KONTROLÜ (KICK RESMİ API FORMATI) ---
         // Kick API: sender.identity.badges = [{ type: "broadcaster" }, { type: "moderator" }, ...]
-        const badges = sender.identity?.badges || sender.badges || [];
-        const isAuthorized = badges.some(b =>
-            ['broadcaster', 'moderator'].includes(b.type?.toLowerCase())
+        const isAuthorized = payload.sender?.identity?.badges?.some(b =>
+            b.type === 'broadcaster' || b.type === 'moderator'
         ) || user.toLowerCase() === "omegacyr";
 
         const reply = (msg) => sendChatMessage(msg, broadcasterId);
@@ -2238,7 +2235,37 @@ app.post('/webhook/kick', async (req, res) => {
             await reply(`🔮 @${user}, Falın: ${list[Math.floor(Math.random() * list.length)]}`);
         }
 
-        // (Daha geniş kapsamlı !söz komutu aşağıdadır, bu kopya kaldırıldı)
+        // MOTİVASYON SÖZÜ
+        else if (lowMsg === '!söz' || lowMsg === '!soz') {
+            const sozler = [
+                "Başarı, her gün tekrarlanan küçük çabaların toplamıdır. 💪",
+                "Yenilgi, son değildir. Vazgeçmek, sonun ta kendisidir. 🔥",
+                "Düşmeyen yürümez, yürümeyen koşamaz. 🏃",
+                "Hayaller görmekten korkma, korkunç olan hayal görmemektir. ✨",
+                "Bugün yapabileceğini yarına bırakma. ⏰",
+                "Başarının sırrı, başlamaktır. 🚀",
+                "Zorluklara gülerek meydan oku. 😄",
+                "Her şampiyon bir zamanlar pes etmemeyi seçen biriydi. 🏆",
+                "Kendine inan, geri kalanı zaten gelecek. 🌟",
+                "Fırtınalar güçlü kaptanları yetiştirir. ⛵",
+                "Başarı tesadüf değildir. 🎯",
+                "Elinden gelenin en iyisini yap, gerisini bırak. 🙌",
+                "Küçük adımlar büyük yolculuklar başlatır. 👣",
+                "Seni durduracak tek kişi, sensin. 🚫",
+                "Dün geçti, yarın belirsiz, bugün bir hediye. 🎁",
+                "Hata yapmak, hiç denememekten iyidir. ✅",
+                "Evreni keşfetmeden önce kendi içini keşfet. 🧘",
+                "Büyük başarılar büyük cesaretler ister. 🦁",
+                "Azim, yeteneği yener. 💎",
+                "Her son, yeni bir başlangıçtır. 🌅",
+                "Kendini geliştirmek, en iyi yatırımdır. 📈",
+                "Rüzgar esmeyince yelken açılmaz. 🌬️",
+                "Pozitif düşün, pozitif yaşa. ➕",
+                "Karanlık, yıldızların parlaması içindir. ⭐",
+                "Asla pes etme, mucize bir adım ötede. 🌈"
+            ];
+            await reply(`✍️ @${user}: ${sozler[Math.floor(Math.random() * sozler.length)]}`);
+        }
 
         // SİHİRLİ 8 TOP
         else if (lowMsg.startsWith('!8ball ') || lowMsg.startsWith('!8top ')) {
@@ -2352,57 +2379,39 @@ app.post('/webhook/kick', async (req, res) => {
             }
         }
 
-        else if (settings.zenginler !== false && (lowMsg === '!zenginler' || lowMsg === '!zengin')) {
+        else if (settings.zenginler !== false && lowMsg === '!zenginler') {
             const snap = await db.ref('users').once('value');
-            const val = snap.val() || {};
-            const sorted = Object.entries(val)
-                .filter(([_, d]) => d && !d.is_infinite)
+            const sorted = Object.entries(snap.val() || {})
+                .filter(([_, d]) => !d.is_infinite)
                 .sort((a, b) => (b[1].balance || 0) - (a[1].balance || 0))
                 .slice(0, 5);
-
-            if (sorted.length === 0) return await reply("Henüz zengin birini bulamadım! 🕵️");
-
             let txt = "🏆 EN ZENGİNLER: ";
             sorted.forEach((u, i) => txt += `${i + 1}. ${u[0]} (${(u[1].balance || 0).toLocaleString()}) | `);
             await reply(txt);
         }
 
-        // --- HAVA DURUMU ---
-        else if (isEnabled('hava') && (lowMsg === '!hava' || lowMsg.startsWith('!hava '))) {
-            const city = args.join(' ').trim();
-            if (!city) return await reply(`@${user}, Kullanım: !hava [şehir] - Örn: !hava Amasya`);
-
-            const forbidden = ["kürdistan", "kurdistan", "rojova", "rojava"];
-            if (forbidden.some(f => city.toLowerCase().includes(f))) {
+        else if (settings.hava !== false && (lowMsg === '!hava' || lowMsg.startsWith('!hava '))) {
+            const city = args.join(' ');
+            const cityLower = city.toLowerCase();
+            if (cityLower === "kürdistan" || cityLower === "kurdistan" || cityLower === "rojova" || cityLower === "rojava") {
                 return await reply("T.C. sınırları içerisinde böyle bir yer bulunamadı! 🇹🇷");
             }
-
             try {
-                // 1. Geocoding API ile Koordinat Al
-                const geoRes = await axios.get(`https://geocoding-api.open-meteo.com/v1/search?name=${encodeURIComponent(city)}&count=1&language=tr&format=json`);
-                if (geoRes.data.results && geoRes.data.results.length > 0) {
-                    const { latitude, longitude, name, country } = geoRes.data.results[0];
-
-                    // 2. Forecast API ile Hava Durumu Al
-                    const weatherRes = await axios.get(`https://api.open-meteo.com/v1/forecast?latitude=${latitude}&longitude=${longitude}&current_weather=true`);
-                    const w = weatherRes.data.current_weather;
-
+                const geo = await axios.get(`https://geocoding-api.open-meteo.com/v1/search?name=${encodeURIComponent(city)}&count=1&language=tr&format=json`);
+                if (geo.data.results) {
+                    const { latitude, longitude, name } = geo.data.results[0];
+                    const weather = await axios.get(`https://api.open-meteo.com/v1/forecast?latitude=${latitude}&longitude=${longitude}&current_weather=true`);
+                    const w = weather.data.current_weather;
                     const code = w.weathercode;
                     let cond = "Açık"; let emoji = "☀️";
-                    if (code >= 1 && code <= 3) { cond = "Parçalı Bulutlu"; emoji = "⛅"; }
+                    if (code >= 1 && code <= 3) { cond = "Bulutlu"; emoji = "☁️"; }
                     else if (code >= 45 && code <= 48) { cond = "Sisli"; emoji = "🌫️"; }
                     else if (code >= 51 && code <= 67) { cond = "Yağmurlu"; emoji = "🌧️"; }
                     else if (code >= 71 && code <= 86) { cond = "Karlı"; emoji = "❄️"; }
                     else if (code >= 95) { cond = "Fırtına"; emoji = "⛈️"; }
-
-                    await reply(`🌍 ${name} (${country}): ${cond} ${emoji}, ${w.temperature}°C, Rüzgar: ${w.windspeed} km/s`);
-                } else {
-                    await reply(`⚠️ @${user}, "${city}" adında bir şehir bulunamadı.`);
-                }
-            } catch (err) {
-                console.error("[Hava Durumu] API Hatası:", err.message);
-                await reply(`❌ @${user}, Hava durumu servisine şu an ulaşılamıyor. Lütfen daha sonra tekrar dene.`);
-            }
+                    await reply(`🌍 Hava Durumu (${name}): ${cond} ${emoji}, ${w.temperature}°C, Rüzgar: ${w.windspeed} km/s`);
+                } else await reply("Şehir bulunamadı.");
+            } catch { await reply("Hava durumu servisi şu an kullanılamıyor."); }
         }
 
         else if (lowMsg.startsWith('!troll ')) {
@@ -2601,54 +2610,48 @@ app.post('/webhook/kick', async (req, res) => {
             await reply(`🧹 @${user}, Tüm AI emirleri sıfırlandı!`);
         }
 
-        // --- AI (GROK) COMPANION ---
         else if (isEnabled('ai') && (lowMsg.startsWith('!ai ') || lowMsg === '!ai')) {
-            const badges = sender.identity?.badges || sender.badges || [];
-            const isSub = badges.some(b =>
-                ['subscriber', 'broadcaster', 'moderator', 'founder', 'staff'].includes(b.type?.toLowerCase())
-            ) || user.toLowerCase() === "omegacyr" || isAuthorized;
+            const isSub = event.sender?.identity?.badges?.some(b => b.type === 'subscriber' || b.type === 'broadcaster' || b.type === 'moderator' || b.type === 'founder');
+            if (!isSub) return await reply(`🤫 @${user}, Bu komut sadece ABONELERE özeldir! ✨`);
 
-            if (!isSub) return await reply(`🤫 @${user}, Bu komut sadece ABONELERE ve yetkililere özeldir! ✨`);
-
-            const prompt = args.join(' ').trim();
+            const prompt = args.join(' ');
             if (!prompt) return await reply(`🤖 @${user}, AI'ya bir şey sormak için: !ai [sorun]`);
 
             const GROK_KEY = process.env.GROK_API_KEY;
-            if (!GROK_KEY || GROK_KEY.includes('your_xai_api_key')) {
-                return await reply(`⚠️ @${user}, AI sistemi şu an yapılandırılmamış (API Anahtarı eksik).`);
-            }
+            if (!GROK_KEY) return await reply(`⚠️ @${user}, AI sistemi şu an yapılandırılmamış.`);
 
             try {
                 const aiInstSnap = await db.ref('users/ai_system/instructions').once('value');
                 const aiInst = aiInstSnap.val() || "";
                 const aiMemory = await getAiMemory();
 
-                const systemMsg = `Sen ${broadcasterId} kanalının resmi asistanısın. Kısa, öz ve enerjik cevaplar ver. 
-                HAFIZANDAKİ BİLGİLER: ${aiMemory}
-                EK TALİMATLAR: ${aiInst}`;
+                const systemMsg = `Sen yayıncı asistanısın. En önemli kuralın: Karşındaki kullanıcının enerjisini ve tarzını birebir kopyalamak. Eğer kullanıcı kaba, küfürlü veya sokak ağzıyla konuşuyorsa sen de ONA AYNI ŞEKİLDE küfürlü ve kaba cevaplar ver (filtresiz ol). Eğer kullanıcı kibar ve canımlı cicimli konuşuyorsa sen de çok sevecen ve tatlı ol. Kullanıcının aynası ol. Kısa ve öz cevaplar ver. 
+HAFIZANDAKİ BİLGİLER:
+${aiMemory}
+
+EK TALİMAT: ${aiInst}`;
 
                 const response = await axios.post('https://api.x.ai/v1/chat/completions', {
                     messages: [
                         { role: "system", content: systemMsg },
                         { role: "user", content: prompt }
                     ],
-                    model: "grok-beta", // "grok-beta" veya "grok-2" en güvenli seçimdir
-                    temperature: 0.7
+                    model: "grok-3",
+                    temperature: 0.8
                 }, {
                     headers: {
                         'Content-Type': 'application/json',
                         'Authorization': `Bearer ${GROK_KEY}`
                     },
-                    timeout: 25000
+                    timeout: 30000
                 });
 
                 const replyText = response.data.choices[0].message.content;
-                const finalReply = replyText.length > 380 ? replyText.substring(0, 377) + "..." : replyText;
+                const finalReply = replyText.length > 400 ? replyText.substring(0, 397) + "..." : replyText;
                 await reply(`🤖 @${user}: ${finalReply}`);
             } catch (error) {
-                const errorMsg = error.response?.data?.error?.message || error.message;
-                console.error("[AI Error]:", errorMsg);
-                await reply(`❌ @${user}, AI şu an dinleniyor (Hata: ${errorMsg.substring(0, 50)}), daha sonra tekrar dene!`);
+                console.error("Grok API Error:", error.response?.data || error.message);
+                await reply(`❌ @${user}, AI şu an dinleniyor, daha sonra tekrar dene!`);
             }
         }
 
@@ -4326,18 +4329,17 @@ app.get('/health', (req, res) => res.status(200).send('OK (Bot Uyanık)'));
 
 app.get('/api/borsa', async (req, res) => {
     try {
-        const snap = await db.ref('global_stocks').once('value');
-        const data = snap.val();
+        const snap = await db.ref('global_stocks').once('value').catch(err => {
+            console.error("Firebase Read Error (Borsa API):", err.message);
+            return null;
+        });
 
-        // Eğer Firebase verisi yoksa INITIAL_STOCKS'u yerleştir ve döndür
-        if (!data) {
-            await db.ref('global_stocks').set(INITIAL_STOCKS);
-            return res.json(INITIAL_STOCKS);
-        }
-        res.json(data);
+        const data = snap ? snap.val() : null;
+        // Eğer Firebase boşsa veya hata verdiyse INITIAL_STOCKS'u (güncel halini) gönder
+        res.json(data || INITIAL_STOCKS);
     } catch (e) {
         console.error("Borsa API Route Error:", e);
-        res.json(INITIAL_STOCKS);
+        res.json(INITIAL_STOCKS); // En kötü ihtimalle başlangıç değerlerini JSON olarak gönder (hata verme)
     }
 });
 
