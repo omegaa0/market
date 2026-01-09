@@ -567,6 +567,38 @@ app.post('/api/borsa/reset', async (req, res) => {
     }
 });
 
+app.post('/api/emlak/reset', async (req, res) => {
+    try {
+        const { requester } = req.body;
+        if (requester !== 'omegacyr') {
+            return res.status(403).json({ success: false, error: "Yetkisiz erişim!" });
+        }
+
+        console.log("🚨 EMLAK PİYASASI SIFIRLAMA BAŞLATILDI (Omegacyr tarafından)");
+
+        // 1. Tüm şehirlerdeki mülk pazarını sil
+        await db.ref('real_estate_market').remove();
+
+        // 2. Tüm kullanıcıların sahip olduğu mülkleri sil (Opsiyonel ama ekonomi tutarlılığı için gerekli)
+        const usersSnap = await db.ref('users').once('value');
+        const users = usersSnap.val() || {};
+        const updates = {};
+        for (const username in users) {
+            if (users[username].properties) {
+                updates[`users/${username}/properties`] = null;
+            }
+        }
+        if (Object.keys(updates).length > 0) {
+            await db.ref().update(updates);
+        }
+
+        res.json({ success: true, message: "Emlak piyasası ve tüm mülk sahiplikleri başarıyla sıfırlandı. Yeni fiyatlar artık aktif." });
+    } catch (e) {
+        console.error("Emlak Reset Error:", e.message);
+        res.status(500).json({ success: false, error: e.message });
+    }
+});
+
 // --- EMLAK GELİR DAĞITIMI (Her 1 Saat) ---
 async function distributeRealEstateIncome() {
     try {

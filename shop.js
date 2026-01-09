@@ -1066,6 +1066,30 @@ let emlakActive = false;
 function loadEmlak() {
     if (emlakActive) return;
     emlakActive = true;
+
+    // Admin Reset Butonu (Emlak için)
+    if (currentUser === 'omegacyr') {
+        const emlakTab = document.getElementById('tab-emlak');
+        const resetBtn = document.createElement('button');
+        resetBtn.innerHTML = "🚨 EMLAK SİSTEMİNİ SIFIRLA (ADMİN)";
+        resetBtn.className = "primary-btn";
+        resetBtn.style = "background: #ff4d4d; color: white; margin-bottom: 20px; width: auto; padding: 10px 25px;";
+        resetBtn.onclick = async () => {
+            if (!confirm("Tüm şehirlerdeki mülkleri ve tüm kullanıcıların tapularını silmek istediğine emin misin? (Fiyatları güncellemek için gereklidir)")) return;
+            const res = await fetch('/api/emlak/reset', {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({ requester: 'omegacyr' })
+            });
+            const d = await res.json();
+            if (d.success) {
+                showToast(d.message, "success");
+                setTimeout(() => location.reload(), 1500);
+            }
+        };
+        emlakTab.insertBefore(resetBtn, emlakTab.firstChild);
+    }
+
     renderEmlakMap();
 }
 
