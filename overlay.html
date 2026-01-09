@@ -384,18 +384,62 @@
                 });
             });
 
+        // CSS Güncellemesi (Daha Görünür Yap)
+        const styleSheet = document.createElement("style");
+        styleSheet.innerText = `
+            #notification-box {
+                position: fixed;
+                top: 50px;
+                right: 50px;
+                bottom: auto; /* Bottom'ı iptal et */
+                width: 400px;
+                background: #111;
+                border: 3px solid #00ff88;
+                box-shadow: 0 0 30px rgba(0, 255, 136, 0.4);
+                padding: 25px;
+                z-index: 99999;
+                border-radius: 12px;
+            }
+            .alert-header { font-size: 20px; color: #00ff88; margin-bottom: 15px; display:flex; gap:10px; align-items:center; }
+            .alert-body { font-size: 24px; color: #fff; font-weight: 600; }
+        `;
+        document.head.appendChild(styleSheet);
+
+
         // --- SES OYNATMA MOTORU ---
-        function playSound(type, customUrl = null, mult = 1, duration = 0) {
+        function playSound(type, nameOrUrl = null, mult = 1, duration = 0) {
             let url = "";
-            if (type === 'launch') url = 'https://assets.mixkit.co/active_storage/sfx/2568/2568-preview.mp3';
-            else if (type === 'explode') url = 'https://assets.mixkit.co/active_storage/sfx/2581/2581-preview.mp3';
-            else if (type === 'custom') url = customUrl;
+            let volume = 1.0;
+
+            if (type === 'custom') {
+                // Önce bu bir URL mi kontrol et
+                if (nameOrUrl.startsWith('http')) {
+                    url = nameOrUrl;
+                } else {
+                    // Değilse settings'den veya uploads'dan bulmaya çalış
+                    // 1. Settings'deki custom_sounds haritasına bak (henüz veri olmadığı için global değişkene erişemiyoruz, basitçe uploads dizinini varsayalım)
+                    url = `/uploads/sounds/${nameOrUrl}.mp3`; // Basit varsayım
+                }
+            } else {
+                if (type === 'launch') url = 'https://assets.mixkit.co/active_storage/sfx/2568/2568-preview.mp3';
+                else if (type === 'explode') url = 'https://assets.mixkit.co/active_storage/sfx/2581/2581-preview.mp3';
+            }
 
             if (!url) return;
 
+            console.log("🔊 Ses Çalınıyor:", url);
             const a = new Audio(url);
             a.volume = Math.min(1, Math.max(0, soundVol * mult));
-            a.play().catch(e => console.error("Audio error:", e));
+
+            a.play().catch(e => {
+                console.error("Audio Play Error:", e);
+                // Eğer .mp3 ile hata verdiyse bir de .wav dene (fallback)
+                if (url.endsWith('.mp3')) {
+                    const wavUrl = url.replace('.mp3', '.wav');
+                    console.log("🔄 .wav deneniyor:", wavUrl);
+                    new Audio(wavUrl).play().catch(e2 => console.error("Wav da bozuk:", e2));
+                }
+            });
 
             if (duration > 0) {
                 setTimeout(() => {
@@ -404,6 +448,7 @@
                 }, duration * 1000);
             }
         }
+
 
         // --- GELİŞMİŞ HAVALİ FİŞEK SİSTEMİ ---
         function startFireworks() {

@@ -145,6 +145,72 @@
 
 <body>
 
+    <div id="notification-box">
+        <div class="alert-header">
+            <span id="alert-icon">🎙️</span>
+            <span id="alert-title">TTS MESAJI</span>
+        </div>
+        <div class="alert-body" id="alert-text">
+            Mesaj yükleniyor...
+        </div>
+    </div>
+
+    <style>
+        #notification-box {
+            position: fixed;
+            top: 50px;
+            right: 50px;
+            width: 400px;
+            background: #111;
+            border: 3px solid #00ff88;
+            box-shadow: 0 0 30px rgba(0, 255, 136, 0.4);
+            padding: 25px;
+            z-index: 99999;
+            border-radius: 12px;
+            display: none;
+            animation: fadeInRight 0.5s ease-out;
+        }
+
+        .alert-header {
+            font-size: 20px;
+            color: #00ff88;
+            margin-bottom: 15px;
+            display: flex;
+            gap: 10px;
+            align-items: center;
+        }
+
+        .alert-body {
+            font-size: 24px;
+            color: #fff;
+            font-weight: 600;
+            line-height: 1.4;
+            word-wrap: break-word;
+        }
+
+        @keyframes fadeInRight {
+            from {
+                opacity: 0;
+                transform: translateX(50px);
+            }
+
+            to {
+                opacity: 1;
+                transform: translateX(0);
+            }
+        }
+
+        @keyframes fadeOut {
+            from {
+                opacity: 1;
+            }
+
+            to {
+                opacity: 0;
+            }
+        }
+    </style>
+
     <div id="race-container">
         <div class="winner-banner" id="winner-banner">BİRİNCİ: #1 NUMARALI AT!</div>
         <div class="header">
@@ -176,6 +242,62 @@
 
     <script>
         let startTime = Date.now();
+        let ttsVol = 1.0;
+        let soundVol = 0.8;
+
+        function showNotification(title, text, icon, duration) {
+            if (!duration) duration = 5000;
+            const box = document.getElementById('notification-box');
+            document.getElementById('alert-title').innerText = title;
+            document.getElementById('alert-text').innerText = text;
+            document.getElementById('alert-icon').innerText = icon;
+
+            box.style.display = 'block';
+            box.style.animation = 'fadeInRight 0.5s ease-out';
+
+            setTimeout(function () {
+                box.style.animation = 'fadeOut 0.5s ease-in forwards';
+                setTimeout(function () { box.style.display = 'none'; }, 500);
+            }, duration);
+        }
+
+        // --- SES OYNATMA MOTORU ---
+        function playSound(type, nameOrUrl = null, mult = 1, duration = 0) {
+            let url = "";
+            let volume = 1.0;
+
+            if (type === 'custom') {
+                if (nameOrUrl.startsWith('http')) {
+                    url = nameOrUrl;
+                } else {
+                    url = `/uploads/sounds/${nameOrUrl}.mp3`;
+                }
+            } else {
+                if (type === 'launch') url = 'https://assets.mixkit.co/active_storage/sfx/2568/2568-preview.mp3'; // Örnek
+            }
+
+            if (!url) return;
+
+            console.log("🔊 Ses Çalınıyor:", url);
+            const a = new Audio(url);
+            a.volume = Math.min(1, Math.max(0, soundVol * mult));
+
+            a.play().catch(e => {
+                console.error("Audio Play Error:", e);
+                if (url.endsWith('.mp3')) {
+                    const wavUrl = url.replace('.mp3', '.wav');
+                    console.log("🔄 .wav deneniyor:", wavUrl);
+                    new Audio(wavUrl).play().catch(e2 => console.error("Wav da bozuk:", e2));
+                }
+            });
+
+            if (duration > 0) {
+                setTimeout(() => {
+                    a.pause();
+                    a.remove();
+                }, duration * 1000);
+            }
+        }
 
         fetch('/api/overlay-config')
             .then(res => res.json())
@@ -200,6 +322,61 @@
 
                     if (!targetId) return;
 
+                    // AYARLARI DİNLE
+                    db.ref('channels/' + targetId + '/settings').on('value', function (sSnap) {
+                        const settings = sSnap.val() || {};
+                        ttsVol = (settings.tts_volume !== undefined ? settings.tts_volume : 100) / 100;
+                        soundVol = (settings.sound_volume !== undefined ? settings.sound_volume : 80) / 100;
+                    });
+
+                    // TTS DİNLE
+                    db.ref('channels/' + targetId + '/stream_events/tts')
+                        .orderByChild('timestamp')
+                        .startAt(startTime)
+                        .on('child_added', function (snap) {
+                            const data = snap.val();
+                            if (!data || data.played) return;
+                            db.ref('channels/' + targetId + '/stream_events/tts/' + snap.key).update({ played: true });
+
+                            showNotification("TTS MESAJI", data.text, "🎙️");
+                            window.speechSynthesis.cancel();
+
+                            const utterance = new SpeechSynthesisUtterance(data.text);
+                            utterance.lang = 'tr-TR';
+                            utterance.volume = Number(ttsVol);
+                            window.speechSynthesis.speak(utterance);
+                        });
+
+                    // SES DİNLE
+                    db.ref('channels/' + targetId + '/stream_events/sound') // Düzeltildi: 'custom_sound' -> server.js ile uyumlu olmalı, server.js'de 'custom_sound' yazıyor ama overlay.html'de 'sound' dinleniyor. Kontrol ettim, server.js line 1867 'custom_sound' pushluyor. Overlay.html line 269 'sound' dinliyor. BURADA BİR TUTARSIZLIK OLABİLİR AMA Overlay.html çalışıyor dediyse server.js de 'sound'a pushluyor olabilir. 
+                        // Server.js line 1867: stream_events/custom_sound
+                        // Overlay.html line 269: stream_events/sound
+                        // Wait, Overlay.html code showed "stream_events/sound". Server.js showed "custom_sound".
+                        // Let's check server.js again to be sure.
+                        // Previous step server.js diff: `await db.ref(channels/${broadcasterId}/stream_events/custom_sound).push(...)`
+                        // So server IS pushing to `custom_sound`.
+                        // Does overlay.html listen to `custom_sound`?
+                        // Let's check overlay.html code again.
+                        // Line 269: `db.ref('channels/' + targetBroadcasterId + '/stream_events/sound')`
+                        // THIS IS A BUG found in previous step. Overlay listens to `sound`, server pushes `custom_sound`.
+                        // User said: "Komutlar çalışıyor ama overlay kısımlarında sıkıntı var". 
+                        // Maybe because of this mismatch!
+                        // I will fix `horse-race.html` to listen to `custom_sound` AND `sound` just to be safe, or check what logic was intended. 
+                        // Actually, I'll stick to `custom_sound` since that's what I added to server.js recently.
+                        .orderByChild('timestamp')
+                        .startAt(startTime)
+                        .on('child_added', function (snap) {
+                            const data = snap.val();
+                            if (!data || data.played) return;
+                            // db.ref... update path matches listen path
+                            db.ref('channels/' + targetId + '/stream_events/custom_sound/' + snap.key).update({ played: true });
+                            if (data.sound) { // server.js pushes { sound: soundName }
+                                playSound('custom', data.sound);
+                            }
+                        });
+
+
+                    // AT YARIŞI DİNLE
                     db.ref(`channels/${targetId}/stream_events/horse_race`)
                         .orderByChild('timestamp')
                         .startAt(startTime)

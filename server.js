@@ -147,27 +147,20 @@ async function initAdminUsers() {
         };
 
         if (!snap.exists()) {
-            // Hiç admin yoksa oluştur
+            // Hiç admin yoksa oluştur (Sadece ilk kurulumda çalışır)
             await adminRef.set(defaultAdmins);
             console.log("✅ Admin tablosu ilk kez oluşturuldu.");
         } else {
-            // Sadece belirli adminleri güncelle/ekle (diğerlerini silme)
-            for (const [user, data] of Object.entries(defaultAdmins)) {
-                const userSnap = await adminRef.child(user).once('value');
-                if (!userSnap.exists()) {
-                    await adminRef.child(user).set(data);
-                } else {
-                    // Sadece şifreyi güncellemek isterseniz:
-                    await adminRef.child(user).update({ password: data.password });
-                }
-            }
-            console.log("✅ Mevcut adminler korundu, varsayılan adminler kontrol edildi.");
+            console.log("✅ Mevcut admin verileri korundu. (Deploy/Restart sırasında sıfırlanmadı)");
         }
     } catch (e) {
         console.error("Admin Users Init Error:", e.message);
     }
 }
 initAdminUsers();
+
+// Global Cooldown Takibi
+const userGlobalCooldowns = {};
 
 // IP Almak için yardımcı
 const getClientIp = (req) => {
@@ -646,6 +639,63 @@ app.get('/api/real-estate/properties/:cityId', async (req, res) => {
     } catch (e) {
         console.error(`Emlak API Hatası (${req.params.cityId}):`, e.message);
         res.status(500).json([]);
+    }
+});
+
+// EMLAK SATIN ALMA ENDPOINT
+app.post('/api/real-estate/buy', async (req, res) => {
+    try {
+        const { username, cityId, propertyId } = req.body;
+
+        const userRef = db.ref('users/' + username);
+        const userSnap = await userRef.once('value');
+        if (!userSnap.exists()) return res.json({ success: false, error: "Kullanıcı bulunamadı." });
+        const user = userSnap.val();
+
+        // Şehir pazarını çek
+        const marketRef = db.ref(`real_estate_market/${cityId}`);
+        const marketSnap = await marketRef.once('value');
+        let market = marketSnap.val();
+
+        if (!market) return res.json({ success: false, error: "Şehir verisi bulunamadı." });
+
+        // Mülkü bul
+        const propertyIndex = market.findIndex(p => p.id === propertyId);
+        if (propertyIndex === -1) return res.json({ success: false, error: "Mülk bulunamadı." });
+        const property = market[propertyIndex];
+
+        if (property.owner) return res.json({ success: false, error: "Bu mülk zaten sahipli." });
+        if ((user.balance || 0) < property.price) return res.json({ success: false, error: "Yetersiz bakiye." });
+
+        // İşlemi Gerçekleştir
+        const newBalance = (user.balance || 0) - property.price;
+
+        // Kullanıcıya mülkü ekle
+        const userProps = user.properties || [];
+        userProps.push({
+            id: property.id,
+            cityId: cityId,
+            name: property.name,
+            income: property.income,
+            type: property.type,
+            purchasedAt: Date.now()
+        });
+
+        // Veritabanını güncelle
+        await userRef.update({
+            balance: newBalance,
+            properties: userProps
+        });
+
+        // Market verisini güncelle (Sahiplik)
+        await marketRef.child(propertyIndex).update({ owner: username });
+
+        console.log(`[Emlak] ${username}, ${property.name} mülkünü satın aldı. Fiyat: ${property.price}`);
+        res.json({ success: true, message: `${property.name} başarıyla satın alındı!` });
+
+    } catch (e) {
+        console.error("Buy Error:", e);
+        res.status(500).json({ success: false, error: e.message });
     }
 });
 
@@ -1782,6 +1832,40 @@ app.post('/webhook/kick', async (req, res) => {
 
         const lowMsg = rawMsg.trim().toLowerCase();
         const args = rawMsg.trim().split(/\s+/).slice(1);
+
+        // --- GLOBAL COOLDOWN (5 Saniye) ---
+        if (rawMsg.startsWith('!')) {
+            const now = Date.now();
+            if (user !== 'omegacyr' && userGlobalCooldowns[user] && now < userGlobalCooldowns[user]) {
+                return; // Sessizce işlem yapma
+            }
+            userGlobalCooldowns[user] = now + 5000;
+        }
+
+        // --- TTS & SES KOMUTLARI ---
+        if (lowMsg.startsWith('!tts ')) {
+            const text = rawMsg.substring(5).trim();
+            if (text && text.length < 200) {
+                await db.ref(`channels/${broadcasterId}/stream_events/tts`).push({
+                    text: text,
+                    username: user,
+                    timestamp: Date.now(),
+                    played: false
+                });
+                // await reply(`🗣️ TTS: ${text}`); // Sessiz olsun istenirse
+            }
+        }
+        else if (lowMsg.startsWith('!ses ')) {
+            const soundName = args[0]?.toLowerCase();
+            if (soundName) {
+                await db.ref(`channels/${broadcasterId}/stream_events/custom_sound`).push({
+                    sound: soundName,
+                    username: user,
+                    timestamp: Date.now(),
+                    played: false
+                });
+            }
+        }
         const userRef = db.ref('users/' + user.toLowerCase());
 
         // --- OTOMATİK KAYIT & AKTİFLİK TAKİBİ (ATOMIC TRANSACTION) ---
