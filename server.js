@@ -408,7 +408,8 @@ const REAL_ESTATE_TYPES = [
     { name: "İş Merkezi", minPrice: 15000000, maxPrice: 25000000, minInc: 120000, maxInc: 220000, type: "med" },
     { name: "Butik Otel", minPrice: 20000000, maxPrice: 35000000, minInc: 180000, maxInc: 320000, type: "med" },
     { name: "Gece Kulübü", minPrice: 10000000, maxPrice: 18000000, minInc: 90000, maxInc: 160000, type: "med" },
-    { name: "Alışveriş Merkezi", minPrice: 40000000, maxPrice: 50000000, minInc: 450000, maxInc: 750000, type: "high" }
+    { name: "Alışveriş Merkezi", minPrice: 40000000, maxPrice: 50000000, minInc: 450000, maxInc: 750000, type: "high" },
+    { name: "Havalimanı Terminali", minPrice: 85000000, maxPrice: 100000000, minInc: 1200000, maxInc: 2500000, type: "high" }
 ];
 
 async function getCityMarket(cityId) {

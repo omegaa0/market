@@ -525,33 +525,62 @@ function drawStockChart(canvas, history, trend) {
     const ctx = canvas.getContext('2d');
     const w = canvas.width;
     const h = canvas.height;
+    const paddingRight = 45; // Fiyat etiketleri için boşluk
+    const effectiveW = w - paddingRight;
+
     ctx.clearRect(0, 0, w, h);
 
+    const min = Math.min(...history);
+    const max = Math.max(...history);
+    const range = (max - min) || 1;
+
+    // Arka plan çizgileri (Opsiyonel, şık durur)
+    ctx.beginPath();
+    ctx.strokeStyle = 'rgba(255,255,255,0.03)';
+    ctx.lineWidth = 1;
+    [0.1, 0.5, 0.9].forEach(p => {
+        ctx.moveTo(0, h * p);
+        ctx.lineTo(effectiveW, h * p);
+    });
+    ctx.stroke();
+
+    // Ana Çizgi
     ctx.beginPath();
     ctx.strokeStyle = trend === 1 ? '#05ea6a' : '#ff4d4d';
     ctx.lineWidth = 2;
     ctx.lineJoin = 'round';
 
-    const min = Math.min(...history);
-    const max = Math.max(...history);
-    const range = max - min || 1;
-
     history.forEach((val, i) => {
-        const x = (i / (history.length - 1)) * w;
+        const x = (i / (history.length - 1)) * effectiveW;
         const y = h - ((val - min) / range) * h * 0.8 - (h * 0.1);
         if (i === 0) ctx.moveTo(x, y);
         else ctx.lineTo(x, y);
     });
     ctx.stroke();
 
-    // Area
-    ctx.lineTo(w, h);
+    // Alan (Gradiyent Dolgu)
+    ctx.lineTo(effectiveW, h);
     ctx.lineTo(0, h);
     const grad = ctx.createLinearGradient(0, 0, 0, h);
     grad.addColorStop(0, trend === 1 ? 'rgba(5,234,106,0.1)' : 'rgba(255,77,77,0.1)');
     grad.addColorStop(1, 'transparent');
     ctx.fillStyle = grad;
     ctx.fill();
+
+    // FİYAT SIRALAMASI (Sağ Tarafa Çizelge)
+    ctx.fillStyle = '#666';
+    ctx.font = '8px monospace';
+    ctx.textAlign = 'right';
+
+    const labels = [
+        { v: max, y: h * 0.1 + 8 },
+        { v: (max + min) / 2, y: h / 2 + 4 },
+        { v: min, y: h * 0.9 }
+    ];
+
+    labels.forEach(l => {
+        ctx.fillText(Math.round(l.v).toLocaleString(), w - 2, l.y);
+    });
 }
 
 async function loadBorsa() {
@@ -657,7 +686,7 @@ async function loadBorsa() {
                     <div style="font-size: 0.65rem; color: #ff4d4d; margin-bottom: 10px; font-weight: 600;">⚠️ %5 Satış Komisyonu Uygulanır</div>
 
                     <div class="borsa-controls" style="margin-top:10px;">
-                        <input type="number" id="input-${code}" class="borsa-input" value="1" min="1" placeholder="Adet" aria-label="${code} Adet Satın Al/Sat">
+                        <input type="number" id="input-${code}" class="borsa-input" value="1" min="0.00000001" step="any" placeholder="Adet" aria-label="${code} Adet Satın Al/Sat">
                         <div style="display:grid; grid-template-columns: 1fr 1fr; gap:8px;">
                             <button class="buy-btn btn-buy-main" onclick="executeBorsaBuy('${code}', ${data.price})" style="background:var(--primary); color:black; font-weight:800; padding:8px;">AL</button>
                             <button class="buy-btn btn-sell-main" onclick="executeBorsaSell('${code}', ${data.price})" style="background:rgba(255,255,255,0.05); color:white; border:1px solid var(--glass-border); padding:8px;">SAT</button>
@@ -679,10 +708,10 @@ async function loadBorsa() {
 async function executeBorsaBuy(code, price) {
     if (!currentUser) return;
     const input = document.getElementById(`input-${code}`);
-    const amount = parseInt(input.value);
+    const amount = parseFloat(input.value.replace(',', '.')); // Virgül desteği
     if (!amount || isNaN(amount) || amount <= 0) return showToast("Geçersiz miktar!", "error");
 
-    const total = price * amount;
+    const total = Math.ceil(price * amount); // Küsüratlı olsa da tam sayıya yuvarlayalım ki ekonomi zor olsun
     if (!confirm(`${amount} adet ${code} için ${total.toLocaleString()} 💰 ödenecek. Onaylıyor musun?`)) return;
 
     db.ref('users/' + currentUser).once('value', async (snap) => {
@@ -705,7 +734,7 @@ async function executeBorsaBuy(code, price) {
 async function executeBorsaSell(code, price) {
     if (!currentUser) return;
     const input = document.getElementById(`input-${code}`);
-    const amount = parseInt(input.value);
+    const amount = parseFloat(input.value.replace(',', '.')); // Virgül desteği
 
     db.ref('users/' + currentUser).once('value', async (snap) => {
         const u = snap.val() || {};
@@ -717,9 +746,9 @@ async function executeBorsaSell(code, price) {
 
         const grossTotal = price * amount;
         const commission = Math.floor(grossTotal * 0.05);
-        const netTotal = grossTotal - commission;
+        const netTotal = Math.floor(grossTotal - commission); // Kazancı tam sayı yapalım
 
-        if (!confirm(`${amount} adet ${code} satılacak.\nBrüt: ${grossTotal.toLocaleString()} 💰\nKomisyon (%5): -${commission.toLocaleString()} 💰\nNet: ${netTotal.toLocaleString()} 💰\n\nSatış işlemini onaylıyor musun?`)) return;
+        if (!confirm(`${amount} adet ${code} satılacak.\nBrüt: ${grossTotal.toLocaleString()} 💰\nKomisyon (%5): -${commission.toLocaleString()} 💰\nNet Kazanç: ${netTotal.toLocaleString()} 💰\n\nSatış işlemini onaylıyor musun?`)) return;
 
         await db.ref('users/' + currentUser).transaction(user => {
             if (user) {
@@ -903,7 +932,7 @@ async function loadProfile() {
                 Object.entries(u.stocks).map(([code, amt]) => `
                                 <div class="stat-mini" style="border:1px solid #05ea6a33; background:rgba(5, 234, 106, 0.05);">
                                     <label>${code}</label>
-                                    <div class="v">${amt} Adet</div>
+                                    <div class="v">${Number(amt).toLocaleString('tr-TR', { maximumFractionDigits: 8 })} Adet</div>
                                 </div>
                             `).join('') : '<p style="grid-column: span 2; font-size: 0.8rem; color:#666;">Henüz hissedar değilsin.</p>'
             }
@@ -1103,7 +1132,8 @@ async function loadCityProperties(cityId, cityName) {
             item.style.animation = `fadeInUp 0.5s forwards ${index * 0.1}s`;
 
             const typeIcons = { low: 'shop', med: 'building', high: 'landmark' };
-            const icon = typeIcons[p.type] || 'house';
+            let icon = typeIcons[p.type] || 'house';
+            if (p.name.includes("Havalimanı")) icon = "plane-arrival";
 
             const btnHtml = p.owner
                 ? `<div style="color:#ff4d4d; font-weight:900; font-size:0.75rem; background:rgba(255,77,77,0.1); padding:5px 12px; border-radius:10px; border:1px solid rgba(255,77,77,0.2);">💸 SAHİBİ: @${p.owner}</div>`
