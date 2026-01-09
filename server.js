@@ -451,8 +451,9 @@ async function updateGlobalStocks() {
         const snap = await stockRef.once('value');
         let stocks = snap.val();
 
-        if (!stocks) {
-            stocks = INITIAL_STOCKS;
+        if (!stocks || !stocks["APPLE"]) {
+            console.log("⚠️ Borsa verisi bulunamadı, başlangıç değerleri yükleniyor...");
+            stocks = JSON.parse(JSON.stringify(INITIAL_STOCKS)); // Deep copy to avoid reference issues
             for (let code in stocks) {
                 let h = [];
                 let p = stocks[code].price;
@@ -462,6 +463,8 @@ async function updateGlobalStocks() {
                 }
                 stocks[code].history = h;
             }
+        } else {
+            // console.log("✅ Mevcut borsa verileri yüklendi.");
         }
 
         // Piyasa Meta Verilerini Çek
