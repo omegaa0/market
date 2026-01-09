@@ -254,11 +254,12 @@
                             style="position:sticky; top:20px; padding: 20px; overflow: hidden; min-height: 500px; display: flex; align-items: center; justify-content: center; border-radius: 20px;">
 
                             <div id="turkey-map"
-                                style="width: 100%; max-width: 850px; aspect-ratio: 1000 / 450; position: relative; margin: 0 auto; z-index: 1; background: rgba(255,255,255,0.03); border-radius: 12px; padding: 10px;">
-                                <!-- Daha Güvenilir ve Alternatif Kaynak -->
-                                <img src="https://cdn.jsdelivr.net/gh/Gis-Yigit/Turkey-Map-SVG@master/turkiye.svg"
+                                style="width: 100%; max-width: 850px; aspect-ratio: 1000 / 450; position: relative; margin: 0 auto; z-index: 1; border-radius: 12px; display: flex; align-items: center; justify-content: center;">
+                                <!-- En Güvenilir Wikimedia Kaynağı (Filtresiz/Sade) -->
+                                <img src="https://upload.wikimedia.org/wikipedia/commons/b/b1/Turkey_provinces_blank_map.svg"
                                     alt="Turkey Map"
-                                    style="width: 100%; height: 100%; object-fit: contain; display: block; filter: brightness(0) invert(1) opacity(0.8);">
+                                    style="width: 100%; height: 100%; object-fit: contain; display: block; filter: invert(0.9) brightness(1.2); opacity: 0.7;"
+                                    onerror="this.parentElement.innerHTML='<p style=color:#444>Harita yüklenemedi. Lütfen internet bağlantınızı kontrol edin.</p>'">
                                 <div id="map-overlay"
                                     style="position:absolute; top:0; left:0; width:100%; height:100%; pointer-events: auto;">
                                     <!-- İnteraktif Şehir Noktaları -->

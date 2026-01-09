@@ -569,9 +569,9 @@ function drawStockChart(canvas, history, trend) {
 
     // FİYAT SIRALAMASI (Sağ Tarafa Çizelge)
     const labels = [
-        { v: max, y: h * 0.15 },
-        { v: (max + min) / 2, y: h / 2 },
-        { v: min, y: h * 0.85 }
+        { v: max, y: h * 0.1 },
+        { v: (max + min) / 2, y: h * 0.5 },
+        { v: min, y: h * 0.9 }
     ];
 
     labels.forEach(l => {
@@ -708,8 +708,10 @@ async function loadBorsa() {
                 `;
                 container.appendChild(card);
             }
-            // Use server-side hourly history for the chart
-            drawStockChart(document.getElementById(`chart-${code}`), data.history || [], data.trend);
+            // Use server-side hourly history + current price for the chart
+            const chartData = [...(data.history || [])];
+            if (data.price) chartData.push(data.price);
+            drawStockChart(document.getElementById(`chart-${code}`), chartData, data.trend);
         });
     };
 
