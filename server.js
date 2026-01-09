@@ -1842,30 +1842,7 @@ app.post('/webhook/kick', async (req, res) => {
             userGlobalCooldowns[user] = now + 5000;
         }
 
-        // --- TTS & SES KOMUTLARI ---
-        if (lowMsg.startsWith('!tts ')) {
-            const text = rawMsg.substring(5).trim();
-            if (text && text.length < 200) {
-                await db.ref(`channels/${broadcasterId}/stream_events/tts`).push({
-                    text: text,
-                    username: user,
-                    timestamp: Date.now(),
-                    played: false
-                });
-                // await reply(`🗣️ TTS: ${text}`); // Sessiz olsun istenirse
-            }
-        }
-        else if (lowMsg.startsWith('!ses ')) {
-            const soundName = args[0]?.toLowerCase();
-            if (soundName) {
-                await db.ref(`channels/${broadcasterId}/stream_events/custom_sound`).push({
-                    sound: soundName,
-                    username: user,
-                    timestamp: Date.now(),
-                    played: false
-                });
-            }
-        }
+
         const userRef = db.ref('users/' + user.toLowerCase());
 
         // --- OTOMATİK KAYIT & AKTİFLİK TAKİBİ (ATOMIC TRANSACTION) ---
@@ -3036,8 +3013,10 @@ EK TALİMAT: ${aiInst}`;
             }
 
             if (!isInf) await userRef.transaction(u => { if (u) u.balance -= soundCost; return u; });
-            await db.ref(`channels/${broadcasterId}/stream_events/sound`).push({
-                soundId: soundTrigger,
+
+            // DÜZELTME: Overlay 'custom_sound' yolunu dinliyor, 'soundId' değil 'sound' bekliyor
+            await db.ref(`channels/${broadcasterId}/stream_events/custom_sound`).push({
+                sound: soundTrigger, // Overlay HTML'de 'sound' kullanılıyor
                 url: sound.url,
                 volume: sound.volume || 100,
                 duration: sound.duration || 0,
