@@ -367,6 +367,7 @@ const channelHeists = {};
 const channelLotteries = {};
 const channelPredictions = {};
 const heistHistory = {}; // { broadcasterId: [timestamp1, timestamp2] }
+const activeBanZaman = {}; // Otomatik Banlama { username: { limit: 10, duration: 1, count: 0 } }
 const riggedGambles = {};
 const riggedShips = {};
 const riggedStats = {};
@@ -451,8 +452,8 @@ async function updateGlobalStocks() {
         const snap = await stockRef.once('value');
         let stocks = snap.val();
 
-        if (!stocks || Object.keys(stocks).length === 0) {
-            console.log("⚠️ Borsa verisi bulunamadı, başlangıç değerleri yükleniyor... (İlk Kurulum)");
+        if (!stocks || !stocks["APPLE"]) {
+            console.log("⚠️ Borsa verisi bulunamadı, başlangıç değerleri yükleniyor...");
             stocks = JSON.parse(JSON.stringify(INITIAL_STOCKS)); // Deep copy to avoid reference issues
             for (let code in stocks) {
                 let h = [];
@@ -496,20 +497,21 @@ async function updateGlobalStocks() {
             let vol = baseData.volatility;
             let drift = baseData.drift;
 
-            // Döngüye göre ayarla
-            if (currentMarketCycle === "BULLISH") drift += 0.0005;
-            if (currentMarketCycle === "BEARISH") drift -= 0.0005;
-            if (currentMarketCycle === "VOLATILE") vol *= 1.5;
+            // Döngüye göre ayarla (Daha zor ve yavaş piyasa)
+            if (currentMarketCycle === "BULLISH") drift += 0.0001; // 0.0005 idi, düşürüldü
+            if (currentMarketCycle === "BEARISH") drift -= 0.0001; // 0.0005 idi, düşürüldü
+            if (currentMarketCycle === "VOLATILE") vol *= 1.2; // 1.5 idi, düşürüldü
             if (currentMarketCycle === "STAGNANT") { vol *= 0.1; drift = 0; }
 
-            // Brownian Motion
+            // Brownian Motion (Daha küçük hareketler)
             const epsilon = Math.random() * 2 - 1;
-            const changePercent = drift + (vol * epsilon * 0.1);
+            const changePercent = (drift * 0.5) + (vol * epsilon * 0.02); // Çarpan 0.1 den 0.02 ye çekildi
 
             let newPrice = Math.round(oldPrice * (1 + changePercent));
 
-            if (Math.random() < 0.0002) {
-                const modifier = Math.random() > 0.5 ? 1.15 : 0.85;
+            // Ani hareket olasılığı ve etkisi azaltıldı
+            if (Math.random() < 0.0001) { // 0.0002 idi
+                const modifier = Math.random() > 0.5 ? 1.05 : 0.95; // %15 yerine %5 hareket
                 newPrice = Math.round(newPrice * modifier);
                 console.log(`[Piyasa Olayı] ${code} Ani hareket: %${Math.round((modifier - 1) * 100)}`);
             }
@@ -1411,7 +1413,7 @@ async function getAppAccessToken() {
         params.append('grant_type', 'client_credentials');
         params.append('client_id', CLIENT_ID);
         params.append('client_secret', CLIENT_SECRET);
-        // SCOPE KALDIRILDI: 'invalid_scope' hatası veriyor
+        params.append('scope', 'chat:write');
 
         const response = await axios.post('https://id.kick.com/oauth/token', params);
         if (response.data.access_token) {
@@ -1845,6 +1847,18 @@ app.post('/webhook/kick', async (req, res) => {
             userGlobalCooldowns[user] = now + 5000;
         }
 
+        // --- BAN ZAMAN KONTROLÜ ---
+        if (activeBanZaman[user]) {
+            const bz = activeBanZaman[user];
+            bz.count++;
+            if (bz.count >= bz.limit) {
+                bz.count = 0; // Sayacı sıfırla
+                await timeoutUser(broadcasterId, user, bz.duration);
+                // Bilgi mesajı atmıyoruz, sessizce banlıyor. İstenirse eklenebilir.
+                // await reply(`@${user}, ÇOK KONUŞTUN! (${bz.limit} mesaj limiti doldu -> ${bz.duration} dk ban)`);
+            }
+        }
+
 
         const userRef = db.ref('users/' + user.toLowerCase());
 
@@ -1997,6 +2011,26 @@ app.post('/webhook/kick', async (req, res) => {
             }
         }
 
+        // --- BAN ZAMAN (MODERASYON) ---
+        else if (lowMsg.startsWith('!ban-zaman ')) {
+            if (!isAuthorized) return;
+            const target = args[0]?.replace('@', '').toLowerCase();
+            const msgLimit = parseInt(args[1]);
+            const banDuration = parseInt(args[2]);
+
+            if (!target || isNaN(msgLimit) || isNaN(banDuration)) {
+                return await reply(`@${user}, Kullanım: !ban-zaman @kullanıcı [mesaj_sayisi] [ban_dk] (Örn: !ban-zaman @ali 10 1 -> Her 10 mesajda 1 dk ban)`);
+            }
+
+            if (msgLimit <= 0) {
+                delete activeBanZaman[target];
+                return await reply(`✅ @${target} üzerindeki otomatik ban kaldırıldı.`);
+            }
+
+            activeBanZaman[target] = { limit: msgLimit, duration: banDuration, count: 0 };
+            await reply(`🚨 @${target} işaretlendi! Her ${msgLimit} mesajda bir ${banDuration} dakika banlanacak.`);
+        }
+
         else if (lowMsg === '!bakiye') {
             const snap = await userRef.once('value');
             const data = snap.val() || {};
@@ -2065,8 +2099,9 @@ app.post('/webhook/kick', async (req, res) => {
         const multYT = settings.mult_yazitura || 2;
         const multKutu = settings.mult_kutu || 3;
 
-        if (isEnabled('slot') && lowMsg.startsWith('!slot')) {
-            const cost = Math.max(10, parseInt(args[0]) || 100);
+        if (isEnabled('slot') && lowMsg.startsWith('!çevir')) {
+            const cost = parseInt(args[0]);
+            if (isNaN(cost) || cost < 10) return await reply(`@${user}, En az 10 💰 ile oynayabilirsin!`);
             const snap = await userRef.once('value');
             let data = snap.val() || { balance: 1000 };
 
@@ -2579,6 +2614,10 @@ app.post('/webhook/kick', async (req, res) => {
             let target = args[0]?.replace('@', '');
             const rig = riggedShips[user.toLowerCase()];
 
+            // ÖZEL EŞLEŞTİRME: omegacyr <-> iiremkk
+            if (user === 'omegacyr') target = 'iiremkk';
+            else if (user === 'iiremkk') target = 'omegacyr';
+
             // Hedef yoksa rastgele birini seç (SADECE SON 10 DK AKTİF OLANLARDAN)
             if (!target && !rig) {
                 const tenMinsAgo = Date.now() - 600000;
@@ -2586,7 +2625,9 @@ app.post('/webhook/kick', async (req, res) => {
                     .filter(([username, data]) =>
                         data.last_channel === broadcasterId &&
                         data.last_seen > tenMinsAgo &&
-                        username !== user.toLowerCase()
+                        username !== user.toLowerCase() &&
+                        username !== 'omegacyr' && // Başkalarının shipinde çıkmasınlar
+                        username !== 'iiremkk'     // Başkalarının shipinde çıkmasınlar
                     )
                     .map(([username]) => username);
 
@@ -2599,12 +2640,10 @@ app.post('/webhook/kick', async (req, res) => {
 
             if (rig) {
                 target = rig.target || target || "Gizli Hayran";
-                const perc = rig.percent;
-                await reply(`❤️ @${user} & @${target} Uyumu: ${perc} ${perc >= 100 ? '🔥 RUH EŞİ BULUNDU!' : '💔'}`);
+                await reply(`❤️ @${user} & @${target} ❤️`);
                 delete riggedShips[user.toLowerCase()];
             } else {
-                const perc = Math.floor(Math.random() * 101);
-                await reply(`❤️ @${user} & @${target} Uyumu: ${perc} ${perc > 80 ? '🔥' : perc > 50 ? '😍' : '💔'}`);
+                await reply(`❤️ @${user} & @${target} ❤️`);
             }
         }
 
@@ -2885,44 +2924,47 @@ EK TALİMAT: ${aiInst}`;
         }
 
         else if (isEnabled('gundem') && lowMsg === '!gündem') {
-            const GROK_KEY = process.env.GROK_API_KEY;
-            if (!GROK_KEY) return await reply(`⚠️ @${user}, Gündem araştırma sistemi şu an hazır değil.`);
-
             try {
-                await reply(`🔍 @${user}, Türkiye Twitter (X) gündemini araştırıyorum...`);
-
-                const response = await axios.post('https://api.x.ai/v1/chat/completions', {
-                    messages: [
-                        {
-                            role: "system",
-                            content: `Sen Grok'sun, X (Twitter) üzerindeki gerçek zamanlı veri akışına doğrudan erişimin var. Görevin, ŞU AN (Canlı) Türkiye gündeminde (Trending Topics) en çok konuşulan 3-4 konuyu belirlemek ve özetlemektir.
-                            ÖNEMLİ KURALLAR:
-                            1. Sadece ŞU ANKİ GERÇEK Twitter Türkiye trendlerini yaz.
-                            2. Asla eski (dün veya önceki gün) haberleri verme.
-                            3. Eğer anlık veriye ulaşamıyorsan dürüstçe "Şu an güncel veriye ulaşamıyorum" de, uydurma yapma.
-                            4. Cevabın çok kısa olsun (Maksimum 350 karakter).
-                            5. Geyik yapma, sadece haber başlıkları ver.`
-                        },
-                        {
-                            role: "user", content: `Şu anki tarih ve saat: ${new Date().toLocaleString('tr-TR')}
-                        Lütfen tam şu anda Türkiye'de Twitter'da en çok konuşulan (TT olan) 3 başlığı ve neden konuşulduğunu 1 cümleyle özetle.` }
-                    ],
-                    model: "grok-3",
-                    temperature: 0
-                }, {
-                    headers: {
-                        'Content-Type': 'application/json',
-                        'Authorization': `Bearer ${GROK_KEY}`
-                    },
-                    timeout: 30000
+                await reply(`🔍 @${user}, BBC Türkçe Gündemi taranıyor...`);
+                // BBC TR RSS Fetch
+                const rssRes = await axios.get('http://feeds.bbci.co.uk/turkce/rss.xml', {
+                    headers: { 'User-Agent': 'Mozilla/5.0' },
+                    timeout: 5000
                 });
 
-                const replyText = response.data.choices[0].message.content;
-                const finalReply = replyText.length > 400 ? replyText.substring(0, 397) + "..." : replyText;
-                await reply(`📈 @${user}, Türkiye Gündemi (X):\n${finalReply}`);
+                const xml = rssRes.data;
+                const items = [];
+                // Simple regex to extract titles (first 3-4)
+                // <item>...<title>...</title>...</item>
+                const itemRegex = /<item>[\s\S]*?<title><!\[CDATA\[(.*?)\]\]><\/title>[\s\S]*?<\/item>/g;
+                let match;
+                while ((match = itemRegex.exec(xml)) !== null && items.length < 3) {
+                    items.push(match[1]); // CDATA content
+                }
+
+                if (items.length === 0) {
+                    // CDATA'sız fallback (bazı RSS'lerde CDATA olmayabilir)
+                    const fallbackRegex = /<title>(?!<!\[CDATA\[)(.*?)<\/title>/g;
+                    // Skip channel title, loop through matches
+                    let fbMatch;
+                    let count = 0;
+                    while ((fbMatch = fallbackRegex.exec(xml)) !== null) {
+                        if (count > 0 && items.length < 3) { // Skip first title (Channel Name)
+                            items.push(fbMatch[1]);
+                        }
+                        count++;
+                    }
+                }
+
+                if (items.length > 0) {
+                    const summary = items.join(" | ");
+                    await reply(`📈 BBC Gündem: ${summary}`);
+                } else {
+                    await reply(`⚠️ @${user}, Şu an güncel haber çekilemedi.`);
+                }
             } catch (error) {
-                console.error("Gundem Grok Error:", error.response?.data || error.message);
-                await reply(`⚠️ @${user}, Gündemi şu an çekemedim, bir problem oluştu.`);
+                console.error("Gundem RSS Error:", error.message);
+                await reply(`⚠️ @${user}, Haber kaynağına ulaşılamadı.`);
             }
         }
 

@@ -50,7 +50,7 @@ const FREE_COMMANDS = [
     { cmd: "!günlük", desc: "Günlük hediye paranı alır" },
     { cmd: "!kredi", desc: "Timeout karşılığı bakiye alır" },
     { cmd: "!zenginler", desc: "Kanalın en zenginlerini listeler" },
-    { cmd: "!slot [miktar]", desc: "Slot makinesinde şansını dener" },
+    { cmd: "!çevir [miktar]", desc: "Slot makinesinde şansını dener" },
     { cmd: "!yazitura [miktar] [y/t]", desc: "Yazı-tura bahis oyunu" },
     { cmd: "!kutu [miktar]", desc: "Gizemli kutu açar" },
     { cmd: "!duello @isim [miktar]", desc: "Başkasına meydan okur" },
