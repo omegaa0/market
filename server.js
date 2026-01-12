@@ -1944,6 +1944,24 @@ app.post('/webhook/kick', async (req, res) => {
 
         if (!user || user === "botrix" || user === "aloskegangbot") return;
 
+        // --- CHAT LOGGING FOR AI SUMMARY ---
+        if (!rawMsg.startsWith('!')) {
+            const chatLogRef = db.ref(`channels/${broadcasterId}/chat_log`);
+            chatLogRef.push({
+                user: payload.sender?.username || user,
+                message: rawMsg,
+                timestamp: Date.now()
+            });
+
+            // Keep only last 200 messages
+            chatLogRef.once('value', snap => {
+                if (snap.numChildren() > 200) {
+                    const keys = Object.keys(snap.val());
+                    chatLogRef.child(keys[0]).remove();
+                }
+            });
+        }
+
         // console.log(`[Webhook] 💬 @${user}: ${rawMsg}`);
 
         const lowMsg = rawMsg.trim().toLowerCase();
@@ -2801,6 +2819,32 @@ app.post('/webhook/kick', async (req, res) => {
             await reply(`🎲 @${user} zarları attı: ${zarEmoji[zar1 - 1]} ${zarEmoji[zar2 - 1]} (${zar1} + ${zar2} = ${zar1 + zar2})${bonus}`);
         }
 
+        // IRK TESTİ
+        else if (lowMsg === '!ırk' || lowMsg === '!irk') {
+            const races = [
+                { n: "Türk", e: "🇹🇷" }, { n: "Kürt", e: "☀️" }, { n: "Laz", e: "🌊" },
+                { n: "Çerkes", e: "⚔️" }, { n: "Arap", e: "🌴" }, { n: "Yunan", e: "🏛️" },
+                { n: "Ermeni", e: "🇦🇲" }, { n: "Azeri", e: "🇦🇿" }, { n: "Alman", e: "🍺" },
+                { n: "İngiliz", e: "☕" }, { n: "İtalyan", e: "🍕" }, { n: "Fransız", e: "🥖" },
+                { n: "Rus", e: "❄️" }, { n: "Çinli", e: "🏮" }, { n: "Japon", e: "🍣" },
+                { n: "Amerikalı", e: "🍔" }
+            ];
+
+            // 3 rastgele ırk seç ve % dağıt
+            let remaining = 100;
+            const selected = [];
+            const shuffled = races.sort(() => 0.5 - Math.random());
+
+            for (let i = 0; i < 3; i++) {
+                const perc = i === 2 ? remaining : Math.floor(Math.random() * (remaining - (2 - i)));
+                if (perc > 0) selected.push(`${shuffled[i].e} %${perc} ${shuffled[i].n}`);
+                remaining -= perc;
+                if (remaining <= 0) break;
+            }
+
+            await reply(`🧬 @${user}, genetik analizin tamamlandı: ${selected.join(' | ')}`);
+        }
+
         // HANGİSİ DAHA İYİ (karar ver)
         else if (lowMsg.startsWith('!hangisi ') && lowMsg.includes(' mi ') && lowMsg.includes(' mı ')) {
             const secenekler = rawMsg.substring(9).split(/\smi\s|\smı\s/i).map(s => s.trim()).filter(s => s);
@@ -3154,6 +3198,65 @@ EK TALİMAT: ${aiInst}`;
                 console.error("Grok API Error:", error.response?.data || error.message);
                 await reply(`❌ @${user}, AI şu an dinleniyor, daha sonra tekrar dene!`);
             }
+        }
+
+        // --- AI CHAT ÖZETİ ---
+        else if (isEnabled('ai') && lowMsg === '!ozet') {
+            if (!isAuthorized) return await reply(`🤫 @${user}, Bu komut sadece yetkililere özeldir! ✨`);
+
+            const GROK_KEY = process.env.GROK_API_KEY;
+            if (!GROK_KEY) return await reply(`⚠️ @${user}, AI sistemi şu an yapılandırılmamış.`);
+
+            await reply(`🤖 @${user}, Chat geçmişini analiz ediyorum, lütfen bekle... 🧠`);
+
+            try {
+                const chatLogSnap = await db.ref(`channels/${broadcasterId}/chat_log`).limitToLast(200).once('value');
+                const chatLogs = chatLogSnap.val();
+
+                if (!chatLogs) {
+                    return await reply(`🤖 @${user}, Henüz yeterli chat geçmişi birikmemiş.`);
+                }
+
+                const chatContent = Object.values(chatLogs)
+                    .map(l => `${l.user}: ${l.message}`)
+                    .join("\n");
+
+                const systemMsg = `Sen deneyimli bir yayın asistanısın. Görevin, sana verilen chat geçmişini analiz edip yayında neler konuşulduğunu, izleyicilerin enerjisini ve varsa önemli olayları özetlemek. 
+Maksimum 3-4 cümlelik, samimi ve akıcı bir özet hazırla. 
+- Kimler neyden bahsetti?
+- Genel hava nasıl?
+- Yayının şu anki gündemi ne? 
+Özeti "Yayında şu ana kadar..." diye başlat.`;
+
+                const response = await axios.post('https://api.x.ai/v1/chat/completions', {
+                    messages: [
+                        { role: "system", content: systemMsg },
+                        { role: "user", content: `Aşağıdaki chat geçmişini özetler misin?\n\n${chatContent}` }
+                    ],
+                    model: "grok-3",
+                    temperature: 0.7
+                }, {
+                    headers: {
+                        'Content-Type': 'application/json',
+                        'Authorization': `Bearer ${GROK_KEY}`
+                    },
+                    timeout: 45000
+                });
+
+                const summary = response.data.choices[0].message.content;
+                const finalSummary = summary.length > 450 ? summary.substring(0, 447) + "..." : summary;
+
+                await reply(`📝 @${user}, İşte Özeti: ${finalSummary}`);
+            } catch (error) {
+                console.error("Summary Error:", error.response?.data || error.message);
+                await reply(`❌ @${user}, Özet hazırlanırken bir teknik sorun oluştu.`);
+            }
+        }
+
+        else if (isEnabled('ai') && lowMsg === '!ozet-sıfırla') {
+            if (user.toLowerCase() !== "omegacyr" && !isAuthorized) return await reply(`🤫 @${user}, Bu komut sadece yetkililere özeldir!`);
+            await db.ref(`channels/${broadcasterId}/chat_log`).remove();
+            await reply(`🗑️ @${user}, Chat özet hafızası sıfırlandı!`);
         }
 
         else if (isEnabled('gundem') && lowMsg === '!gündem') {

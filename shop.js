@@ -215,6 +215,7 @@ const FREE_COMMANDS = [
     { cmd: "!efkar", desc: "Efkar seviyeni ölçer 🚬" },
     { cmd: "!toxic", desc: "Ne kadar toksiksin?" },
     { cmd: "!karizma", desc: "Karizma seviyeni ölçer" },
+    { cmd: "!ırk", desc: "Genetik kökenini analiz eder 🧬" },
     { cmd: "!gay", desc: "Gaylik seviyeni ölçer 🌈" },
     { cmd: "!keko", desc: "Falso var mı? Keko testi!" },
     { cmd: "!prenses", desc: "Prenseslik testi yapar 👸" },
