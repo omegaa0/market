@@ -12,6 +12,60 @@ const firebaseConfig = {
 firebase.initializeApp(firebaseConfig);
 const db = firebase.database();
 
+// EĞİTİM & MESLEK VERİLERİ (SERVER İLE SENKRON)
+const EDUCATION = {
+    0: "Cahil", 1: "İlkokul", 2: "Ortaokul", 3: "Lise",
+    4: "Üniversite", 5: "Yüksek Lisans", 6: "Doktora", 7: "Profesör"
+};
+const EDU_XP = [0, 50, 150, 400, 1000, 2500, 5000, 10000];
+
+const JOBS = {
+    // SEVİYE 0: CAHİL
+    "İşsiz": { reward: 0, icon: "👤", req_edu: 0, req_item: null },
+    "Dilenci": { reward: 20, icon: "🪣", req_edu: 0, req_item: "Yırtık Karton", price: 50 },
+    "Mendil Satıcısı": { reward: 35, icon: "🧻", req_edu: 0, req_item: "Mendil Paketi", price: 100 },
+    "Su Satıcısı": { reward: 45, icon: "💧", req_edu: 0, req_item: "Su Kolisi", price: 150 },
+    "Seyyar Satıcı": { reward: 55, icon: "🥒", req_edu: 0, req_item: "El Arabası", price: 250 },
+    "Pazarcı": { reward: 65, icon: "🍋", req_edu: 0, req_item: "Pazar Tezgahı", price: 400 },
+    "Sokak Müzisyeni": { reward: 70, icon: "🎸", req_edu: 0, req_item: "Gitar", price: 500 },
+    "Kağıt Toplayıcı": { reward: 75, icon: "🥡", req_edu: 0, req_item: "Çekçek", price: 600 },
+    "Simitçi": { reward: 80, icon: "🥯", req_edu: 0, req_item: "Simit Tepsisi", price: 750 },
+    "Boyacı": { reward: 90, icon: "👞", req_edu: 0, req_item: "Boya Sandığı", price: 1000 },
+    // SEVİYE 1: İLKOKUL
+    "Tezgahtar": { reward: 180, icon: "🏷️", req_edu: 1, req_item: "Yazar Kasa", price: 2500 },
+    "Bekçi": { reward: 200, icon: "🔦", req_edu: 1, req_item: "Fener", price: 3000 },
+    "Vale": { reward: 210, icon: "🔑", req_edu: 1, req_item: "Vale Kartı", price: 3500 },
+    "Kurye": { reward: 250, icon: "🛵", req_edu: 1, req_item: "Eski Motor", price: 5000 },
+    "Şoför": { reward: 280, icon: "🚕", req_edu: 1, req_item: "Taksi Plakası", price: 7500 },
+    // SEVİYE 2: ORTAOKUL
+    "Güvenlik": { reward: 350, icon: "👮", req_edu: 2, req_item: "Telsiz", price: 10000 },
+    "Garson": { reward: 400, icon: "☕", req_edu: 2, req_item: "Önlük", price: 12000 },
+    "Berber": { reward: 500, icon: "✂️", req_edu: 2, req_item: "Makas Seti", price: 15000 },
+    "Youtuber": { reward: 650, icon: "▶️", req_edu: 2, req_item: "Yayıncı Ekipmanı", price: 30000 },
+    // SEVİYE 3: LİSE
+    "Tamirci": { reward: 850, icon: "🔧", req_edu: 3, req_item: "Alet Çantası", price: 45000 },
+    "Polis": { reward: 1000, icon: "👮‍♂️", req_edu: 3, req_item: "Silah Ruhsatı", price: 60000 },
+    "Emlakçı": { reward: 1200, icon: "🏠", req_edu: 3, req_item: "Ajanda", price: 75000 },
+    "Tıbbi Laboratuvar": { reward: 1150, icon: "🧪", req_edu: 3, req_item: "Mikrosantrifüj", price: 70000 },
+    // SEVİYE 4: ÜNİVERSİTE
+    "Yazılımcı": { reward: 1800, icon: "💻", req_edu: 4, req_item: "Yazılım Lisansı", price: 150000 },
+    "Mimar": { reward: 2000, icon: "📐", req_edu: 4, req_item: "Çizim Masası", price: 180000 },
+    "Avukat": { reward: 2500, icon: "⚖️", req_edu: 4, req_item: "Cübbe", price: 250000 },
+    // SEVİYE 5: YÜKSEK LİSANS
+    "Doktor": { reward: 4000, icon: "🩺", req_edu: 5, req_item: "Tıp Diploması", price: 500000 },
+    "Pilot": { reward: 5000, icon: "✈️", req_edu: 5, req_item: "Pilot Lisansı", price: 750000 },
+    "Hakim": { reward: 6000, icon: "🔨", req_edu: 5, req_item: "Tokmak", price: 900000 },
+    // SEVİYE 6: DOKTORA
+    "Cerrah": { reward: 7000, icon: "🏥", req_edu: 6, req_item: "Neşter", price: 1500000 },
+    "Bilim İnsanı": { reward: 8000, icon: "🧪", req_edu: 6, req_item: "Mikroskop", price: 2000000 },
+    "Yönetmen": { reward: 9000, icon: "🎬", req_edu: 6, req_item: "Klaket", price: 2500000 },
+    // SEVİYE 7: PROFESÖR
+    "Astronot": { reward: 15000, icon: "🚀", req_edu: 7, req_item: "Uzay Mekiği Bileti", price: 10000000 },
+    "CEO": { reward: 20000, icon: "👔", req_edu: 7, req_item: "Şirket Hissesi", price: 25000000 },
+    "Devlet Başkanı": { reward: 30000, icon: "👑", req_edu: 7, req_item: "Kral Tacı", price: 50000000 },
+    "Kripto Kralı": { reward: 50000, icon: "💎", req_edu: 7, req_item: "Soğuk Cüzdan", price: 100000000 }
+};
+
 // Global Variables
 let currentUser = null;
 let currentChannelId = null;
@@ -508,13 +562,14 @@ function switchTab(id) {
     document.getElementById('tab-' + id).classList.remove('hidden');
 
     document.querySelectorAll('.tab-btn').forEach(b => b.classList.remove('active'));
-    event.currentTarget.classList.add('active');
+    if (event) event.currentTarget.classList.add('active');
 
     if (id === 'leaderboard') loadLeaderboard();
     if (id === 'borsa') loadBorsa();
     if (id === 'emlak') loadEmlak();
     if (id === 'quests') loadQuests();
     if (id === 'profile') loadProfile();
+    if (id === 'career') loadCareer();
 }
 
 let borsaActive = false;
@@ -901,19 +956,32 @@ async function loadProfile() {
                         <div class="val">${u.job || 'İşsiz'}</div>
                     </div>
                     <div class="stat-box">
-                        <label>Kayıt Tarihi</label>
-                        <div class="val">${new Date(u.created_at || Date.now()).toLocaleDateString('tr-TR')}</div>
+                        <label>Eğitim</label>
+                        <div class="val">${EDUCATION[u.edu || 0]}</div>
                     </div>
                     <div class="stat-box">
                         <label>Durum</label>
                         <div class="val">${u.is_infinite ? '♾️ Sınırsız' : '👤 Oyuncu'}</div>
                     </div>
                 </div>
+
+                <div class="xp-section" style="background:rgba(255,255,255,0.03); padding:20px; border-radius:12px; border:1px solid var(--glass-border);">
+                    <div style="display:flex; justify-content:space-between; margin-bottom:10px; font-weight:600;">
+                        <span>Eğitim XP</span>
+                        <span style="color:var(--primary);">${u.xp || 0} / ${EDU_XP[(u.edu || 0) + 1] || 'MAX'}</span>
+                    </div>
+                    <div class="progress-bar" style="height:12px; background:#1a1a1a;">
+                        <div class="progress-fill" style="width: ${Math.min(100, ((u.xp || 0) / (EDU_XP[(u.edu || 0) + 1] || u.xp || 1)) * 100)}%;"></div>
+                    </div>
+                    <p style="font-size:0.75rem; color:#666; margin-top:8px;">
+                        Mesaj yazarak ve !çalış komutunu kullanarak XP kazanabilir, diplomanı yükseltebilirsin.
+                    </p>
+                </div>
                 
                 <div class="stats-section">
                     <h3 style="margin-bottom:15px; font-size:1rem; opacity:0.8;">📈 İstatistikler</h3>
                     <div style="display:grid; grid-template-columns: repeat(2, 1fr); gap:15px; margin-bottom:15px;">
-                        <div class="stat-mini" style="background:rgba(255,255,255,0.05); border:1px solid var(--primary);">
+                        <div class="stat-mini" style="border:1px solid #05ea6a33; background:rgba(5, 234, 106, 0.05);">
                             <label style="color:var(--primary);">Günlük İzleme</label>
                             <div class="v" style="color:var(--primary);">${u.quests?.[getTodayKey()]?.w || 0} dk</div>
                         </div>
@@ -1016,7 +1084,6 @@ const EMLAK_CITIES = [
     { "id": "IZMIR", "name": "İzmir", "x": 8, "y": 58 },
     { "id": "KARS", "name": "Kars", "x": 91, "y": 24 },
     { "id": "KASTAMONU", "name": "Kastamonu", "x": 42, "y": 12 },
-    { "id": "KAYSERI", "name": "Kayseri", "x": 51, "y": 54 },
     { "id": "KIRKLARELI", "name": "Kırklareli", "x": 8, "y": 6 },
     { "id": "KIRSEHIR", "name": "Kırşehir", "x": 44, "y": 47 },
     { "id": "KOCAELI", "name": "Kocaeli", "x": 22, "y": 21 },
@@ -1091,6 +1158,87 @@ function loadEmlak() {
     }
 
     renderEmlakMap();
+}
+
+// CAREER LOGIC
+async function loadCareer() {
+    if (!currentUser) return;
+    const grid = document.getElementById('career-grid');
+    grid.innerHTML = '<div class="loader"></div>';
+
+    const snap = await db.ref('users/' + currentUser).once('value');
+    const u = snap.val() || {};
+    const currentEdu = u.edu || 0;
+    const currentJob = u.job || "İşsiz";
+
+    grid.innerHTML = "";
+    Object.entries(JOBS).forEach(([name, job]) => {
+        if (name === "İşsiz") return;
+
+        const isEduMet = currentEdu >= job.req_edu;
+        const hasItem = u.items && u.items[job.req_item];
+        const isCurrent = currentJob === name;
+
+        const card = document.createElement('div');
+        card.className = `market-card ${isCurrent ? 'active-job' : ''}`;
+        card.style.opacity = isEduMet ? '1' : '0.5';
+
+        card.innerHTML = `
+            <div class="item-icon">${job.icon}</div>
+            <div class="item-info">
+                <h3>${name}</h3>
+                <p>Maaş: <span class="item-cost">${job.reward.toLocaleString()} 💰</span> / Günlük</p>
+                <div style="font-size:0.8rem; margin-top:5px; color:#aaa;">
+                    🎓 ${EDUCATION[job.req_edu]}<br>
+                    📦 ${job.req_item}
+                </div>
+            </div>
+            <button class="buy-btn" onclick="applyForJob('${name}', ${job.price || 0})" 
+                ${isCurrent ? 'disabled' : ''}>
+                ${isCurrent ? 'Zaten Bu İşteler' : (hasItem ? 'Hemen Başla' : `${(job.price || 0).toLocaleString()} 💰 Al`)}
+            </button>
+        `;
+        grid.appendChild(card);
+    });
+}
+
+async function applyForJob(jobName, price) {
+    if (!currentUser) return;
+    const job = JOBS[jobName];
+
+    const snap = await db.ref('users/' + currentUser).once('value');
+    const u = snap.val() || { balance: 0, items: {} };
+
+    // 1. Eğitim Kontrolü
+    if ((u.edu || 0) < job.req_edu) {
+        return showToast(`Eğitim seviyen yetersiz! (${EDUCATION[job.req_edu]} gereklidir)`, "error");
+    }
+
+    // 2. Eşya Kontrolü & Satın Alma
+    const hasItem = u.items && u.items[job.req_item];
+    if (!hasItem) {
+        if (!u.is_infinite && u.balance < price) {
+            return showToast("Bakiye yetersiz! ❌", "error");
+        }
+        if (!confirm(`${jobName} olabilmek için ${job.req_item} satın almalısın. Fiyat: ${price.toLocaleString()} 💰 Onaylıyor musun?`)) return;
+
+        await db.ref('users/' + currentUser).transaction(user => {
+            if (user) {
+                if (!user.is_infinite) user.balance -= price;
+                if (!user.items) user.items = {};
+                user.items[job.req_item] = true;
+                user.job = jobName;
+            }
+            return user;
+        });
+        showToast(`${jobName} olarak işe başladın! Hayırlı olsun. 🚀`, "success");
+    } else {
+        // Eşyası varsa sadece mesleği güncelle
+        await db.ref('users/' + currentUser).update({ job: jobName });
+        showToast(`${jobName} mesleğine geçiş yaptın! ✅`, "success");
+    }
+    loadCareer();
+    loadProfile();
 }
 
 function renderEmlakMap() {

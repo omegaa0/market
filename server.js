@@ -85,34 +85,6 @@ const storage = multer.diskStorage({
     }
 });
 
-const upload = multer({
-    storage: storage,
-    limits: { fileSize: 5 * 1024 * 1024 } // 5MB Limit
-});
-
-const JOBS = {
-    "İşsiz": { reward: 0, icon: "👤" },
-    "Simitçi": { reward: 50, icon: "🥯" },
-    "Çöpçü": { reward: 100, icon: "🧹" },
-    "Kurye": { reward: 150, icon: "🛵" },
-    "Garson": { reward: 250, icon: "☕" },
-    "Berber": { reward: 400, icon: "✂️" },
-    "Tamirci": { reward: 600, icon: "🔧" },
-    "Madenci": { reward: 800, icon: "⛏️" },
-    "Memur": { reward: 1000, icon: "🏢" },
-    "Öğretmen": { reward: 1500, icon: "👨‍🏫" },
-    "Avukat": { reward: 2200, icon: "⚖️" },
-    "Yazılımcı": { reward: 3000, icon: "💻" },
-    "Mimar": { reward: 4000, icon: "📐" },
-    "Doktor": { reward: 5000, icon: "🩺" },
-    "Kaptan": { reward: 6500, icon: "⚓" },
-    "Pilot": { reward: 8000, icon: "✈️" },
-    "Bilim İnsanı": { reward: 10000, icon: "🧪" },
-    "Kumarbaz": { reward: 12500, icon: "🎲" },
-    "CEO": { reward: 15000, icon: "👔" },
-    "Astronot": { reward: 20000, icon: "🚀" }
-};
-
 // 1. FIREBASE INITIALIZATION
 const firebaseConfig = {
     apiKey: process.env.FIREBASE_API_KEY,
@@ -123,6 +95,144 @@ const db = firebase.database();
 
 const KICK_CLIENT_ID = process.env.KICK_CLIENT_ID || "01KDQNP2M930Y7YYNM62TVWJCP";
 const KICK_CLIENT_SECRET = process.env.KICK_CLIENT_SECRET;
+
+// EĞİTİM SİSTEMİ
+const EDUCATION = {
+    0: "Cahil",
+    1: "İlkokul",
+    2: "Ortaokul",
+    3: "Lise",
+    4: "Üniversite",
+    5: "Yüksek Lisans",
+    6: "Doktora",
+    7: "Profesör"
+};
+const EDU_XP = [0, 50, 150, 400, 1000, 2500, 5000, 10000]; // XP eşikleri
+
+const JOBS = {
+    // SEVİYE 0: CAHİL (GEREKSİNİM YOK / UCUZ EŞYALAR)
+    "İşsiz": { reward: 0, icon: "👤", req_edu: 0, req_item: null },
+    "Dilenci": { reward: 20, icon: "🪣", req_edu: 0, req_item: "Yırtık Karton" },
+    "Mendil Satıcısı": { reward: 35, icon: "🧻", req_edu: 0, req_item: "Mendil Paketi" },
+    "Su Satıcısı": { reward: 45, icon: "💧", req_edu: 0, req_item: "Su Kolisi" },
+    "Seyyar Satıcı": { reward: 55, icon: "🥒", req_edu: 0, req_item: "El Arabası" },
+    "Pazarcı": { reward: 65, icon: "🍋", req_edu: 0, req_item: "Pazar Tezgahı" },
+    "Sokak Müzisyeni": { reward: 70, icon: "🎸", req_edu: 0, req_item: "Gitar" },
+    "Kağıt Toplayıcı": { reward: 75, icon: "🥡", req_edu: 0, req_item: "Çekçek" },
+    "Simitçi": { reward: 80, icon: "🥯", req_edu: 0, req_item: "Simit Tepsisi" },
+    "Broşürcü": { reward: 85, icon: "📄", req_edu: 0, req_item: "El İlanları" },
+    "Boyacı": { reward: 90, icon: "👞", req_edu: 0, req_item: "Boya Sandığı" },
+    "Oto Yıkamacı": { reward: 95, icon: "🧽", req_edu: 0, req_item: "Sünger" },
+    "Hamal": { reward: 100, icon: "🏋️", req_edu: 0, req_item: "Sırtlık" },
+    "Çöpçü": { reward: 110, icon: "🧹", req_edu: 0, req_item: "Süpürge" },
+    "Bulaşıkçı": { reward: 120, icon: "🍽️", req_edu: 0, req_item: "Eldiven" },
+    "Amele": { reward: 130, icon: "🧱", req_edu: 0, req_item: "Baret" },
+    "Çiftçi": { reward: 140, icon: "🚜", req_edu: 0, req_item: "Çapa" },
+    "Balıkçı": { reward: 150, icon: "🎣", req_edu: 0, req_item: "Olta" },
+
+    // SEVİYE 1: İLKOKUL (BASİT HİZMET)
+    "Tezgahtar": { reward: 180, icon: "🏷️", req_edu: 1, req_item: "Yazar Kasa" },
+    "Bekçi": { reward: 200, icon: "🔦", req_edu: 1, req_item: "Fener" },
+    "Vale": { reward: 210, icon: "🔑", req_edu: 1, req_item: "Vale Kartı" },
+    "Bahçıvan": { reward: 220, icon: "🌻", req_edu: 1, req_item: "Budama Makası" },
+    "Garaj Sorumlusu": { reward: 230, icon: "🅿️", req_edu: 1, req_item: "Düdük" },
+    "Depocu": { reward: 240, icon: "📦", req_edu: 1, req_item: "Transpalet" },
+    "Kurye": { reward: 250, icon: "🛵", req_edu: 1, req_item: "Eski Motor" },
+    "Market Görevlisi": { reward: 260, icon: "🏪", req_edu: 1, req_item: "Maket Bıçağı" },
+    "Benzinci": { reward: 270, icon: "⛽", req_edu: 1, req_item: "Pompa" },
+    "Şoför": { reward: 280, icon: "🚕", req_edu: 1, req_item: "Taksi Plakası" },
+    "Kasiyer": { reward: 300, icon: "💵", req_edu: 1, req_item: "Barkod Okuyucu" },
+    "Tabelacı": { reward: 310, icon: "🏗️", req_edu: 1, req_item: "Fırça Seti" },
+    "Terzi": { reward: 320, icon: "🧵", req_edu: 1, req_item: "Dikiş Makinesi" },
+
+    // SEVİYE 2: ORTAOKUL (KALİFİYE HİZMET)
+    "Güvenlik": { reward: 350, icon: "👮", req_edu: 2, req_item: "Telsiz" },
+    "Bodyguard": { reward: 360, icon: "🕶️", req_edu: 2, req_item: "Kulaklık" },
+    "Garson": { reward: 400, icon: "☕", req_edu: 2, req_item: "Önlük" },
+    "Makyaj Artisti": { reward: 420, icon: "💄", req_edu: 2, req_item: "Makyaj Çantası" },
+    "Kuaför": { reward: 450, icon: "💇", req_edu: 2, req_item: "Fön Makinesi" },
+    "Tattoo Artisti": { reward: 480, icon: "✒️", req_edu: 2, req_item: "Dövme Makinesi" },
+    "Berber": { reward: 500, icon: "✂️", req_edu: 2, req_item: "Makas Seti" },
+    "Fitness Eğitmeni": { reward: 520, icon: "💪", req_edu: 2, req_item: "Halter" },
+    "Barista": { reward: 530, icon: "☕️", req_edu: 2, req_item: "Kahve Makinesi" },
+    "DJ": { reward: 550, icon: "🎧", req_edu: 2, req_item: "DJ Setup" },
+    "Fotoğrafçı": { reward: 600, icon: "📸", req_edu: 2, req_item: "Kamera" },
+    "Youtuber": { reward: 650, icon: "▶️", req_edu: 2, req_item: "Yayıncı Ekipmanı" },
+    "Cankurtaran": { reward: 680, icon: "🆘", req_edu: 2, req_item: "Can Simidi" },
+
+    // SEVİYE 3: LİSE (TEKNİK / TİCARET)
+    "Elektrikçi": { reward: 700, icon: "⚡", req_edu: 3, req_item: "Kontrol Kalemi" },
+    "Tesisatçı": { reward: 750, icon: "🚰", req_edu: 3, req_item: "İngiliz Anahtarı" },
+    "Marangoz": { reward: 800, icon: "🪚", req_edu: 3, req_item: "Testere" },
+    "Hemşire": { reward: 820, icon: "💉", req_edu: 3, req_item: "Şırınga" },
+    "Sekreter": { reward: 830, icon: "📞", req_edu: 3, req_item: "Telefon" },
+    "Kütüphaneci": { reward: 840, icon: "📚", req_edu: 3, req_item: "Barkod Okuyucu" },
+    "Tamirci": { reward: 850, icon: "🔧", req_edu: 3, req_item: "Alet Çantası" },
+    "Laborant": { reward: 860, icon: "🔬", req_edu: 3, req_item: "Tüp" },
+    "Tıbbi Laboratuvar": { reward: 1150, icon: "🧪", req_edu: 3, req_item: "Mikrosantrifüj" },
+    "Aşçı": { reward: 900, icon: "👨‍🍳", req_edu: 3, req_item: "Aşçı Bıçağı" },
+    "Kabin Memuru": { reward: 920, icon: "💁", req_edu: 3, req_item: "Uçuş Kartı" },
+    "İtfaiyeci": { reward: 950, icon: "🚒", req_edu: 3, req_item: "Yangın Tüpü" },
+    "Gümrük Memuru": { reward: 980, icon: "🛂", req_edu: 3, req_item: "Mühür" },
+    "Polis": { reward: 1000, icon: "👮‍♂️", req_edu: 3, req_item: "Silah Ruhsatı" },
+    "Grafiker": { reward: 1100, icon: "🎨", req_edu: 3, req_item: "Çizim Tableti" },
+    "Emlakçı": { reward: 1200, icon: "🏠", req_edu: 3, req_item: "Ajanda" },
+    "Dalgıç": { reward: 1250, icon: "🤿", req_edu: 3, req_item: "Oksijen Tüpü" },
+    "Kaynakçı": { reward: 1280, icon: "👨‍🏭", req_edu: 3, req_item: "Kaynak Maskesi" },
+
+    // SEVİYE 4: ÜNİVERSİTE (PROFESYONEL)
+    "Bankacı": { reward: 1300, icon: "🏦", req_edu: 4, req_item: "Hesap Makinesi" },
+    "Arkeolog": { reward: 1350, icon: "🏺", req_edu: 4, req_item: "Fırça" },
+    "Muhasebeci": { reward: 1400, icon: "📉", req_edu: 4, req_item: "Mali Mühür" },
+    "Sosyolog": { reward: 1450, icon: "👥", req_edu: 4, req_item: "Anket Formu" },
+    "Öğretmen": { reward: 1500, icon: "👨‍🏫", req_edu: 4, req_item: "Kitap Seti" },
+    "Psikolojik Danışman": { reward: 1550, icon: "🗣️", req_edu: 4, req_item: "Not Defteri" },
+    "Gazeteci": { reward: 1600, icon: "📰", req_edu: 4, req_item: "Mikrofon" },
+    "Yatırım Uzmanı": { reward: 1700, icon: "📈", req_edu: 4, req_item: "Borsa Ekranı" },
+    "Editör": { reward: 1750, icon: "✍️", req_edu: 4, req_item: "Laptop" },
+    "Yazılımcı": { reward: 1800, icon: "💻", req_edu: 4, req_item: "Yazılım Lisansı" },
+    "Mimar": { reward: 2000, icon: "📐", req_edu: 4, req_item: "Çizim Masası" },
+    "Mühendis": { reward: 2200, icon: "👷", req_edu: 4, req_item: "Mühendislik Diploması" },
+    "Avukat": { reward: 2500, icon: "⚖️", req_edu: 4, req_item: "Cübbe" },
+    "Diyetisyen": { reward: 2700, icon: "🥗", req_edu: 4, req_item: "Diyet Listesi" },
+    "Denetçi": { reward: 2800, icon: "📝", req_edu: 4, req_item: "Audit Dosyası" },
+    "Biyolog": { reward: 2900, icon: "🌿", req_edu: 4, req_item: "Petri Kabı" },
+
+    // SEVİYE 5: YÜKSEK LİSANS (UZMAN)
+    "Psikolog": { reward: 3000, icon: "🧠", req_edu: 5, req_item: "Terapi Koltuğu" },
+    "Veri Bilimci": { reward: 3100, icon: "📊", req_edu: 5, req_item: "Süper Bilgisayar" },
+    "Eczacı": { reward: 3200, icon: "💊", req_edu: 5, req_item: "Laboratuvar Önlüğü" },
+    "Yapay Zeka Mühendisi": { reward: 3300, icon: "🤖", req_edu: 5, req_item: "GPU Server" },
+    "Veteriner": { reward: 3400, icon: "🐾", req_edu: 5, req_item: "Stetoskop" },
+    "Genetik Mühendisi": { reward: 3600, icon: "🧬", req_edu: 5, req_item: "DNA Kiti" },
+    "Doktor": { reward: 4000, icon: "🩺", req_edu: 5, req_item: "Tıp Diploması" },
+    "Diş Hekimi": { reward: 4200, icon: "🦷", req_edu: 5, req_item: "Dişçi Koltuğu" },
+    "Başhekim": { reward: 4500, icon: "🏥", req_edu: 5, req_item: "Başhekim Kaşesi" },
+    "Pilot": { reward: 5000, icon: "✈️", req_edu: 5, req_item: "Pilot Lisansı" },
+    "Savcı": { reward: 5500, icon: "🏛️", req_edu: 5, req_item: "Kanun Kitabı" },
+    "Hakim": { reward: 6000, icon: "🔨", req_edu: 5, req_item: "Tokmak" },
+    "Uçuş Mühendisi": { reward: 6200, icon: "🛫", req_edu: 5, req_item: "Uçuş Manueli" },
+    "Siber Güvenlik Uzmanı": { reward: 6500, icon: "🛡️", req_edu: 5, req_item: "Şifreleme Kartı" },
+
+    // SEVİYE 6: DOKTORA (AKADEMİK / LİDER)
+    "Cerrah": { reward: 7000, icon: "🏥", req_edu: 6, req_item: "Neşter" },
+    "Rektör": { reward: 7200, icon: "🎓", req_edu: 6, req_item: "Rektörlük Mührü" },
+    "Büyükelçi": { reward: 7500, icon: "🌍", req_edu: 6, req_item: "Diplomat Pasaportu" },
+    "Orkestra Şefi": { reward: 7800, icon: "🎼", req_edu: 6, req_item: "Baton" },
+    "Bilim İnsanı": { reward: 8000, icon: "🧪", req_edu: 6, req_item: "Mikroskop" },
+    "Yönetmen": { reward: 9000, icon: "🎬", req_edu: 6, req_item: "Klaket" },
+    "Nükleer Fizikçi": { reward: 9500, icon: "⚛️", req_edu: 6, req_item: "Radyasyon Ölçer" },
+    "Uzay Mühendisi": { reward: 10000, icon: "🛰️", req_edu: 6, req_item: "Uydu Alıcısı" },
+
+    // SEVİYE 7: PROFESÖR (ELİT)
+    "Astronot": { reward: 15000, icon: "🚀", req_edu: 7, req_item: "Uzay Mekiği Bileti" },
+    "CEO": { reward: 20000, icon: "👔", req_edu: 7, req_item: "Şirket Hissesi" },
+    "Milletvekili": { reward: 25000, icon: "🏛️", req_edu: 7, req_item: "Mazbata" },
+    "Devlet Başkanı": { reward: 30000, icon: "👑", req_edu: 7, req_item: "Kral Tacı" },
+    "Dünya Bankası Başkanı": { reward: 35000, icon: "💸", req_edu: 7, req_item: "Altın Kasa" },
+    "Kripto Kralı": { reward: 50000, icon: "💎", req_edu: 7, req_item: "Soğuk Cüzdan" }
+};
+
 const REDIRECT_URI = "https://aloskegangbot-market.onrender.com/auth/kick/callback";
 
 // ---------------------------------------------------------
@@ -1873,7 +1983,8 @@ app.post('/webhook/kick', async (req, res) => {
                     created_at: Date.now(),
                     lifetime_m: 1, lifetime_g: 0, lifetime_d: 0, lifetime_w: 0,
                     channel_m: { [broadcasterId]: 1 },
-                    quests: { [today]: { m: 1, g: 0, d: 0, w: 0, claimed: {} } }
+                    quests: { [today]: { m: 1, g: 0, d: 0, w: 0, claimed: {} } },
+                    xp: 1, edu: 0 // Yeni kullanıcı XP
                 };
             } else {
                 if (!u.quests) u.quests = {};
@@ -1886,6 +1997,15 @@ app.post('/webhook/kick', async (req, res) => {
                 u.last_seen = Date.now();
                 u.last_channel = broadcasterId;
                 u.lifetime_m = (u.lifetime_m || 0) + 1;
+
+                // XP VE EĞİTİM GÜNCELLEME
+                u.xp = (u.xp || 0) + 1;
+                const currentEdu = u.edu || 0;
+                // Bir sonraki seviye var mı ve XP yetti mi?
+                if (currentEdu < 7 && u.xp >= EDU_XP[currentEdu + 1]) {
+                    u.edu = currentEdu + 1;
+                }
+
                 return u;
             }
         }, (err) => {
@@ -2056,16 +2176,33 @@ app.post('/webhook/kick', async (req, res) => {
             await reply(`🎁 @${user}, +${dailyRew.toLocaleString()} 💰 eklendi! ✅`);
         }
 
+
+
         else if (lowMsg === '!çalış') {
             const snap = await userRef.once('value');
-            const data = snap.val() || { balance: 1000, last_work: 0, job: "İşsiz" };
+            const data = snap.val() || { balance: 1000, last_work: 0, job: "İşsiz", xp: 0, edu: 0, items: {} };
             const now = Date.now();
-            const jobName = data.job || "İşsiz";
-            if (jobName === "İşsiz") return await reply(`@${user}, git iş bul 👤🚫`);
 
+            const jobName = data.job || "İşsiz";
             const job = JOBS[jobName] || JOBS["İşsiz"];
 
-            const cooldown = 86400000; // 24 Saat
+            // 1. İşsizlik Kontrolü
+            if (jobName === "İşsiz") return await reply(`@${user}, Şu an işsizsin! Markete git ve bir meslek eşyası satın alarak işe başla. (Örn: Süpürge -> Çöpçü)`);
+
+            // 2. Şart Kontrolleri (Kovulma Durumları)
+            // Eşya Kontrolü
+            if (job.req_item && (!data.items || !data.items[job.req_item])) {
+                await userRef.update({ job: "İşsiz" });
+                return await reply(`@${user}, 🚨 Meslek gereksinimin eksik (${job.req_item}) olduğu için kovuldun!`);
+            }
+            // Eğitim Kontrolü
+            if ((data.edu || 0) < job.req_edu) {
+                await userRef.update({ job: "İşsiz" });
+                return await reply(`@${user}, 🚨 Eğitim seviyen yetersiz (${EDUCATION[job.req_edu]} gerekli) olduğu için kovuldun!`);
+            }
+
+            // 3. Cooldown Kontrolü (24 Saat)
+            const cooldown = 86400000;
             const lastWork = data.last_work || 0;
 
             if (now - lastWork < cooldown) {
@@ -2075,17 +2212,58 @@ app.post('/webhook/kick', async (req, res) => {
                 return await reply(`@${user}, ⏳ Tekrar çalışmak için ${hours > 0 ? hours + ' saat ' : ''}${mins} dakika beklemelisin.`);
             }
 
+            // --- MESAİ BAŞLATMA ---
             const reward = job.reward;
-            const isInf = data.is_infinite;
 
-            if (!isInf) data.balance = (data.balance || 0) + reward;
-            data.last_work = now;
+            // Cooldown'ı hemen başlat (Spam engelleme için)
+            await userRef.update({ last_work: now });
 
-            const updateData = { last_work: data.last_work };
-            if (!isInf) updateData.balance = data.balance;
+            await reply(`👷 @${user}, ${job.icon} ${jobName} olarak mesain başladı! 15 dakika sonra mesain bitecek ve ${reward.toLocaleString()} 💰 bakiyene otomatik yüklenecektir. İyi çalışmalar!`);
 
-            await userRef.update(updateData);
-            await reply(`${job.icon} @${user}, ${jobName} olarak çalıştın ve ${reward.toLocaleString()} 💰 kazandın! ✅`);
+            // 15 Dakika (15 * 60 * 1000 ms) sonra ödülü ver
+            setTimeout(async () => {
+                try {
+                    const currentSnap = await userRef.once('value');
+                    const currentData = currentSnap.val() || {};
+
+                    // ÖDÜLLER VE XP HESABI
+                    let currentXP = (currentData.xp || 0) + 5;
+                    let currentEdu = currentData.edu || 0;
+                    let eduUp = false;
+
+                    if (currentEdu < 7 && currentXP >= EDU_XP[currentEdu + 1]) {
+                        currentEdu++;
+                        eduUp = true;
+                    }
+
+                    // Bakiyeyi güncelle (Atomic transaction önerilir ama basitlik için set/update de olur)
+                    await userRef.transaction(u => {
+                        if (u) {
+                            if (!u.is_infinite) u.balance = (u.balance || 0) + reward;
+                            u.xp = currentXP;
+                            u.edu = currentEdu;
+                        }
+                        return u;
+                    });
+
+                    let finishMsg = `✅ @${user}, mesain bitti! ${reward.toLocaleString()} 💰 ve +5 XP hesabına eklendi.`;
+                    if (eduUp) finishMsg += ` 🎓 TEBRİKLER! Seviye atladın: ${EDUCATION[currentEdu]}`;
+
+                    await sendChatMessage(finishMsg, broadcasterId);
+                } catch (e) {
+                    console.error("Shift Timer Error:", e);
+                }
+            }, 15 * 60 * 1000);
+        }
+
+        else if (lowMsg === '!meslek-bilgi' || lowMsg === '!kariyer') {
+            const snap = await userRef.once('value');
+            const data = snap.val() || { xp: 0, edu: 0 };
+            const eduLevel = data.edu || 0;
+            const xp = data.xp || 0;
+            const nextXp = EDU_XP[eduLevel + 1] || "Maks";
+
+            await reply(`🎓 @${user} | Eğitim: ${EDUCATION[eduLevel]} | XP: ${xp}/${nextXp} | Meslek: ${data.job || "İşsiz"}`);
         }
 
         // --- OYUNLAR (AYAR KONTROLLÜ) ---
