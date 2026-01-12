@@ -17,7 +17,7 @@ const EDUCATION = {
     0: "Cahil", 1: "İlkokul", 2: "Ortaokul", 3: "Lise",
     4: "Üniversite", 5: "Yüksek Lisans", 6: "Doktora", 7: "Profesör"
 };
-const EDU_XP = [0, 50, 150, 400, 1000, 2500, 5000, 10000];
+const EDU_XP = [0, 5000, 10000, 20000, 50000, 75000, 150000, 500000];
 
 const JOBS = {
     // SEVİYE 0: CAHİL (GEREKSİNİM YOK / 50 - 1.000 💰)

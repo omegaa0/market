@@ -108,7 +108,7 @@ const EDUCATION = {
     6: "Doktora",
     7: "Profesör"
 };
-const EDU_XP = [0, 50, 150, 400, 1000, 2500, 5000, 10000]; // XP eşikleri
+const EDU_XP = [0, 5000, 10000, 20000, 50000, 75000, 150000, 500000]; // XP eşikleri
 
 const JOBS = {
     // SEVİYE 0: CAHİL (GEREKSİNİM YOK / UCUZ EŞYALAR)
