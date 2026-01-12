@@ -84,6 +84,7 @@ const storage = multer.diskStorage({
         cb(null, uniqueName);
     }
 });
+const upload = multer({ storage: storage });
 
 // 1. FIREBASE INITIALIZATION
 const firebaseConfig = {
