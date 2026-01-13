@@ -2946,7 +2946,7 @@ app.post('/webhook/kick', async (req, res) => {
         // IRK TESTİ
         else if (lowMsg === '!ırk' || lowMsg === '!irk') {
             const races = [
-                { n: "Türk", e: "🇹🇷" }, { n: "Kürt", e: "☀️" }, { n: "Laz", e: "🌊" },
+                { n: "Türk", e: "🇹🇷" }, { n: "Kürt", e: "" }, { n: "Laz", e: "🌊" },
                 { n: "Çerkes", e: "⚔️" }, { n: "Arap", e: "🌴" }, { n: "Yunan", e: "🏛️" },
                 { n: "Ermeni", e: "🇦🇲" }, { n: "Azeri", e: "🇦🇿" }, { n: "Alman", e: "🍺" },
                 { n: "İngiliz", e: "☕" }, { n: "İtalyan", e: "🍕" }, { n: "Fransız", e: "🥖" },
