@@ -802,13 +802,26 @@ async function loadBorsa() {
     if (borsaActive) return;
     borsaActive = true;
 
-    if (currentUser === 'omegacyr') {
+    if (currentUser && currentUser.toLowerCase() === 'omegacyr') {
+        let adminActions = document.getElementById('borsa-admin-actions');
+        if (!adminActions) {
+            adminActions = document.createElement('div');
+            adminActions.id = 'borsa-admin-actions';
+            adminActions.style.marginBottom = '20px';
+            adminActions.style.display = 'flex';
+            adminActions.style.gap = '10px';
+            container.parentElement.insertBefore(adminActions, container);
+        }
+
+        // Clear previous buttons to avoid duplicates if re-rendered
+        adminActions.innerHTML = '';
+
         const resetBtn = document.createElement('button');
-        resetBtn.innerHTML = "🚨 TÜM HİSSELERİ SIFIRLA (ADMİN)";
+        resetBtn.innerHTML = "🚨 SIFIRLA";
         resetBtn.className = "primary-btn";
         resetBtn.style.background = "#ff4d4d";
         resetBtn.style.color = "white";
-        resetBtn.style.marginBottom = "20px";
+        resetBtn.style.flex = "1";
         resetBtn.onclick = async () => {
             if (!confirm("Tüm kullanıcıların tüm hisselerini silmek istediğine emin misin?")) return;
             const res = await fetch('/api/borsa/reset', {
@@ -819,7 +832,27 @@ async function loadBorsa() {
             const d = await res.json();
             if (d.success) showToast(d.message, "success");
         };
-        container.parentElement.insertBefore(resetBtn, container);
+
+        const fixBtn = document.createElement('button');
+        fixBtn.innerHTML = "🔧 EKSİK MALİYET VERİLERİNİ ONAR";
+        fixBtn.className = "primary-btn";
+        fixBtn.style.background = "#ff9f43";
+        fixBtn.style.color = "white";
+        fixBtn.style.flex = "1";
+        fixBtn.onclick = async () => {
+            if (!confirm("Eksik maliyet verisi olan hisseler için GÜNCEL FİYAT baz alınarak maliyet eklenecek. Onaylıyor musun?")) return;
+            const res = await fetch('/api/borsa/fix-costs', {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({ requester: 'omegacyr' })
+            });
+            const d = await res.json();
+            if (d.success) showToast(d.message, "success");
+            else showToast(d.error, "error");
+        };
+
+        adminActions.appendChild(resetBtn);
+        adminActions.appendChild(fixBtn);
     }
 
     container.innerHTML = `<div style="text-align:center; width:100%; padding:60px;"><div class="loader"></div><p style="margin-top:10px;">Borsa verileri yükleniyor...</p></div>`;
@@ -937,6 +970,15 @@ async function executeBorsaBuy(code, price) {
             if (user) {
                 if (!user.is_infinite) user.balance -= total;
                 if (!user.stocks) user.stocks = {};
+                if (!user.stock_costs) user.stock_costs = {};
+
+                // BACKFILL: Eğer eski hisse var ama maliyeti yoksa, şu anki fiyattan almış saysın (Ortalamayı bozmamak için)
+                if ((user.stocks[code] || 0) > 0 && (user.stock_costs[code] || 0) <= 0) {
+                    user.stock_costs[code] = (user.stocks[code] * price);
+                }
+
+                // Update Average Cost
+                user.stock_costs[code] = (user.stock_costs[code] || 0) + total;
                 user.stocks[code] = (user.stocks[code] || 0) + amount;
             }
             return user;
@@ -966,10 +1008,24 @@ async function executeBorsaSell(code, price) {
         if (!confirm(`${amount} adet ${code} satılacak.\nBrüt: ${grossTotal.toLocaleString()} 💰\nKomisyon (%5): -${commission.toLocaleString()} 💰\nNet Kazanç: ${netTotal.toLocaleString()} 💰\n\nSatış işlemini onaylıyor musun?`)) return;
 
         await db.ref('users/' + currentUser).transaction(user => {
-            if (user) {
+            if (user && user.stocks && user.stocks[code]) {
+                const oldQty = user.stocks[code];
+                const newQty = oldQty - amount;
+
+                // Balance update
                 user.balance = (user.balance || 0) + netTotal;
-                user.stocks[code] -= amount;
-                if (user.stocks[code] <= 0) delete user.stocks[code];
+
+                if (!user.stock_costs) user.stock_costs = {};
+                const oldCost = user.stock_costs[code] || 0;
+
+                if (newQty <= 0.00000001) {
+                    delete user.stocks[code];
+                    delete user.stock_costs[code];
+                } else {
+                    user.stocks[code] = newQty;
+                    // Reduce cost proportionally: NewCost = OldCost * (NewQty / OldQty)
+                    user.stock_costs[code] = oldCost * (newQty / oldQty);
+                }
             }
             return user;
         });
