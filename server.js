@@ -2911,6 +2911,41 @@ app.post('/webhook/kick', async (req, res) => {
             await reply(`✍️ @${user}: ${sozler[Math.floor(Math.random() * sozler.length)]}`);
         }
 
+        // ŞARKI ÖNERİSİ
+        else if (lowMsg === '!şarkı-öner' || lowMsg === '!sarkı-oner' || lowMsg === '!şarkıöner' || lowMsg === '!sarkioner') {
+            const terms = ["türkçe pop", "türkçe rock", "türkçe rap", "arabesk", "türk sanat müziği", "anadolu rock", "türkçe hit", "türkçe nostalji", "türkçe 90lar", "türkçe 2000ler", "müslüm gürses", "sezen aksu", "tarkan", "ezhel", "ceza", "barış manço"];
+            const randomTerm = terms[Math.floor(Math.random() * terms.length)];
+
+            await reply(`🔎 @${user} için "${randomTerm}" kategorisinde şarkı aranıyor... 🎵`);
+
+            try {
+                const res = await axios.get('https://itunes.apple.com/search', {
+                    params: {
+                        term: randomTerm,
+                        country: 'TR',
+                        media: 'music',
+                        limit: 100
+                    },
+                    timeout: 5000
+                });
+
+                if (res.data && res.data.results && res.data.results.length > 0) {
+                    const songs = res.data.results;
+                    const randomSong = songs[Math.floor(Math.random() * songs.length)];
+                    const artist = randomSong.artistName;
+                    const track = randomSong.trackName;
+                    const link = randomSong.trackViewUrl || "";
+
+                    await reply(`🎵 @${user}, Sana Önerim: ${artist} - ${track} 🎧\n${link}`);
+                } else {
+                    await reply(`⚠️ @${user}, Şarkı bulamadım. Tekrar dene!`);
+                }
+            } catch (err) {
+                console.error("Song Fetch Error:", err.message);
+                await reply(`⚠️ @${user}, Şarkı servisine ulaşılamadı.`);
+            }
+        }
+
         // SİHİRLİ 8 TOP
         else if (lowMsg.startsWith('!8ball ') || lowMsg.startsWith('!8top ')) {
             const cevaplar = [
