@@ -11,6 +11,14 @@ require('firebase/compat/database');
 const fetch = (...args) => import('node-fetch').then(({ default: fetch }) => fetch(...args));
 
 const app = express();
+const http = require('http').createServer(app);
+const io = require('socket.io')(http, {
+    cors: {
+        origin: "*", // Tüm kaynaklara izin ver (Chrome Extension için gerekli)
+        methods: ["GET", "POST"]
+    }
+});
+
 app.use(bodyParser.json());
 
 // GÜVENLİK HEADERS (Helmet benzeri manuel koruma)
@@ -543,15 +551,16 @@ let botMasterSwitch = true; // Omegacyr için master switch
 const INITIAL_STOCKS = {
     "APPLE": { price: 5000, trend: 1, history: [], volatility: 0.02, drift: 0.0001 },
     "BITCOIN": { price: 45000, trend: 1, history: [], volatility: 0.08, drift: 0.0005 },
-    "GOLD": { price: 2500, trend: -1, history: [], volatility: 0.01, drift: 0.00005 },
-    "SILVER": { price: 850, trend: 1, history: [], volatility: 0.03, drift: 0.00008 },
-    "PLATINUM": { price: 3200, trend: 1, history: [], volatility: 0.02, drift: 0.00003 },
+    "GOLD": { price: 2500, trend: -1, history: [], volatility: 0.05, drift: 0.0001 },
+    "SILVER": { price: 850, trend: 1, history: [], volatility: 0.06, drift: 0.0002 },
+    "PLATINUM": { price: 3200, trend: 1, history: [], volatility: 0.04, drift: 0.0001 },
     "KICK": { price: 100, trend: 1, history: [], volatility: 0.15, drift: 0.001 },
     "ETHER": { price: 15000, trend: -1, history: [], volatility: 0.06, drift: 0.0004 },
     "TESLA": { price: 7500, trend: 1, history: [], volatility: 0.05, drift: 0.0003 },
     "NVIDIA": { price: 12000, trend: 1, history: [], volatility: 0.04, drift: 0.0006 },
     "GOOGLE": { price: 6200, trend: -1, history: [], volatility: 0.02, drift: 0.0002 },
-    "AMAZON": { price: 5800, trend: 1, history: [], volatility: 0.02, drift: 0.0002 }
+    "AMAZON": { price: 5800, trend: 1, history: [], volatility: 0.02, drift: 0.0002 },
+    "OMEGA": { price: 1000, trend: 1, history: [], volatility: 0.08, drift: 0.0005 }
 };
 
 let currentMarketCycle = "NORMAL";
@@ -568,6 +577,26 @@ const REAL_ESTATE_TYPES = [
     { name: "Alışveriş Merkezi", minPrice: 7500000, maxPrice: 9500000, minInc: 9000, maxInc: 12000, type: "high" },
     { name: "Havalimanı Terminali", minPrice: 9000000, maxPrice: 10000000, minInc: 11000, maxInc: 13500, type: "high" }
 ];
+
+// --- RPG ITEMS (SİLAHLAR VE ZIRHLAR) ---
+const RPG_WEAPONS = {
+    "yumruk": { name: "Çıplak El", dmg: 5, price: 0, icon: "✊" },
+    "sopa": { name: "Tahta Sopa", dmg: 12, price: 5000, icon: "🪵" },
+    "bicak": { name: "Paslı Bıçak", dmg: 20, price: 15000, icon: "🔪" },
+    "kilic": { name: "Demir Kılıç", dmg: 35, price: 50000, icon: "⚔️" },
+    "balta": { name: "Savaş Baltası", dmg: 55, price: 120000, icon: "🪓" },
+    "katana": { name: "Katana", dmg: 80, price: 300000, icon: "🗡️" },
+    "lazer": { name: "Lazer Tabancası", dmg: 150, price: 1000000, icon: "🔫" }
+};
+
+const RPG_ARMORS = {
+    "tisort": { name: "Yırtık Tişört", def: 0, hp: 0, price: 0, icon: "👕" },
+    "deri": { name: "Deri Ceket", def: 5, hp: 50, price: 7500, icon: "🧥" },
+    "yelek": { name: "Çelik Yelek", def: 15, hp: 150, price: 40000, icon: "🦺" },
+    "zirh": { name: "Şövalye Zırhı", def: 30, hp: 400, price: 150000, icon: "🛡️" },
+    "nano": { name: "Nano Suit", def: 60, hp: 1000, price: 500000, icon: "🤖" },
+    "kral": { name: "Kraliyet Zırhı", def: 100, hp: 2500, price: 2000000, icon: "👑" }
+};
 
 async function getCityMarket(cityId) {
     try {
@@ -672,9 +701,9 @@ async function updateGlobalStocks() {
             let vol = baseData.volatility * effects.vol;
             let drift = baseData.drift + effects.drift;
 
-            // Brownian Motion
+            // Brownian Motion (Hassasiyet artırıldı: 0.02 -> 0.1)
             const epsilon = Math.random() * 2 - 1;
-            const changePercent = (drift * 0.5) + (vol * epsilon * 0.02);
+            const changePercent = (drift * 0.5) + (vol * epsilon * 0.1);
 
             let newPrice = Math.round(oldPrice * (1 + changePercent));
 
@@ -3556,6 +3585,20 @@ Maksimum 3-4 cümlelik, samimi ve akıcı bir özet hazırla.
             await timeoutUser(broadcasterId, user, choice.time);
         }
 
+        // --- RPG KARAKTER KOMUTLARI ---
+        else if (lowMsg === '!karakter') {
+            const uSnap = await userRef.once('value');
+            const uData = uSnap.val() || {};
+            const rpg = uData.rpg || { level: 1, hp: 100, xp: 0, str: 5, def: 0 };
+            const w = RPG_WEAPONS[rpg.weapon] || RPG_WEAPONS["yumruk"];
+            const a = RPG_ARMORS[rpg.armor] || RPG_ARMORS["tisort"];
+
+            await reply(`👤 @${user} [BATTLE STATS]\n❤️ HP: ${rpg.hp + (a.hp || 0)} | ⚔️ STR: ${rpg.str} (+${w.dmg}) | 🛡️ DEF: ${rpg.def} (+${a.def})\n🗡️ Silah: ${w.name} | 🧥 Zırh: ${a.name}`);
+        }
+        else if (lowMsg === '!duello') {
+            await reply(`⚔️ @${user}, Chrome uzantısı ile görsel düello çok yakında! Şimdilik marketten eşya topla.`);
+        }
+
         // --- MODERASYON: TRANSFER YASAKLA ---
         else if (lowMsg.startsWith('!transfer-yasakla ')) {
             if (!isAuthorized) return;
@@ -3818,6 +3861,31 @@ Maksimum 3-4 cümlelik, samimi ve akıcı bir özet hazırla.
                     }
                 }
             }
+        }
+
+        else if (lowMsg.startsWith('!duello')) {
+            const opponentName = args[0]?.replace('@', '').toLowerCase().trim();
+            if (!opponentName) return await reply(`@${user}, Kimi düelloya davet ediyorsun? Örnek: !duello @ahmet`);
+
+            if (opponentName === user.toLowerCase()) return await reply(`@${user}, Kendinle savaşamazsın.`);
+
+            // Kullanıcıların verilerini çek
+            const p1Snap = await db.ref('users/' + user).once('value');
+            const p2Snap = await db.ref('users/' + opponentName).once('value');
+
+            if (!p2Snap.exists()) return await reply(`@${user}, ${opponentName} adlı kullanıcı bulunamadı.`);
+
+            const p1Data = p1Snap.val();
+            const p2Data = p2Snap.val();
+
+            // RPG profili yoksa oluştur (Geçici)
+            if (!p1Data.rpg) p1Data.rpg = { hp: 100, str: 5, def: 0, level: 1, xp: 0 };
+            if (!p2Data.rpg) p2Data.rpg = { hp: 100, str: 5, def: 0, level: 1, xp: 0 };
+
+            await reply(`⚔️ DÜELLO BAŞLIYOR! @${user} ve @${opponentName} arenaya çıkıyor... (Görseli ekranda izleyin!)`);
+
+            // Socket üzerinden Chrome Extension'a sinyal gönder
+            triggerDuel(user, opponentName, p1Data, p2Data);
         }
 
         else if (lowMsg.startsWith('!borsa')) {
@@ -4377,7 +4445,7 @@ app.post('/api/leaderboard', async (req, res) => {
         const users = snap.val() || {};
         const sorted = Object.entries(users)
             .map(([name, data]) => ({ name, balance: data.balance || 0 }))
-            .filter(u => u.name.toLowerCase() !== 'aloskegangbot') // BOTU GİZLE
+            .filter(u => !['aloskegangbot', 'botrix'].includes(u.name.toLowerCase())) // BOTLARI GİZLE
             .sort((a, b) => (b.balance || 0) - (a.balance || 0))
             .slice(0, 25); // İLK 25
 
@@ -5254,8 +5322,9 @@ function logWebhookReceived(data) {
 
 
 
+// --- SERVER START ---
 const PORT = process.env.PORT || 3000;
-app.listen(PORT, () => {
+http.listen(PORT, () => {
     console.log(`🚀 BOT AKTİF! Port: ${PORT}`);
     console.log(`📡 Webhook URL: https://aloskegangbot-market.onrender.com/webhook/kick`);
     console.log(`🔍 Webhook durumu: https://aloskegangbot-market.onrender.com/webhook/status`);
@@ -5270,3 +5339,40 @@ app.listen(PORT, () => {
 
     setInterval(syncChannelStats, 600000);
 });
+
+// --- SOCKET.IO HANDLING ---
+io.on('connection', (socket) => {
+    console.log('🔌 Yeni bağlantı:', socket.id);
+
+    socket.on('register_overlay', (data) => {
+        console.log(`🖥️ Overlay bağlandı: ${data.type}`);
+        socket.join('overlays'); // Overlayleri bir odaya topla
+    });
+
+    socket.on('duel_result', (data) => {
+        console.log(`🏁 Düello sonucu (Overlay): Kazanan ${data.winner}`);
+        // Sonuç işlemlerini burada da yapabiliriz veya webhook üzerinden halledilmiş olabilir
+    });
+
+    socket.on('disconnect', () => {
+        console.log('❌ Bağlantı koptu:', socket.id);
+    });
+});
+
+/* 
+ * !duello komutu ile tetiklenecek fonksiyon
+ * Bu fonksiyonu kodun yukarısındaki !duello handler'ında çağıracağız.
+ */
+function triggerDuel(p1Name, p2Name, p1Data, p2Data) {
+    if (!p1Data.rpg) p1Data.rpg = { hp: 100, str: 5, def: 0 };
+    if (!p2Data.rpg) p2Data.rpg = { hp: 100, str: 5, def: 0 };
+
+    const payload = {
+        p1: { name: p1Name, ...p1Data.rpg, weapon: p1Data.rpg.weapon || 'yumruk', armor: p1Data.rpg.armor || 'tisort' },
+        p2: { name: p2Name, ...p2Data.rpg, weapon: p2Data.rpg.weapon || 'yumruk', armor: p2Data.rpg.armor || 'tisort' }
+    };
+
+    // Tüm overlaylere gönder
+    io.to('overlays').emit('duel_start', payload);
+    console.log(`⚔️ Düello sinyali gönderildi: ${p1Name} vs ${p2Name}`);
+}

@@ -19,6 +19,26 @@ const EDUCATION = {
 };
 const EDU_XP = [0, 5000, 10000, 20000, 50000, 75000, 150000, 500000];
 
+// --- RPG CONSTANTS ---
+const RPG_WEAPONS = {
+    "yumruk": { name: "Çıplak El", dmg: 5, price: 0, icon: "✊" },
+    "sopa": { name: "Tahta Sopa", dmg: 12, price: 5000, icon: "🪵" },
+    "bicak": { name: "Paslı Bıçak", dmg: 20, price: 15000, icon: "🔪" },
+    "kilic": { name: "Demir Kılıç", dmg: 35, price: 50000, icon: "⚔️" },
+    "balta": { name: "Savaş Baltası", dmg: 55, price: 120000, icon: "🪓" },
+    "katana": { name: "Katana", dmg: 80, price: 300000, icon: "🗡️" },
+    "lazer": { name: "Lazer Tabancası", dmg: 150, price: 1000000, icon: "🔫" }
+};
+
+const RPG_ARMORS = {
+    "tisort": { name: "Yırtık Tişört", def: 0, hp: 0, price: 0, icon: "👕" },
+    "deri": { name: "Deri Ceket", def: 5, hp: 50, price: 7500, icon: "🧥" },
+    "yelek": { name: "Çelik Yelek", def: 15, hp: 150, price: 40000, icon: "🦺" },
+    "zirh": { name: "Şövalye Zırhı", def: 30, hp: 400, price: 150000, icon: "🛡️" },
+    "nano": { name: "Nano Suit", def: 60, hp: 1000, price: 500000, icon: "🤖" },
+    "kral": { name: "Kraliyet Zırhı", def: 100, hp: 2500, price: 2000000, icon: "👑" }
+};
+
 const JOBS = {
     // SEVİYE 0: CAHİL (GEREKSİNİM YOK / 50 - 1.000 💰)
     "İşsiz": { reward: 0, icon: "👤", req_edu: 0, req_item: null },
@@ -830,6 +850,7 @@ async function loadBorsa() {
             "BEARISH": { t: "AYI PİYASASI (DÜŞÜŞ)", c: "#ff4d4d" },
             "VOLATILE": { t: "YÜKSEK VOLATİLİTE (RİSKLİ)", c: "#ffaa00" },
             "STAGNANT": { t: "DURGUN PİYASA (YATAY)", c: "#888" },
+            "CRASH": { t: "⚠️ KRİZ: BÜYÜK ÇÖKÜŞ!", c: "red" },
             "NORMAL": { t: "NORMAL PİYASA", c: "#aaa" }
         };
         statusBox.innerHTML = `<small style="color:#666; display:block; margin-bottom:4px;">GÜNCEL EKONOMİK DURUM</small><strong style="color:${cycleMap[cycle].c}; font-size:1.1rem; letter-spacing:1px;">${cycleMap[cycle].t}</strong>`;
@@ -1156,12 +1177,19 @@ async function loadProfile() {
                     <h3 style="margin-bottom:15px; font-size:1rem; opacity:0.8;">📂 Borsa Portföyüm</h3>
                     <div id="user-portfolio" style="display:grid; grid-template-columns: repeat(2, 1fr); gap:10px;">
                         ${u.stocks && Object.keys(u.stocks).length > 0 ?
-                Object.entries(u.stocks).map(([code, amt]) => `
-                                <div class="stat-mini" style="border:1px solid #05ea6a33; background:rgba(5, 234, 106, 0.05);">
-                                    <label>${code}</label>
-                                    <div class="v">${Number(amt).toLocaleString('tr-TR', { maximumFractionDigits: 8 })} Adet</div>
-                                </div>
-                            `).join('') : '<p style="grid-column: span 2; font-size: 0.8rem; color:#666;">Henüz hissedar değilsin.</p>'
+                Object.entries(u.stocks).map(([code, amt]) => {
+                    const totalCost = u.stock_costs ? (u.stock_costs[code] || 0) : 0;
+                    const avgCost = amt > 0 ? (totalCost / amt) : 0;
+                    return `
+                        <div class="stat-mini" style="border:1px solid #05ea6a33; background:rgba(5, 234, 106, 0.05); display:block;">
+                            <div style="display:flex; justify-content:space-between; align-items:center;">
+                                <label style="margin:0;">${code}</label>
+                                <span style="font-size:0.7rem; color:#aaa;">Ort: ${avgCost > 0 ? Math.floor(avgCost).toLocaleString() : '?'} 💰</span>
+                            </div>
+                            <div class="v" style="margin-top:5px;">${Number(amt).toLocaleString('tr-TR', { maximumFractionDigits: 4 })} Adet</div>
+                        </div>
+                    `;
+                }).join('') : '<p style="grid-column: span 2; font-size: 0.8rem; color:#666;">Henüz hissedar değilsin.</p>'
             }
                     </div>
                 </div>
@@ -1553,7 +1581,7 @@ async function loadLiveStats() {
                 chan_m: data.channel_m?.[currentChannelId] || 0,
                 chan_w: data.channel_watch_time?.[currentChannelId] || 0
             }))
-            .filter(u => (u.chan_m > 0 || u.chan_w > 0) && u.name.toLowerCase() !== 'aloskegangbot'); // BOTU GİZLE
+            .filter(u => (u.chan_m > 0 || u.chan_w > 0) && !['aloskegangbot', 'botrix'].includes(u.name.toLowerCase())); // BOTLARI GİZLE
 
         if (userList.length === 0) {
             container.innerHTML = '<p style="text-align:center; padding:40px; color:#666;">Bu kanal için henüz istatistik verisi toplanmamış.</p>';
@@ -1620,6 +1648,145 @@ async function loadLiveStats() {
         `;
     } catch (e) {
         container.innerHTML = "<p>İstatistikler şu an yüklenemiyor.</p>";
+    }
+}
+
+// --- ARENA (RPG) LOGIC ---
+async function loadArena() {
+    if (!currentUser) return;
+    document.getElementById('my-rpg-stats').innerHTML = '<div class="loader"></div>';
+    document.getElementById('arena-weapons').innerHTML = '<div class="loader"></div>';
+    document.getElementById('arena-armors').innerHTML = '<div class="loader"></div>';
+
+    const snap = await db.ref('users/' + currentUser).once('value');
+    const u = snap.val() || { balance: 0 };
+    const rpg = u.rpg || { level: 1, hp: 100, xp: 0, str: 5, def: 0, weapon: 'yumruk', armor: 'tisort' };
+
+    // items: { "kilic": true, "zirh": true } gibi tutulabilir veya direkt rpg.inventory: ["kilic"]
+    // Basitlik için rpg.inventory array kullanalım
+    const inventory = rpg.inventory || [];
+
+    // --- 1. My Stats ---
+    const currentW = RPG_WEAPONS[rpg.weapon] || RPG_WEAPONS["yumruk"];
+    const currentA = RPG_ARMORS[rpg.armor] || RPG_ARMORS["tisort"];
+
+    const totalHP = (rpg.hp || 100) + (currentA.hp || 0);
+    const totalSTR = (rpg.str || 5) + (currentW.dmg || 0);
+    const totalDEF = (rpg.def || 0) + (currentA.def || 0);
+
+    document.getElementById('my-rpg-stats').innerHTML = `
+        <div style="display:flex; justify-content:space-between; align-items:center;">
+            <div>
+                <strong style="color:var(--primary); font-size:1.2rem;">Level ${rpg.level || 1}</strong>
+                <p style="margin-top:5px; font-size:0.9rem;">
+                   ❤️ HP: ${totalHP} | ⚔️ STR: ${totalSTR} | 🛡️ DEF: ${totalDEF}
+                </p>
+                <p style="font-size:0.8rem; color:#888;">XP: ${rpg.xp || 0}</p>
+            </div>
+            <div style="text-align:right;">
+                <div style="margin-bottom:5px;">${currentW.icon} ${currentW.name}</div>
+                <div>${currentA.icon} ${currentA.name}</div>
+            </div>
+        </div>
+    `;
+
+    // --- 2. Weapons ---
+    const wContainer = document.getElementById('arena-weapons');
+    wContainer.innerHTML = "";
+    Object.entries(RPG_WEAPONS).forEach(([code, item]) => {
+        if (code === 'yumruk') return; // Default
+        const owned = inventory.includes(code) || code === rpg.weapon; // weapon alanda varsa owned say veya inv
+        const equipped = code === rpg.weapon;
+
+        const card = document.createElement('div');
+        card.className = "market-card";
+        card.innerHTML = `
+            <div class="item-icon">${item.icon}</div>
+            <div class="item-info">
+                <h3>${item.name}</h3>
+                <p style="color:#aaa;">+${item.dmg} Hasar</p>
+                <div class="item-cost">${item.price.toLocaleString()} 💰</div>
+            </div>
+            <button class="buy-btn" onclick="buyRpgItem('${code}', 'weapon')" ${equipped ? 'disabled' : ''}>
+                ${equipped ? 'KUŞANILDI' : (owned ? 'KUŞAN' : 'SATIN AL')}
+            </button>
+        `;
+        wContainer.appendChild(card);
+    });
+
+    // --- 3. Armors ---
+    const aContainer = document.getElementById('arena-armors');
+    aContainer.innerHTML = "";
+    Object.entries(RPG_ARMORS).forEach(([code, item]) => {
+        if (code === 'tisort') return; // Default
+        const owned = inventory.includes(code) || code === rpg.armor;
+        const equipped = code === rpg.armor;
+
+        const card = document.createElement('div');
+        card.className = "market-card";
+        card.innerHTML = `
+            <div class="item-icon">${item.icon}</div>
+            <div class="item-info">
+                <h3>${item.name}</h3>
+                <p style="color:#aaa;">+${item.def} Defans | +${item.hp} HP</p>
+                <div class="item-cost">${item.price.toLocaleString()} 💰</div>
+            </div>
+            <button class="buy-btn" onclick="buyRpgItem('${code}', 'armor')" ${equipped ? 'disabled' : ''}>
+                ${equipped ? 'KUŞANILDI' : (owned ? 'KUŞAN' : 'SATIN AL')}
+            </button>
+        `;
+        aContainer.appendChild(card);
+    });
+}
+
+async function buyRpgItem(code, type) {
+    if (!currentUser) return;
+    const item = type === 'weapon' ? RPG_WEAPONS[code] : RPG_ARMORS[code];
+    if (!item) return;
+
+    if (!confirm(`${item.name} - İşlem yapmak istiyor musun?`)) return;
+
+    try {
+        const snap = await db.ref('users/' + currentUser).once('value');
+        const user = snap.val();
+
+        let rpg = user.rpg || { level: 1, hp: 100, xp: 0, str: 5, def: 0, weapon: 'yumruk', armor: 'tisort', inventory: [] };
+        if (!rpg.inventory) rpg.inventory = [];
+
+        // Check ownership
+        const owned = rpg.inventory.includes(code);
+
+        if (owned) {
+            // Sadece kuşan
+            if (type === 'weapon') rpg.weapon = code;
+            else rpg.armor = code;
+
+            await db.ref('users/' + currentUser + '/rpg').set(rpg);
+            showToast(`${item.name} kuşandın!`, "success");
+        } else {
+            // Satın Al
+            if (!user.is_infinite && (user.balance || 0) < item.price) {
+                return showToast("Bakiye Yetersiz!", "error");
+            }
+
+            // Satın alma işlemi
+            const updates = {};
+            if (!user.is_infinite) updates['users/' + currentUser + '/balance'] = (user.balance || 0) - item.price;
+
+            rpg.inventory.push(code);
+            if (type === 'weapon') rpg.weapon = code;
+            else rpg.armor = code;
+
+            updates['users/' + currentUser + '/rpg'] = rpg;
+
+            await db.ref().update(updates);
+            showToast(`${item.name} satın aldın ve kuşandın!`, "success");
+        }
+        loadArena();
+        loadProfile(); // Bakiye güncellemesi için
+    } catch (e) {
+        console.error(e);
+        showToast("Hata oluştu.", "error");
     }
 }
 

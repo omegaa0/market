@@ -212,6 +212,7 @@
             <button class="tab-btn" onclick="switchTab('leaderboard')">🏆 Liderlik</button>
             <button class="tab-btn" onclick="switchTab('borsa')">📈 Borsa</button>
             <button class="tab-btn" onclick="switchTab('emlak')">🏠 Emlak</button>
+            <button class="tab-btn" onclick="switchTab('arena')">⚔️ Arena (Beta)</button>
             <button class="tab-btn" onclick="switchTab('quests')">🎯 Görevler</button>
             <button class="tab-btn" onclick="switchTab('stats')">📊 İstatistikler</button>
             <button class="tab-btn" onclick="switchTab('profile')">👤 Profilim</button>
@@ -263,6 +264,26 @@
                     <p style="color:var(--text-dim); margin-bottom:20px; font-size:0.9rem;">Hisselerin fiyatları
                         saniyelik olarak güncellenir. Tüm kanallarda ortaktır.</p>
                     <div id="borsa-items" class="market-grid">
+                        <!-- JS fills -->
+                    </div>
+                </div>
+
+                <!-- ARENA TAB (RPG) -->
+                <div id="tab-arena" class="tab-content hidden">
+                    <h2 style="margin-bottom:20px;">⚔️ ARENA: Gladyatör Marketi</h2>
+                    <div
+                        style="background: linear-gradient(45deg, #222, #000); padding:20px; border-radius:12px; margin-bottom:20px; border:1px solid #333;">
+                        <h3 style="color: var(--primary);">🛡️ Karakterin</h3>
+                        <div id="my-rpg-stats" style="margin-top:10px; color:#ccc;">Yükleniyor...</div>
+                    </div>
+
+                    <h3 style="margin-bottom:10px;">🗡️ Silahlar</h3>
+                    <div id="arena-weapons" class="market-grid" style="margin-bottom:30px;">
+                        <!-- JS fills -->
+                    </div>
+
+                    <h3 style="margin-bottom:10px;">🛡️ Zırhlar</h3>
+                    <div id="arena-armors" class="market-grid">
                         <!-- JS fills -->
                     </div>
                 </div>
