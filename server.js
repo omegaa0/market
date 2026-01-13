@@ -11,13 +11,7 @@ require('firebase/compat/database');
 const fetch = (...args) => import('node-fetch').then(({ default: fetch }) => fetch(...args));
 
 const app = express();
-const http = require('http').createServer(app);
-const io = require('socket.io')(http, {
-    cors: {
-        origin: "*", // Tüm kaynaklara izin ver (Chrome Extension için gerekli)
-        methods: ["GET", "POST"]
-    }
-});
+app.use(bodyParser.json());
 
 app.use(bodyParser.json());
 
@@ -118,6 +112,7 @@ const EDUCATION = {
 };
 const EDU_XP = [0, 5000, 10000, 20000, 50000, 75000, 150000, 500000]; // XP eşikleri
 
+const pendingDuels = {};
 const JOBS = {
     // SEVİYE 0: CAHİL (GEREKSİNİM YOK / UCUZ EŞYALAR)
     "İşsiz": { reward: 0, icon: "👤", req_edu: 0, req_item: null },
@@ -3869,23 +3864,67 @@ Maksimum 3-4 cümlelik, samimi ve akıcı bir özet hazırla.
 
             if (opponentName === user.toLowerCase()) return await reply(`@${user}, Kendinle savaşamazsın.`);
 
+            const wager = args[1] ? parseInt(args[1]) : 0;
+
             // Kullanıcıların verilerini çek
             const p1Snap = await db.ref('users/' + user).once('value');
             const p2Snap = await db.ref('users/' + opponentName).once('value');
 
             if (!p2Snap.exists()) return await reply(`@${user}, ${opponentName} adlı kullanıcı bulunamadı.`);
 
-            const p1Data = p1Snap.val();
-            const p2Data = p2Snap.val();
+            const p1Data = p1Snap.val() || { balance: 0 };
+            const p2Data = p2Snap.val() || { balance: 0 };
 
-            // RPG profili yoksa oluştur (Geçici)
-            if (!p1Data.rpg) p1Data.rpg = { hp: 100, str: 5, def: 0, level: 1, xp: 0 };
-            if (!p2Data.rpg) p2Data.rpg = { hp: 100, str: 5, def: 0, level: 1, xp: 0 };
+            if (!isNaN(wager) && wager > 0) {
+                if (!p1Data.is_infinite && (p1Data.balance || 0) < wager) return await reply(`@${user}, Yetersiz bakiye!`);
+                if (!p2Data.is_infinite && (p2Data.balance || 0) < wager) return await reply(`@${user}, @${opponentName} kullanıcısının bakiyesi yetersiz!`);
 
-            await reply(`⚔️ DÜELLO BAŞLIYOR! @${user} ve @${opponentName} arenaya çıkıyor... (Görseli ekranda izleyin!)`);
+                pendingDuels[opponentName] = { challenger: user, amount: wager, expires: Date.now() + 30000 };
+                await reply(`⚔️ @${user}, @${opponentName} ile ${wager} 💰 duello istiyor! Kabul etmek için !kabul yaz.`);
+            } else {
+                await reply(`⚔️ @${user} 🆚 @${opponentName}... Düello başladı!`);
+                setTimeout(async () => {
+                    const winner = Math.random() < 0.5 ? user : opponentName;
+                    const loser = winner === user ? opponentName : user;
+                }, 2500);
+            }
+        }
 
-            // Socket üzerinden Chrome Extension'a sinyal gönder
-            triggerDuel(user, opponentName, p1Data, p2Data);
+        else if (lowMsg === '!kabul') {
+            const pending = pendingDuels[user];
+            if (!pending || Date.now() > pending.expires) {
+                return await reply(`@${user}, Şu an sana gelen aktif bir düello isteği yok.`);
+            }
+
+            const { challenger, amount } = pending;
+            delete pendingDuels[user];
+
+            const p1Snap = await db.ref('users/' + challenger).once('value');
+            const p2Snap = await db.ref('users/' + user).once('value');
+            const p1Data = p1Snap.val() || {};
+            const p2Data = p2Snap.val() || {};
+
+            if (!p1Data.is_infinite && (p1Data.balance || 0) < amount) return await reply(`@${user}, @${challenger} bakiyesi yetersiz olduğu için düello iptal!`);
+            if (!p2Data.is_infinite && (p2Data.balance || 0) < amount) return await reply(`@${user}, Bakiyen yetersiz!`);
+
+            await reply(`⚔️ DÜELLO KABUL EDİLDİ! @${challenger} 🆚 @${user} (${amount} 💰 Masada!)`);
+
+            setTimeout(async () => {
+                const winnerName = Math.random() < 0.5 ? challenger : user;
+                const loserName = winnerName === challenger ? user : challenger;
+
+                await db.ref('users/' + loserName).transaction(u => {
+                    if (u && !u.is_infinite) u.balance -= amount;
+                    return u;
+                });
+
+                await db.ref('users/' + winnerName).transaction(u => {
+                    if (u) u.balance = (parseInt(u.balance) || 0) + amount;
+                    return u;
+                });
+
+                await reply(`🏆 KAZANAN: @${winnerName}! (+${amount} 💰)\n💀 @${loserName} kaybetti (-${amount} 💰).`);
+            }, 2500);
         }
 
         else if (lowMsg.startsWith('!borsa')) {
@@ -5324,7 +5363,7 @@ function logWebhookReceived(data) {
 
 // --- SERVER START ---
 const PORT = process.env.PORT || 3000;
-http.listen(PORT, () => {
+app.listen(PORT, () => {
     console.log(`🚀 BOT AKTİF! Port: ${PORT}`);
     console.log(`📡 Webhook URL: https://aloskegangbot-market.onrender.com/webhook/kick`);
     console.log(`🔍 Webhook durumu: https://aloskegangbot-market.onrender.com/webhook/status`);
@@ -5339,40 +5378,3 @@ http.listen(PORT, () => {
 
     setInterval(syncChannelStats, 600000);
 });
-
-// --- SOCKET.IO HANDLING ---
-io.on('connection', (socket) => {
-    console.log('🔌 Yeni bağlantı:', socket.id);
-
-    socket.on('register_overlay', (data) => {
-        console.log(`🖥️ Overlay bağlandı: ${data.type}`);
-        socket.join('overlays'); // Overlayleri bir odaya topla
-    });
-
-    socket.on('duel_result', (data) => {
-        console.log(`🏁 Düello sonucu (Overlay): Kazanan ${data.winner}`);
-        // Sonuç işlemlerini burada da yapabiliriz veya webhook üzerinden halledilmiş olabilir
-    });
-
-    socket.on('disconnect', () => {
-        console.log('❌ Bağlantı koptu:', socket.id);
-    });
-});
-
-/* 
- * !duello komutu ile tetiklenecek fonksiyon
- * Bu fonksiyonu kodun yukarısındaki !duello handler'ında çağıracağız.
- */
-function triggerDuel(p1Name, p2Name, p1Data, p2Data) {
-    if (!p1Data.rpg) p1Data.rpg = { hp: 100, str: 5, def: 0 };
-    if (!p2Data.rpg) p2Data.rpg = { hp: 100, str: 5, def: 0 };
-
-    const payload = {
-        p1: { name: p1Name, ...p1Data.rpg, weapon: p1Data.rpg.weapon || 'yumruk', armor: p1Data.rpg.armor || 'tisort' },
-        p2: { name: p2Name, ...p2Data.rpg, weapon: p2Data.rpg.weapon || 'yumruk', armor: p2Data.rpg.armor || 'tisort' }
-    };
-
-    // Tüm overlaylere gönder
-    io.to('overlays').emit('duel_start', payload);
-    console.log(`⚔️ Düello sinyali gönderildi: ${p1Name} vs ${p2Name}`);
-}
