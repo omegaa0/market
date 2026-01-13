@@ -1455,6 +1455,39 @@ async function syncChannelStats() {
 
             const gql = await fetchKickGraphQL(chan.username);
             if (gql) {
+                // Yayına giriş kontrolü (Webhook)
+                const currentStats = (await db.ref(`channels/${id}/stats`).once('value')).val() || {};
+                const wasLive = currentStats.is_live || false;
+                const isLive = gql.livestream && gql.livestream.is_live;
+
+                if (isLive && !wasLive) {
+                    console.log(`🎥 ${chan.username} yayına girdi! Bildirim gönderiliyor...`);
+                    const webhookUrl = chan.settings?.discord_live_webhook;
+                    if (webhookUrl) {
+                        try {
+                            const streamTitle = gql.livestream.session_title || "Yayındayım!";
+                            const streamGame = gql.livestream.categories?.[0]?.name || "Just Chatting";
+                            const thumbUrl = gql.livestream.thumbnail?.url || "https://kick.com/favicon.ico";
+
+                            await axios.post(webhookUrl, {
+                                content: `@everyone ${chan.username} KICK'TE YAYINDA! 🔴\nhttps://kick.com/${chan.username}`,
+                                embeds: [{
+                                    title: streamTitle,
+                                    url: `https://kick.com/${chan.username}`,
+                                    color: 5763719, // Kick Greenish
+                                    fields: [
+                                        { name: "Oyun/Kategori", value: streamGame, inline: true }
+                                    ],
+                                    image: { url: thumbUrl },
+                                    timestamp: new Date().toISOString()
+                                }]
+                            });
+                        } catch (err) {
+                            console.error(`Webhook Error (${chan.username}):`, err.message);
+                        }
+                    }
+                }
+
                 const updates = {
                     last_sync: Date.now(),
                     followers: gql.followersCount || 0
@@ -1462,6 +1495,8 @@ async function syncChannelStats() {
                 if (gql.livestream) {
                     updates.viewers = gql.livestream.viewer_count || 0;
                     updates.is_live = gql.livestream.is_live;
+                } else {
+                    updates.is_live = false;
                 }
                 await db.ref(`channels/${id}/stats`).update(updates);
             }

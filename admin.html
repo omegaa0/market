@@ -1096,7 +1096,10 @@
                                 <label style="font-size:0.7rem; color:#f1c40f; margin-top:10px; display:block;">AT YARIŞI BAĞLANTISI</label>
                                 <input type="text" readonly value="${horseRaceUrl}" class="inp" style="height:32px; font-size:0.7rem; margin:5px 0; border-color:#f1c40f; color:#f1c40f;" onclick="this.select(); document.execCommand('copy'); alert('At Yarışı linki kopyalandı!')">
 
-                                <button class="btn btn-small" onclick="resetOverlayKey('${id}')">🔑 ANAHTARI SIFIRLA</button>
+                                <label style="font-size:0.7rem; color:#5865F2; margin-top:10px; display:block;">DISCORD LIVE BİLDİRİM WEBHOOK</label>
+                                <input type="text" value="${getVal(s.discord_live_webhook, '')}" class="inp" style="height:32px; font-size:0.7rem; margin:5px 0; border-color:#5865F2;" onchange="toggleCmd('${id}','discord_live_webhook',this.value)" placeholder="https://discord.com/api/webhooks/...">
+
+                                <button class="btn btn-small" onclick="resetOverlayKey('${id}')" style="margin-top:10px;">🔑 ANAHTARI SIFIRLA</button>
                                 <div style="display:flex; gap:5px; margin-top:10px;">
                                     <button class="btn btn-small" style="background:#ff0055; flex:1;" onclick="testFireworks('${id}')">🎆 FİŞEK TEST</button>
                                     <button class="btn btn-small" style="background:#333; flex:1;" onclick="reloadOverlay('${id}')">🔄 YENİLE</button>
