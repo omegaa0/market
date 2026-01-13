@@ -763,8 +763,9 @@ app.post('/api/borsa/reset', authAdmin, hasPerm('stocks'), async (req, res) => {
 
         const updates = {};
         for (const username in users) {
-            if (users[username].stocks) {
+            if (users[username].stocks || users[username].stock_costs) {
                 updates[`users/${username}/stocks`] = null;
+                updates[`users/${username}/stock_costs`] = null;
             }
         }
 
