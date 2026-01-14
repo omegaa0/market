@@ -6000,6 +6000,125 @@ app.post('/admin-api/assign-property', authAdmin, hasPerm('users'), async (req, 
     }
 });
 
+// --- GANG SYSTEM --- (Step 883: Initial Implementation)
+const GANG_CREATE_COST = 1000000;
+
+// 1. CREATE GANG
+app.post('/api/gang/create', async (req, res) => {
+    try {
+        const { username, name, tag } = req.body;
+        // Validation
+        if (!username || !name || !tag) return res.json({ success: false, error: 'Eksik bilgi' });
+        if (tag.length < 3 || tag.length > 4) return res.json({ success: false, error: 'Etiket 3-4 harf olmalı' });
+        if (name.length < 4 || name.length > 20) return res.json({ success: false, error: 'İsim 4-20 harf arasında olmalı' });
+
+        const cleanUser = username.toLowerCase();
+        const userRef = db.ref('users/' + cleanUser);
+        const userSnap = await userRef.once('value');
+        const userData = userSnap.val();
+
+        if (!userData) return res.json({ success: false, error: 'Kullanıcı bulunamadı' });
+        if (userData.gang) return res.json({ success: false, error: 'Zaten bir çetedesin!' });
+        if ((userData.balance || 0) < GANG_CREATE_COST) return res.json({ success: false, error: 'Yetersiz bakiye' });
+
+        // Check if name/tag exists (Basic scan - for scaling, needs separate index)
+        const gangsSnap = await db.ref('gangs').once('value');
+        const gangs = gangsSnap.val() || {};
+        const exists = Object.values(gangs).some(g => g.name.toLowerCase() === name.toLowerCase() || g.tag.toLowerCase() === tag.toLowerCase());
+
+        if (exists) return res.json({ success: false, error: 'Bu isim veya etiket zaten kullanılıyor!' });
+
+        const gangId = Date.now().toString(36) + Math.random().toString(36).substr(2, 5);
+
+        const newGang = {
+            id: gangId,
+            name: name,
+            tag: tag.toUpperCase(),
+            leader: cleanUser,
+            balance: 0,
+            level: 1,
+            members: {
+                [cleanUser]: { rank: 'leader', joinedAt: Date.now() }
+            },
+            createdAt: Date.now()
+        };
+
+        // Atomic Updates
+        const updates = {};
+        updates[`gangs/${gangId}`] = newGang;
+        updates[`users/${cleanUser}/balance`] = userData.balance - GANG_CREATE_COST;
+        updates[`users/${cleanUser}/gang`] = gangId;
+        updates[`users/${cleanUser}/gang_rank`] = 'leader'; // Cache rank on user for easy access
+
+        await db.ref().update(updates);
+        addLog("Çete Kuruldu", `${cleanUser} tarafından [${tag}] ${name} kuruldu.`, "GLOBAL");
+
+        res.json({ success: true, gang: newGang });
+    } catch (e) {
+        console.error("Gang Create Error:", e);
+        res.json({ success: false, error: 'Sunucu hatası' });
+    }
+});
+
+// 2. GET GANG INFO
+app.post('/api/gang/info', async (req, res) => {
+    try {
+        const { gangId } = req.body;
+        if (!gangId) return res.json({ success: false });
+
+        const snap = await db.ref(`gangs/${gangId}`).once('value');
+        const gang = snap.val();
+
+        if (!gang) return res.json({ success: false, error: 'Çete bulunamadı' });
+        res.json({ success: true, gang });
+    } catch (e) {
+        res.json({ success: false, error: e.message });
+    }
+});
+
+// 3. GANG ACTION: DONATE (Kasa)
+app.post('/api/gang/donate', async (req, res) => {
+    try {
+        const { username, amount } = req.body;
+        const amt = parseInt(amount);
+        if (isNaN(amt) || amt <= 0) return res.json({ success: false, error: 'Geçersiz miktar' });
+
+        const cleanUser = username.toLowerCase();
+        const userRef = db.ref(`users/${cleanUser}`);
+        const userSnap = await userRef.once('value');
+        const u = userSnap.val();
+
+        if (!u || !u.gang) return res.json({ success: false, error: 'Bir çeteye üye değilsin.' });
+        if ((u.balance || 0) < amt) return res.json({ success: false, error: 'Yetersiz bakiye.' });
+
+        const gangRef = db.ref(`gangs/${u.gang}`);
+
+        // Transaction to ensure safety
+        await userRef.update({ balance: u.balance - amt });
+        await gangRef.child('balance').transaction(val => (val || 0) + amt);
+
+        // Add log to gang history (optional feature for later)
+
+        res.json({ success: true, newBalance: u.balance - amt });
+    } catch (e) {
+        res.json({ success: false, error: e.message });
+    }
+});
+
+// 4. GANG ACTION: KICK MEMBER
+app.post('/api/gang/kick', async (req, res) => {
+    const { requester, target } = req.body; // requester=username, target=username
+    // Implement logic: 
+    // 1. Get Requester Rank -> Check if Leader or Co-Leader
+    // 2. Get Target Rank -> Cannot kick same or higher rank
+    // 3. Remove target from gang.members
+    // 4. Remove gang from target user profile
+    // Simplification for now: Only Leader can kick
+
+    // ... (Pending detailed implementation based on specific rank rules if requested)
+    res.json({ success: false, error: "Henüz aktif değil" });
+});
+
 app.post('/admin-api/remove-property', authAdmin, hasPerm('users'), async (req, res) => {
     const { user, index } = req.body;
     if (!user || index === undefined) return res.status(400).json({ error: "Eksik bilgi" });

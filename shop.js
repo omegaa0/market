@@ -1386,7 +1386,23 @@ async function loadProfile() {
                                 </div>
                             `).join('') : '<p style="font-size: 0.8rem; color:#666;">Henüz mülk sahibi değilsin.</p>'
         }
-                    </div>
+                </div>
+
+                <div class="gang-section" style="margin-top:20px; border-top:1px solid rgba(255,255,255,0.1); padding-top:20px;">
+                    <h3 style="margin-bottom:15px; font-size:1rem; opacity:0.8;">🏴 Çete</h3>
+                    ${u.gang ?
+            `<div class="stat-mini" style="background:rgba(255, 0, 0, 0.1); border:1px solid rgba(255, 0, 0, 0.3); display:flex; justify-content:space-between; align-items:center; cursor:pointer;" onclick="switchTab('gangs')">
+                            <div>
+                                <label>Üyesin</label>
+                                <div class="v" style="color:#e74c3c;">Çeteye Git ></div>
+                            </div>
+                        </div>`
+            :
+            `<div class="stat-mini" style="background:rgba(255,255,255,0.05); display:flex; justify-content:space-between; align-items:center;">
+                            <label>Bir çeteye üye değilsin.</label>
+                            <button class="secondary-btn" style="font-size:0.7rem; padding:4px 10px;" onclick="switchTab('gangs')">Çete Kur/Bul</button>
+                        </div>`
+        }
                 </div>
             </div>
         `;
@@ -1394,6 +1410,136 @@ async function loadProfile() {
 
 }
 
+// --- GANG SYSTEM --- (Step 883 Client Logic)
+
+async function loadGangs() {
+    // 1. Check if user is in a gang
+    if (!currentUser) return;
+
+    let userData = lastUserData;
+    if (!userData || !userData.gang) {
+        // Fetch to confirm (in case lastUserData is stale)
+        try {
+            const userRes = await fetch('/api/user/' + currentUser);
+            userData = await userRes.json();
+            lastUserData = userData;
+        } catch (e) { }
+    }
+
+    const gangId = userData?.gang;
+
+    if (!gangId) {
+        // Not in a gang -> Show Lobby
+        document.getElementById('gang-lobby').style.display = 'block';
+        document.getElementById('gang-dashboard').classList.add('hidden');
+    } else {
+        // In a gang -> Fetch Gang Info & Show Dashboard
+        document.getElementById('gang-lobby').style.display = 'none';
+        document.getElementById('gang-dashboard').classList.remove('hidden');
+
+        try {
+            const res = await fetch('/api/gang/info', {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({ gangId })
+            });
+
+            const d = await res.json();
+            if (d.success && d.gang) {
+                const g = d.gang;
+                document.getElementById('my-gang-name').innerText = g.name;
+                document.getElementById('my-gang-tag').innerText = g.tag;
+                document.getElementById('my-gang-leader').innerText = g.leader;
+                document.getElementById('my-gang-balance').innerText = (g.balance || 0).toLocaleString() + ' 💰';
+
+                // Members List
+                const list = document.getElementById('gang-members-list');
+                list.innerHTML = '';
+
+                const members = Object.entries(g.members || {});
+                document.getElementById('my-gang-count').innerText = members.length;
+
+                members.sort((a, b) => (b[1].rank === 'leader' ? 1 : 0) - (a[1].rank === 'leader' ? 1 : 0)); // Leader top
+
+                members.forEach(([uname, data]) => {
+                    const isLeader = data.rank === 'leader';
+                    const icon = isLeader ? '👑' : '🔫';
+                    const row = document.createElement('div');
+                    row.className = 'stat-mini';
+                    row.style.background = 'rgba(255,255,255,0.05)';
+                    row.innerHTML = `
+                        <div style="display:flex; justify-content:space-between; align-items:center;">
+                            <span style="color: white; font-weight:600;">${icon} ${uname}</span>
+                            <span style="font-size:0.8rem; color:#aaa;">${isLeader ? 'Lider (Baba)' : 'Tetikçi'}</span>
+                        </div>
+                    `;
+                    list.appendChild(row);
+                });
+            }
+        } catch (e) {
+            console.error("Gang Load Error:", e);
+        }
+    }
+}
+
+async function createGang() {
+    const name = document.getElementById('gang-name-input').value.trim();
+    const tag = document.getElementById('gang-tag-input').value.trim();
+
+    if (!name || !tag) return showToast("Ad ve etiket zorunlu!", "error");
+
+    // Optimistic UI interaction
+    showToast("Çete kuruluyor...", "info");
+
+    try {
+        const res = await fetch('/api/gang/create', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ username: currentUser, name, tag })
+        });
+        const data = await res.json();
+
+        if (data.success) {
+            showToast("🏴 Çete başarıyla kuruldu!", "success");
+            // Reload user data to get gang ID
+            const userRes = await fetch('/api/user/' + currentUser);
+            lastUserData = await userRes.json();
+
+            loadGangs();
+            document.getElementById('user-balance').innerText = lastUserData.balance.toLocaleString() + ' 💰';
+        } else {
+            showToast(data.error || "Hata oluştu!", "error");
+        }
+    } catch (e) {
+        showToast("Sunucu hatası!", "error");
+    }
+}
+
+async function openDonateModal() {
+    const amount = prompt("Ne kadar bağışlamak istersin?");
+    if (!amount) return;
+
+    try {
+        const res = await fetch('/api/gang/donate', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ username: currentUser, amount })
+        });
+        const data = await res.json();
+        if (data.success) {
+            showToast("✅ Bağış yapıldı!", "success");
+            document.getElementById('user-balance').innerText = data.newBalance.toLocaleString() + ' 💰';
+            loadGangs(); // Refresh balance
+        } else {
+            showToast(data.error, "error");
+        }
+    } catch (e) { showToast("Bağış hatası", "error"); }
+}
+
+async function leaveGang() {
+    if (!confirm("Çeteden ayrılmak istediğine emin misin?")) return;
+    showToast("Bu özellik henüz aktif değil. Sadakat yeminin var!", "info");
+}
 const EMLAK_CITIES = [
     { "id": "ADANA", "name": "Adana", "x": 50, "y": 81 },
     { "id": "ADIYAMAN", "name": "Adıyaman", "x": 66, "y": 72 },

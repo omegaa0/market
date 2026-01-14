@@ -231,6 +231,8 @@
             <button class="tab-btn" onclick="switchTab('leaderboard')">🏆 Liderlik</button>
             <button class="tab-btn" onclick="switchTab('borsa')">📈 Borsa</button>
             <button class="tab-btn" onclick="switchTab('emlak')">🏠 Emlak</button>
+            <button class="tab-btn" onclick="switchTab('gangs')">🏴 Çeteler <span
+                    style="background:var(--danger); color:white; font-size:0.6rem; padding:2px 5px; border-radius:4px; margin-left:5px; font-weight:800;">YENİ</span></button>
             <!-- Arena Removed -->
             <button class="tab-btn" onclick="switchTab('quests')">🎯 Görevler</button>
             <button class="tab-btn" onclick="switchTab('stats')">📊 İstatistikler</button>
@@ -372,6 +374,85 @@
                     </p>
                     <div id="career-grid" class="market-grid">
                         <!-- JS fills -->
+                    </div>
+                </div>
+
+                <!-- GANGS TAB -->
+                <div id="tab-gangs" class="tab-content hidden">
+                    <h2 style="margin-bottom:20px;">🏴 Çete Bölgesi</h2>
+
+                    <!-- 1. GANG CREATION / JOIN -->
+                    <div id="gang-lobby" class="glass-panel" style="text-align:center; padding:40px; display:none;">
+                        <i class="fas fa-users-slash" style="font-size:3rem; color:#666; margin-bottom:20px;"></i>
+                        <h3>Henüz bir çeten yok!</h3>
+                        <p style="color:#aaa; margin-bottom:30px;">Kendi çeteni kur ve şehre hükmetmeye başla.</p>
+
+                        <div
+                            style="background:rgba(0,0,0,0.3); padding:20px; border-radius:15px; max-width:400px; margin:0 auto; border:1px solid rgba(255,255,255,0.1);">
+                            <h4 style="color:var(--primary); margin-bottom:15px;">Çete Kur</h4>
+                            <input type="text" id="gang-name-input" class="modern-input"
+                                placeholder="Çete Adı (4-20 Harf)" maxlength="20"
+                                style="margin-bottom:10px; width:100%;">
+                            <input type="text" id="gang-tag-input" class="modern-input" placeholder="Etiket (3-4 Harf)"
+                                maxlength="4" style="margin-bottom:15px; width:100%; text-transform:uppercase;">
+
+                            <p style="color:#aaa; font-size:0.8rem; margin-bottom:15px;">Kurulum Ücreti: <span
+                                    style="color:var(--primary); font-weight:800;">1.000.000 💰</span></p>
+
+                            <button onclick="createGang()" class="primary-btn" style="width:100%;">KUR (1M 💰)</button>
+                        </div>
+                    </div>
+
+                    <!-- 2. MY GANG DASHBOARD -->
+                    <div id="gang-dashboard" class="hidden">
+                        <!-- HEADER -->
+                        <div class="glass-panel"
+                            style="background:linear-gradient(45deg, rgba(0,0,0,0.8), rgba(20,20,20,0.8)); border-left: 5px solid var(--primary); display:flex; justify-content:space-between; align-items:center; padding:25px; margin-bottom:20px;">
+                            <div>
+                                <h1 style="font-size:2.5rem; margin:0; line-height:1;">
+                                    <span id="my-gang-tag"
+                                        style="background:var(--primary); color:black; padding:2px 8px; border-radius:5px; font-size:1rem; vertical-align:middle; margin-right:10px;">TAG</span>
+                                    <span id="my-gang-name">Çete Adı</span>
+                                </h1>
+                                <p style="color:#aaa; margin-top:5px;">Lider: <span id="my-gang-leader"
+                                        style="color:white;">-</span> | Üye Sayısı: <span id="my-gang-count">0</span>
+                                </p>
+                            </div>
+                            <div style="text-align:right;">
+                                <div style="font-size:0.8rem; color:#aaa; margin-bottom:5px;">KASA BAKİYESİ</div>
+                                <div id="my-gang-balance" style="font-size:2rem; font-weight:800; color:#2ecc71;">0 💰
+                                </div>
+                                <button onclick="openDonateModal()" class="secondary-btn"
+                                    style="font-size:0.8rem; padding:5px 15px; margin-top:5px;">KASAYA BAĞIŞ
+                                    YAP</button>
+                            </div>
+                        </div>
+
+                        <div style="display:grid; grid-template-columns: 2fr 1fr; gap:20px;">
+                            <!-- MEMBERS LIST -->
+                            <div class="glass-panel">
+                                <h3
+                                    style="margin-bottom:15px; border-bottom:1px solid rgba(255,255,255,0.1); padding-bottom:10px;">
+                                    Üyeler</h3>
+                                <div id="gang-members-list"
+                                    style="display:flex; flex-direction:column; gap:10px; max-height:400px; overflow-y:auto;">
+                                    <!-- JS Fills -->
+                                </div>
+                            </div>
+
+                            <!-- ACTIONS / UPGRADES (Placeholder for future) -->
+                            <div class="glass-panel">
+                                <h3
+                                    style="margin-bottom:15px; border-bottom:1px solid rgba(255,255,255,0.1); padding-bottom:10px;">
+                                    Çete Yönetimi</h3>
+                                <div style="display:grid; gap:10px;">
+                                    <button class="menu-btn" disabled>⚔️ Bölge Savaşları (Yakında)</button>
+                                    <button class="menu-btn" disabled>💎 Yükseltmeler (Yakında)</button>
+                                    <button class="menu-btn" style="background:rgba(231, 76, 60, 0.2); color:#e74c3c;"
+                                        onclick="leaveGang()">Çeteden Ayrıl</button>
+                                </div>
+                            </div>
+                        </div>
                     </div>
                 </div>
 
