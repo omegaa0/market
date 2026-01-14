@@ -228,9 +228,71 @@ function init() {
             }
         }
     });
+    // ... (init function ends)
+});
 }
 
 window.addEventListener('DOMContentLoaded', init);
+
+function showAuth() {
+    const authContainer = document.getElementById('auth-container');
+    const mainContent = document.getElementById('main-content');
+    const step1 = document.getElementById('step-1');
+    const step2 = document.getElementById('step-2');
+
+    if (authContainer) authContainer.classList.remove('hidden');
+    if (mainContent) mainContent.classList.add('hidden');
+    if (step1) step1.classList.remove('hidden');
+    if (step2) step2.classList.add('hidden');
+    db.ref('pending_auth').off();
+}
+
+function startAuth() {
+    const usernameInput = document.getElementById('username-input');
+    const user = usernameInput.value.toLowerCase().trim();
+    if (user.length < 3) return showToast("Geçersiz kullanıcı adı!", "error");
+
+    // Özel karakter kontrolü
+    if (/[.#$\[\]]/.test(user)) return showToast("Kullanıcı adı geçersiz karakterler içeriyor!", "error");
+
+    const code = Math.floor(100000 + Math.random() * 900000).toString();
+
+    const codeDisplay = document.getElementById('auth-code');
+    const cmdExample = document.getElementById('cmd-example');
+    const step1 = document.getElementById('step-1');
+    const step2 = document.getElementById('step-2');
+
+    // UI'yi hemen güncelle ki kullanıcı beklediğini anlasın
+    if (codeDisplay) codeDisplay.innerText = code;
+    if (cmdExample) cmdExample.innerText = `!doğrulama ${code}`;
+    if (step1) step1.classList.add('hidden');
+    if (step2) step2.classList.remove('hidden');
+
+    showToast("Kod oluşturuldu, kaydediliyor...", "success");
+
+    db.ref('pending_auth/' + user).set({ code, timestamp: Date.now() })
+        .then(() => {
+            console.log(`[Shop] Auth code WRITE commanded for ${user}: ${code}`);
+
+            // Onay bekleyen dinleyiciyi kur
+            db.ref('auth_success/' + user).off(); // Eski varsa temizle
+            db.ref('auth_success/' + user).on('value', (snap) => {
+                if (snap.val()) {
+                    db.ref('auth_success/' + user).remove();
+                    db.ref('auth_success/' + user).off();
+                    login(user);
+                    showToast("Giriş Başarılı! Hoş geldin.", "success");
+                }
+            });
+        })
+        .catch(err => {
+            console.error("Auth Firebase Error:", err);
+            showToast("Bağlantı hatası! Firebase yetkilerini kontrol edin.", "error");
+            // Hata varsa geri dön
+            if (step1) step1.classList.remove('hidden');
+            if (step2) step2.classList.add('hidden');
+        });
+}
 
 function getTodayKey() {
     return new Date().toLocaleDateString('en-CA', { timeZone: 'Europe/Istanbul' });
