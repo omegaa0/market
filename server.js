@@ -2169,7 +2169,7 @@ async function getAppAccessToken() {
             return cachedAppToken;
         }
     } catch (e) {
-        console.error("[Auth Error] App Token alınamadı:", e.response?.data || e.message);
+        // console.error("[Auth Error] App Token alınamadı:", e.response?.data || e.message);
     }
     return null;
 }
@@ -5837,8 +5837,53 @@ app.post('/api/borsa/reset', authAdmin, async (req, res) => {
     }
 });
 
-// --- EMLAK SİSTEMİ API ---
-// --- DUPLICATE REMOVED ---
+// --- EMLAK SİSTEMİ API & HELPER ---
+
+// 1. GET JOBS (Admin Panel Sync)
+app.post('/admin-api/get-jobs', authAdmin, hasPerm('users'), (req, res) => {
+    res.json(Object.keys(JOBS));
+});
+
+// 2. ASSIGN REAL ESTATE (Admin)
+// City Indexes: 0:IST, 1:ANK, 2:IZM, 3:ANT
+// Prop Types (Custom): 0-12 matching indices in shop.js logic
+const ADMIN_PROP_TYPES = [
+    { n: "Gecekondu", p: 15 }, { n: "Apartman Dairesi", p: 35 },
+    { n: "Lüks Daire", p: 75 }, { n: "Residence", p: 150 },
+    { n: "Villa", p: 300 }, { n: "Yalı", p: 750 },
+    { n: "Gökdelen", p: 2000 }, { n: "Ada", p: 5000 },
+    { n: "Küçük Dükkan", p: 50 }, { n: "Mağaza", p: 120 },
+    { n: "Süpermarket", p: 300 }, { n: "AVM", p: 1000 },
+    { n: "Holding", p: 3000 }
+];
+const ADMIN_CITIES = ['İstanbul', 'Ankara', 'İzmir', 'Antalya'];
+
+app.post('/admin-api/assign-property', authAdmin, hasPerm('users'), async (req, res) => {
+    const { user, cityId, propertyIndex } = req.body;
+
+    if (!user || cityId === undefined || propertyIndex === undefined) return res.json({ success: false, error: 'Eksik veri' });
+
+    const cityName = ADMIN_CITIES[cityId] || 'Bilinmeyen';
+    const propInfo = ADMIN_PROP_TYPES[propertyIndex];
+
+    if (!propInfo) return res.json({ success: false, error: 'Geçersiz mülk tipi' });
+
+    const newProp = {
+        id: Date.now() + Math.random().toString(36).substr(2, 5),
+        name: propInfo.n,
+        city: cityName,
+        rent_price: propInfo.p,
+        bought_at: Date.now()
+    };
+
+    try {
+        await db.ref(`users/${user.toLowerCase()}/real_estate`).push(newProp);
+        addLog("Emlak Atama", `${user} kullanıcısına ${cityName} şehrinde ${propInfo.n} atandı.`);
+        res.json({ success: true });
+    } catch (e) {
+        res.json({ success: false, error: e.message });
+    }
+});
 
 // Arka plan görevleri (Mute, TTS, Ses bildirimleri)
 
