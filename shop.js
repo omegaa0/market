@@ -229,7 +229,6 @@ function init() {
         }
     });
     // ... (init function ends)
-});
 }
 
 window.addEventListener('DOMContentLoaded', init);
