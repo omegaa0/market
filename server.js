@@ -5092,6 +5092,21 @@ app.post('/api/leaderboard', async (req, res) => {
     }
 });
 
+// --- YENİ: KULLANICI PROFİL API (RULE BYPASS) ---
+app.get('/api/user/:username', async (req, res) => {
+    try {
+        const username = req.params.username.toLowerCase();
+        // Server-side read is secure and bypasses client rules
+        const snap = await db.ref('users/' + username).once('value');
+        const data = snap.val();
+        if (!data) return res.status(404).json({ error: "Kullanıcı bulunamadı" });
+        return res.json(data);
+    } catch (e) {
+        console.error("User API Error:", e.message);
+        return res.status(500).json({ error: "Sunucu hatası" });
+    }
+});
+
 // --- YENİ: GÖREV ÖDÜLÜ AL ---
 app.post('/api/claim-quest', async (req, res) => {
     const { username, questId } = req.body;

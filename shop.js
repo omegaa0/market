@@ -330,6 +330,29 @@ function getTodayKey() {
     return new Date().toLocaleDateString('en-CA', { timeZone: 'Europe/Istanbul' });
 }
 
+// Helper to fetch user data securely (Cache > DB > API)
+async function getUserData() {
+    // 1. Try Cache
+    if (lastUserData) return lastUserData;
+    if (!currentUser) return {};
+
+    // 2. Try DB
+    try {
+        const snap = await db.ref('users/' + currentUser).once('value');
+        const val = snap.val();
+        if (val) return val;
+    } catch (e) { }
+
+    // 3. Try API
+    try {
+        const res = await fetch('/api/user/' + currentUser);
+        const data = await res.json();
+        if (data && !data.error) return data;
+    } catch (e) { }
+
+    return {};
+}
+
 // ... (FREE_COMMANDS array kept as is, skipping lines for brevity if using replace_file_content smartly, but here I replace the init block mostly)
 
 // ...
@@ -360,26 +383,44 @@ function login(user) {
     if (fallback) fallback.innerText = user[0].toUpperCase();
     fetchKickPFP(user);
 
+    // 1. Firebase Listener (Standart)
     db.ref('users/' + user).on('value', (snap) => {
-        const data = snap.val() || { balance: 0, auth_channel: null };
-        const balanceEl = document.getElementById('user-balance');
-        if (balanceEl) balanceEl.innerText = `${(data.balance || 0).toLocaleString()} 💰`;
-
-        if (data.auth_channel && data.auth_channel !== currentChannelId) {
-            currentChannelId = data.auth_channel;
-            loadChannelMarket(currentChannelId);
-        } else if (!data.auth_channel) {
-            const noChanMsg = document.getElementById('no-channel-msg');
-            const marketGrid = document.getElementById('market-items');
-            const channelBadge = document.getElementById('channel-badge');
-            const marketStat = document.getElementById('market-status');
-
-            if (noChanMsg) noChanMsg.classList.remove('hidden');
-            if (marketGrid) marketGrid.innerHTML = "";
-            if (channelBadge) channelBadge.classList.add('hidden');
-            if (marketStat) marketStat.innerText = "Market ürünlerini görmek için herhangi bir kanalda !doğrulama yapmalısın.";
-        }
+        const data = snap.val();
+        // Eğer Firebase'den veri gelirse UI güncelle, gelmezse (null) API deneriz
+        if (data) updateUserUI(data);
     });
+
+    // 2. API Fallback (Firebase Rules engelliyorsa burası çalışır)
+    fetch('/api/user/' + user)
+        .then(res => res.json())
+        .then(data => {
+            if (data && !data.error) updateUserUI(data);
+        })
+        .catch(e => console.log("User API fetch failed:", e));
+}
+
+let lastUserData = null;
+function updateUserUI(data) {
+    if (!data) return;
+    lastUserData = data; // Diğer fonksiyonlar için cache
+
+    const balanceEl = document.getElementById('user-balance');
+    if (balanceEl) balanceEl.innerText = `${(data.balance || 0).toLocaleString()} 💰`;
+
+    if (data.auth_channel && data.auth_channel !== currentChannelId) {
+        currentChannelId = data.auth_channel;
+        loadChannelMarket(currentChannelId);
+    } else if (!data.auth_channel) {
+        const noChanMsg = document.getElementById('no-channel-msg');
+        const marketGrid = document.getElementById('market-items');
+        const channelBadge = document.getElementById('channel-badge');
+        const marketStat = document.getElementById('market-status');
+
+        if (noChanMsg) noChanMsg.classList.remove('hidden');
+        if (marketGrid) marketGrid.innerHTML = "";
+        if (channelBadge) channelBadge.classList.add('hidden');
+        if (marketStat) marketStat.innerText = "Market ürünlerini görmek için herhangi bir kanalda !doğrulama yapmalısın.";
+    }
     // Her oturum açışta kariyer sekmesini yükle (varsayılan sekme yaptık)
     loadCareer();
 }
@@ -538,8 +579,8 @@ function stopAllPreviews() {
 
 async function executePurchase(type, trigger, price) {
     if (!currentUser || !currentChannelId) return;
-    const userSnap = await db.ref('users/' + currentUser).once('value');
-    const userData = userSnap.val() || { balance: 0 };
+    const userData = await getUserData();
+    if (!userData.balance) userData.balance = 0;
     const isInf = userData.is_infinite;
 
     // Not: Fiyat kontrolünü sunucuda yapıyoruz ama UI'da hızlı feedback için bırakabiliriz.
@@ -620,8 +661,7 @@ async function finalizeTTSPurchase(price) {
     if (text.length > 500) return showToast("Mesaj çok uzun!", "error");
 
     // Client-side quick check
-    const userSnap = await db.ref('users/' + currentUser).once('value');
-    const userData = userSnap.val() || { balance: 0 };
+    const userData = await getUserData();
     if (!userData.is_infinite && (userData.balance || 0) < price) {
         return showToast("Bakiye yetersiz! ❌", "error");
     }
@@ -958,6 +998,8 @@ async function executeBorsaBuy(code, price) {
 
 async function executeBorsaSell(code, price) {
     if (!currentUser) return;
+    // Note: Sell logic usually checks stock count which is in user data.
+    // We should probably check it here but let server handle it mostly.
     const input = document.getElementById(`input-${code}`);
     const amount = parseFloat(input.value.replace(',', '.')); // Virgül desteği
     if (!amount || isNaN(amount) || amount <= 0) return showToast("Geçersiz miktar!", "error");
@@ -1035,26 +1077,39 @@ async function loadQuests() {
         const snap = await db.ref('global_quests').once('value');
         const globalQuests = snap.val() || {};
 
-        db.ref('users/' + currentUser).once('value', snap => {
-            const u = snap.val() || {};
-            const today = getTodayKey();
-            const userToday = u.quests?.[today] || { m: 0, g: 0, d: 0, w: 0, claimed: {} };
-
-            container.innerHTML = "";
-            if (Object.keys(globalQuests).length === 0) {
-                container.innerHTML = "<p style='text-align:center; color:var(--muted);'>Şu an aktif görev yok.</p>";
-                return;
+        let u = lastUserData;
+        if (!u) {
+            try {
+                const snap = await db.ref('users/' + currentUser).once('value');
+                u = snap.val();
+            } catch (e) { }
+            if (!u) {
+                try {
+                    const res = await fetch('/api/user/' + currentUser);
+                    const d = await res.json();
+                    if (d && !d.error) u = d;
+                } catch (e) { }
             }
+        }
+        u = u || {};
+        const today = getTodayKey();
+        const userToday = u.quests?.[today] || { m: 0, g: 0, d: 0, w: 0, claimed: {} };
 
-            Object.entries(globalQuests).forEach(([id, q]) => {
-                const currentProgress = userToday[q.type] || 0;
-                const isClaimed = userToday.claimed?.[id];
-                const isDone = currentProgress >= q.goal;
-                const percent = Math.min(100, (currentProgress / q.goal) * 100);
+        container.innerHTML = "";
+        if (Object.keys(globalQuests).length === 0) {
+            container.innerHTML = "<p style='text-align:center; color:var(--muted);'>Şu an aktif görev yok.</p>";
+            return;
+        }
 
-                const card = document.createElement('div');
-                card.className = 'quest-card';
-                card.innerHTML = `
+        Object.entries(globalQuests).forEach(([id, q]) => {
+            const currentProgress = userToday[q.type] || 0;
+            const isClaimed = userToday.claimed?.[id];
+            const isDone = currentProgress >= q.goal;
+            const percent = Math.min(100, (currentProgress / q.goal) * 100);
+
+            const card = document.createElement('div');
+            card.className = 'quest-card';
+            card.innerHTML = `
                     <div style="display:flex; justify-content:space-between; align-items:center;">
                         <h3>${q.name}</h3>
                         <span style="color:var(--primary); font-weight:700;">+${(parseInt(q.reward) || 0).toLocaleString()} 💰</span>
@@ -1069,9 +1124,10 @@ async function loadQuests() {
                         </button>
                     </div>
                 `;
-                container.appendChild(card);
-            });
+            container.appendChild(card);
         });
+
+
     } catch (e) { container.innerHTML = "<p>Görevler yüklenemedi.</p>"; }
 }
 
@@ -1097,19 +1153,33 @@ async function claimQuest(questId) {
 async function loadProfile() {
     if (!currentUser) return;
     const container = document.getElementById('profile-card');
-    db.ref('users/' + currentUser).once('value', snap => {
-        const u = snap.val() || { balance: 0 };
+    let u = lastUserData;
+    if (!u) {
+        try {
+            const snap = await db.ref('users/' + currentUser).once('value');
+            u = snap.val();
+        } catch (e) { }
 
-        // Find custom styles
-        const customColor = PROFILE_CUSTOMIZATIONS.colors.find(c => c.id === u.name_color);
-        const customBg = PROFILE_CUSTOMIZATIONS.backgrounds.find(b => b.id === u.profile_bg);
+        if (!u) {
+            try {
+                const res = await fetch('/api/user/' + currentUser);
+                const d = await res.json();
+                if (d && !d.error) u = d;
+            } catch (e) { } // Only catch fetch error
+        }
+    }
+    u = u || { balance: 0 };
 
-        const nameStyle = customColor ? `color: ${customColor.color}; text-shadow: 0 0 15px ${customColor.color}88;` : "";
-        const profileStyle = customBg ? customBg.style : "background: rgba(255,255,255,0.03);";
+    // Find custom styles
+    const customColor = PROFILE_CUSTOMIZATIONS.colors.find(c => c.id === u.name_color);
+    const customBg = PROFILE_CUSTOMIZATIONS.backgrounds.find(b => b.id === u.profile_bg);
 
-        container.style.cssText = `position:static; transform:none; width:100%; text-align:left; transition: all 0.5s ease; ${profileStyle}`;
+    const nameStyle = customColor ? `color: ${customColor.color}; text-shadow: 0 0 15px ${customColor.color}88;` : "";
+    const profileStyle = customBg ? customBg.style : "background: rgba(255,255,255,0.03);";
 
-        container.innerHTML = `
+    container.style.cssText = `position:static; transform:none; width:100%; text-align:left; transition: all 0.5s ease; ${profileStyle}`;
+
+    container.innerHTML = `
             <div style="display:flex; flex-direction:column; gap:25px; padding: 30px;">
                 <div style="display:flex; align-items:center; gap:20px; border-bottom:1px solid rgba(255,255,255,0.1); padding-bottom:20px;">
                     <div id="p-avatar" style="width:80px; height:80px; background:var(--primary); color:black; border-radius:50%; display:flex; align-items:center; justify-content:center; font-size:2rem; font-weight:800; border:4px solid rgba(255,255,255,0.1);">
@@ -1187,10 +1257,10 @@ async function loadProfile() {
                     <h3 style="margin-bottom:15px; font-size:1rem; opacity:0.8;">📂 Borsa Portföyüm</h3>
                     <div id="user-portfolio" style="display:grid; grid-template-columns: repeat(2, 1fr); gap:10px;">
                         ${u.stocks && Object.keys(u.stocks).length > 0 ?
-                Object.entries(u.stocks).map(([code, amt]) => {
-                    const totalCost = u.stock_costs ? (u.stock_costs[code] || 0) : 0;
-                    const avgCost = amt > 0 ? (totalCost / amt) : 0;
-                    return `
+            Object.entries(u.stocks).map(([code, amt]) => {
+                const totalCost = u.stock_costs ? (u.stock_costs[code] || 0) : 0;
+                const avgCost = amt > 0 ? (totalCost / amt) : 0;
+                return `
                         <div class="stat-mini" style="border:1px solid #05ea6a33; background:rgba(5, 234, 106, 0.05); display:block;">
                             <div style="display:flex; justify-content:space-between; align-items:center;">
                                 <label style="margin:0;">${code}</label>
@@ -1199,8 +1269,8 @@ async function loadProfile() {
                             <div class="v" style="margin-top:5px;">${Number(amt).toLocaleString('tr-TR', { maximumFractionDigits: 4 })} Adet</div>
                         </div>
                     `;
-                }).join('') : '<p style="grid-column: span 2; font-size: 0.8rem; color:#666;">Henüz hissedar değilsin.</p>'
-            }
+            }).join('') : '<p style="grid-column: span 2; font-size: 0.8rem; color:#666;">Henüz hissedar değilsin.</p>'
+        }
                     </div>
                 </div>
 
@@ -1208,7 +1278,7 @@ async function loadProfile() {
                     <h3 style="margin-bottom:15px; font-size:1rem; opacity:0.8;">🏠 Emlak Portföyüm</h3>
                     <div id="user-emlak" style="display:grid; grid-template-columns: 1fr; gap:10px;">
                         ${u.properties && u.properties.length > 0 ?
-                u.properties.map(p => `
+            u.properties.map(p => `
                                 <div class="stat-mini" style="border:1px solid var(--primary); background:rgba(102, 252, 241, 0.05); display:flex; justify-content:space-between; align-items:center;">
                                     <div>
                                         <label>${p.city}</label>
@@ -1220,12 +1290,13 @@ async function loadProfile() {
                                     </div>
                                 </div>
                             `).join('') : '<p style="font-size: 0.8rem; color:#666;">Henüz mülk sahibi değilsin.</p>'
-            }
+        }
                     </div>
                 </div>
             </div>
         `;
-    });
+    // Callback closure removed
+
 }
 
 const EMLAK_CITIES = [
@@ -1348,8 +1419,26 @@ async function loadCareer() {
     const grid = document.getElementById('career-grid');
     grid.innerHTML = '<div class="loader"></div>';
 
-    const snap = await db.ref('users/' + currentUser).once('value');
-    const u = snap.val() || {};
+    // Use cache or try fetch
+    let u = lastUserData;
+    if (!u) {
+        try {
+            const snap = await db.ref('users/' + currentUser).once('value');
+            u = snap.val();
+        } catch (e) { console.log("Career DB Error", e); }
+
+        if (!u) {
+            try {
+                const res = await fetch('/api/user/' + currentUser);
+                const apiData = await res.json();
+                if (apiData && !apiData.error) {
+                    u = apiData;
+                    if (!lastUserData) updateUserUI(u); // Update cache/UI if first time
+                }
+            } catch (e) { console.log("Career API Error", e); }
+        }
+    }
+    u = u || {};
     const currentEdu = u.edu || 0;
     const currentJob = u.job || "İşsiz";
 
@@ -1389,8 +1478,8 @@ async function applyForJob(jobName, price) {
     const job = JOBS[jobName];
 
     // Client-side quick check
-    const snap = await db.ref('users/' + currentUser).once('value');
-    const u = snap.val() || { balance: 0, items: {} };
+    let u = await getUserData();
+    u = u || { balance: 0, items: {} };
 
     // 1. Eğitim Kontrolü
     if ((u.edu || 0) < job.req_edu) {
