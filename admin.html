@@ -2203,47 +2203,167 @@
                 }
             });
         </script>
-        <div id="assetModal" class="login-box"
-            style="display:none; position:fixed; top:50%; left:50%; transform:translate(-50%, -50%); width:600px; z-index:9999; text-align:left;">
-            <h3 id="asset-modal-title"
-                style="color:var(--primary); margin-bottom:15px; border-bottom:1px solid #333; padding-bottom:10px;">
-                Varlıklar</h3>
-            <div id="asset-modal-content"></div>
-            <button class="btn btn-danger" style="margin-top:20px;" onclick="closeModal('assetModal')">KAPAT</button>
-        </div>
+        // --- MODERN ASSET MODAL & ASSIGNMENT ---
 
-        <div id="assignModal" class="login-box"
-            style="display:none; position:fixed; top:50%; left:50%; transform:translate(-50%, -50%); width:400px; z-index:9999; text-align:left;">
-            <h3 id="assign-modal-title" style="color:var(--secondary); margin-bottom:15px;">Emlak Ata</h3>
-            <label style="color:#888; font-size:0.8rem;">Şehir:</label>
-            <select id="assignCity" class="inp">
-                <option value="0">İstanbul</option>
-                <option value="1">Ankara</option>
-                <option value="2">İzmir</option>
-                <option value="3">Antalya</option>
-            </select>
-            <label style="color:#888; font-size:0.8rem; margin-top:10px;">Mülk Tipi:</label>
-            <select id="assignPropType" class="inp">
-                <option value="0">Gecekondu</option>
-                <option value="1">Apartman Dairesi</option>
-                <option value="2">Lüks Daire</option>
-                <option value="3">Residence</option>
-                <option value="4">Villa</option>
-                <option value="5">Yalı</option>
-                <option value="6">Gökdelen</option>
-                <option value="7">Ada</option>
-                <option value="8">Küçük Dükkan</option>
-                <option value="9">Mağaza</option>
-                <option value="10">Süpermarket</option>
-                <option value="11">AVM</option>
-                <option value="12">Holding</option>
-            </select>
-            <div style="display:flex; gap:10px; margin-top:20px;">
-                <button class="btn" style="flex:1" onclick="submitPropertyAssignment()">ONAYLA</button>
-                <button class="btn btn-danger" style="flex:1" onclick="closeModal('assignModal')">İPTAL</button>
+        // Constants mimicking shop.js for consistency
+        const EMLAK_CITIES = [
+        "Adana", "Adıyaman", "Afyonkarahisar", "Ağrı", "Amasya", "Ankara", "Antalya", "Artvin", "Aydın", "Balıkesir",
+        "Bilecik", "Bingöl", "Bitlis", "Bolu", "Burdur", "Bursa", "Çanakkale", "Çankırı", "Çorum", "Denizli",
+        "Diyarbakır", "Edirne", "Elazığ", "Erzincan", "Erzurum", "Eskişehir", "Gaziantep", "Giresun", "Gümüşhane",
+        "Hakkari", "Hatay", "Isparta", "Mersin", "İstanbul", "İzmir", "Kars", "Kastamonu", "Kayseri", "Kırklareli",
+        "Kırşehir", "Kocaeli", "Konya", "Kütahya", "Malatya", "Manisa", "Kahramanmaraş", "Mardin", "Muğla", "Muş",
+        "Nevşehir", "Niğde", "Ordu", "Rize", "Sakarya", "Samsun", "Siirt", "Sinop", "Sivas", "Tekirdağ", "Tokat",
+        "Trabzon", "Tunceli", "Şanlıurfa", "Uşak", "Van", "Yozgat", "Zonguldak", "Aksaray", "Bayburt", "Karaman",
+        "Kırıkkale", "Batman", "Şırnak", "Bartın", "Ardahan", "Iğdır", "Yalova", "Karabük", "Kilis", "Osmaniye", "Düzce"
+        ];
+        const EMLAK_TYPES = [
+        { n: "Gecekondu", p: 15 }, { n: "Apartman Dairesi", p: 35 },
+        { n: "Lüks Daire", p: 75 }, { n: "Residence", p: 150 },
+        { n: "Villa", p: 300 }, { n: "Yalı", p: 750 },
+        { n: "Gökdelen", p: 2000 }, { n: "Ada", p: 5000 },
+        { n: "Küçük Dükkan", p: 50 }, { n: "Mağaza", p: 120 },
+        { n: "Süpermarket", p: 300 }, { n: "AVM", p: 1000 },
+        { n: "Holding", p: 3000 }
+        ];
+
+        // Re-render Asset Modal with better UI
+        function openAssetModal(username) {
+        const user = rawUsers[username];
+        if (!user) return;
+
+        document.getElementById('asset-modal-title').innerHTML = `<span
+            style="color:var(--primary);">@${username}</span> Varlıkları`;
+        const content = document.getElementById('asset-modal-content');
+
+        const realEstateCount = user.real_estate ? Object.keys(user.real_estate).length : 0;
+        const stocksCount = user.stocks ? Object.keys(user.stocks).length : 0;
+        const totalBalance = user.balance || 0;
+
+        let html = `
+        <div
+            style="background:rgba(255,255,255,0.05); padding:15px; border-radius:12px; margin-bottom:20px; display:flex; align-items:center; justify-content:space-between;">
+            <div>
+                <div style="font-size:0.75rem; color:#aaa; margin-bottom:4px;">TOPLAM BAKİYE</div>
+                <div style="font-size:1.4rem; font-weight:700; color:var(--primary);">${totalBalance.toLocaleString()}
+                    💰</div>
+            </div>
+            <div style="text-align:right; font-size:0.8rem; color:#ccc;">
+                <div>🏢 ${realEstateCount} Mülk</div>
+                <div>📈 ${stocksCount} Hisse</div>
             </div>
         </div>
 
+        <div style="display:flex; gap:20px; height:300px;">
+            <!-- EMLAK KOLONU -->
+            <div
+                style="flex:1; background:#000; border-radius:12px; border:1px solid #222; overflow:hidden; display:flex; flex-direction:column;">
+                <div
+                    style="padding:12px; border-bottom:1px solid #222; background:#111; font-weight:600; color:var(--secondary);">
+                    🏢 Mülkler
+                </div>
+                <div style="flex:1; overflow-y:auto; padding:10px;">
+                    <ul style="list-style:none;">
+                        ${realEstateCount > 0 ?
+                        Object.values(user.real_estate).map(p => `
+                        <li
+                            style="margin-bottom:8px; padding:10px; background:#161616; border-radius:8px; border:1px solid #252525;">
+                            <div style="display:flex; justify-content:space-between; margin-bottom:4px;">
+                                <span style="color:#fff; font-weight:600;">${p.name}</span>
+                                <span
+                                    style="font-size:0.7rem; background:#222; padding:2px 6px; border-radius:4px; color:#888;">${p.city}</span>
+                            </div>
+                            <div style="font-size:0.75rem; color:var(--primary);">Kira: +${p.rent_price} 💰</div>
+                        </li>
+                        `).join('')
+                        : '<li style="text-align:center; padding:20px; color:#444; font-size:0.8rem;">Mülk bulunmuyor.
+                        </li>'}
+                    </ul>
+                </div>
+            </div>
+
+            <!-- HİSSE KOLONU -->
+            <div
+                style="flex:1; background:#000; border-radius:12px; border:1px solid #222; overflow:hidden; display:flex; flex-direction:column;">
+                <div
+                    style="padding:12px; border-bottom:1px solid #222; background:#111; font-weight:600; color:#f1c40f;">
+                    📈 Hisse Senetleri
+                </div>
+                <div style="flex:1; overflow-y:auto; padding:10px;">
+                    <ul style="list-style:none;">
+                        ${stocksCount > 0 ?
+                        Object.entries(user.stocks).map(([sym, qty]) => `
+                        <li
+                            style="margin-bottom:8px; padding:10px; background:#161616; border-radius:8px; border:1px solid #252525; display:flex; justify-content:space-between; align-items:center;">
+                            <span style="font-weight:700; color:#fff;">${sym}</span>
+                            <span style="font-size:0.9rem; color:#f1c40f;">${qty} Adet</span>
+                        </li>
+                        `).join('')
+                        : '<li style="text-align:center; padding:20px; color:#444; font-size:0.8rem;">Hisse bulunmuyor.
+                        </li>'}
+                    </ul>
+                </div>
+            </div>
+        </div>
+        `;
+
+        content.innerHTML = html;
+        document.getElementById('assetModal').style.display = 'flex';
+        }
+
+        // Re-render Assign Modal with full city list
+        function openAssetAssignModal(username) {
+        assignUserTarget = username;
+        document.getElementById('assign-modal-title').innerHTML = `Emlak Ata -> <span
+            style="color:var(--primary);">@${username}</span>`;
+
+        // Populate Cities
+        const citySelect = document.getElementById('assignCity');
+        citySelect.innerHTML = EMLAK_CITIES.map((c, i) => `<option value="${i}">${c}</option>`).join('');
+
+        // Populate Types
+        const typeSelect = document.getElementById('assignPropType');
+        typeSelect.innerHTML = EMLAK_TYPES.map((t, i) => `<option value="${i}">${t.n} (Kira: ${t.p})</option>
+        `).join('');
+
+        document.getElementById('assignModal').style.display = 'flex';
+        }
+
+        </script>
+
+        <!-- UPDATED MODAL HTML -->
+        <div id="assetModal" class="login-box"
+            style="display:none; position:fixed; top:50%; left:50%; transform:translate(-50%, -50%); width:700px; height:500px; z-index:9999; text-align:left; padding:0; overflow:hidden; background:#0a0a0a; border:1px solid #333; box-shadow:0 0 50px rgba(0,0,0,0.8);">
+            <div
+                style="padding:20px; border-bottom:1px solid #222; background:#111; display:flex; justify-content:space-between; align-items:center;">
+                <h3 id="asset-modal-title" style="margin:0; font-size:1.2rem;">Varlıklar</h3>
+                <button onclick="closeModal('assetModal')"
+                    style="background:none; border:none; color:#666; font-size:1.5rem; cursor:pointer;">&times;</button>
+            </div>
+            <div id="asset-modal-content" style="padding:20px;"></div>
+        </div>
+
+        <div id="assignModal" class="login-box"
+            style="display:none; position:fixed; top:50%; left:50%; transform:translate(-50%, -50%); width:450px; z-index:9999; text-align:left; padding:0; overflow:hidden; background:#0a0a0a; border:1px solid #333;">
+            <div
+                style="padding:20px; border-bottom:1px solid #222; background:#111; display:flex; justify-content:space-between; align-items:center;">
+                <h3 id="assign-modal-title" style="margin:0; font-size:1.1rem; color:#fff;">Emlak Ata</h3>
+                <button onclick="closeModal('assignModal')"
+                    style="background:none; border:none; color:#666; font-size:1.5rem; cursor:pointer;">&times;</button>
+            </div>
+            <div style="padding:25px;">
+                <label style="color:#888; font-size:0.75rem; margin-bottom:5px; display:block;">ŞEHİR SEÇİNİZ</label>
+                <select id="assignCity" class="inp" style="margin-bottom:15px;"></select>
+
+                <label style="color:#888; font-size:0.75rem; margin-bottom:5px; display:block;">MÜLK TİPİ</label>
+                <select id="assignPropType" class="inp" style="margin-bottom:25px;"></select>
+
+                <div style="display:flex; gap:10px;">
+                    <button class="btn" style="flex:1; background:var(--primary); color:#000; font-weight:700;"
+                        onclick="submitPropertyAssignment()">ONAYLA & ATA</button>
+                    <button class="btn btn-danger" style="flex:1" onclick="closeModal('assignModal')">İPTAL</button>
+                </div>
+            </div>
+        </div>
 </body>
 
 </html>
