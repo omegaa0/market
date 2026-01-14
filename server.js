@@ -88,36 +88,13 @@ const storage = multer.diskStorage({
 });
 const upload = multer({ storage: storage });
 
-// 1. FIREBASE ADMIN SDK INITIALIZATION (SERVER-SIDE)
-const admin = require('firebase-admin');
-
-// Service Account Key (Environment Variable'dan veya dosyadan)
-// Render.com'da Environment Variable olarak tanımlanmalı: FIREBASE_SERVICE_ACCOUNT
-// Örnek format: { "type": "service_account", "project_id": ... }
-let serviceAccount;
-
-try {
-    if (process.env.FIREBASE_SERVICE_ACCOUNT) {
-        serviceAccount = JSON.parse(process.env.FIREBASE_SERVICE_ACCOUNT);
-    } else {
-        // Lokal geliştirme için fallback (opsiyonel)
-        serviceAccount = require('./serviceAccountKey.json');
-    }
-} catch (e) {
-    console.error("Firebase Service Account Hatası:", e.message);
-    // Hata durumunda server'ı durdurmamak için dummy bir obje veya exit
-    // process.exit(1); 
-}
-
-if (!admin.apps.length) {
-    admin.initializeApp({
-        credential: admin.credential.cert(serviceAccount),
-        databaseURL: process.env.FIREBASE_DB_URL
-    });
-}
-
-const db = admin.database();
-const firebase = admin; // Geriye dönük uyumluluk için (bazı yerlerde firebase.database() çağrısı olabilir)
+// 1. FIREBASE INITIALIZATION
+const firebaseConfig = {
+    apiKey: process.env.FIREBASE_API_KEY,
+    databaseURL: process.env.FIREBASE_DB_URL
+};
+if (!firebase.apps.length) firebase.initializeApp(firebaseConfig);
+const db = firebase.database();
 
 const KICK_CLIENT_ID = process.env.KICK_CLIENT_ID || "01KDQNP2M930Y7YYNM62TVWJCP";
 const KICK_CLIENT_SECRET = process.env.KICK_CLIENT_SECRET;
