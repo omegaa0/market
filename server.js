@@ -2046,66 +2046,7 @@ async function fetchKickGraphQL(slug) {
     }
 }
 
-async function syncChannelStats() {
-    try {
-        const channelsSnap = await db.ref('channels').once('value');
-        const channels = channelsSnap.val() || {};
-
-        for (const [id, chan] of Object.entries(channels)) {
-            if (!chan.username) continue;
-
-            const gql = await fetchKickGraphQL(chan.username);
-            if (gql) {
-                // Yayına giriş kontrolü (Webhook)
-                const currentStats = (await db.ref(`channels/${id}/stats`).once('value')).val() || {};
-                const wasLive = currentStats.is_live || false;
-                const isLive = gql.livestream && gql.livestream.is_live;
-
-                if (isLive && !wasLive) {
-                    console.log(`🎥 ${chan.username} yayına girdi! Bildirim gönderiliyor...`);
-                    const webhookUrl = chan.settings?.discord_live_webhook;
-                    if (webhookUrl) {
-                        try {
-                            const streamTitle = gql.livestream.session_title || "Yayındayım!";
-                            const streamGame = gql.livestream.categories?.[0]?.name || "Just Chatting";
-                            const thumbUrl = gql.livestream.thumbnail?.url || "https://kick.com/favicon.ico";
-
-                            await axios.post(webhookUrl, {
-                                content: `@everyone ${chan.username} KICK'TE YAYINDA! 🔴\nhttps://kick.com/${chan.username}`,
-                                embeds: [{
-                                    title: streamTitle,
-                                    url: `https://kick.com/${chan.username}`,
-                                    color: 5763719, // Kick Greenish
-                                    fields: [
-                                        { name: "Oyun/Kategori", value: streamGame, inline: true }
-                                    ],
-                                    image: { url: thumbUrl },
-                                    timestamp: new Date().toISOString()
-                                }]
-                            });
-                        } catch (err) {
-                            console.error(`Webhook Error (${chan.username}):`, err.message);
-                        }
-                    }
-                }
-
-                const updates = {
-                    last_sync: Date.now(),
-                    followers: gql.followersCount || 0
-                };
-                if (gql.livestream) {
-                    updates.viewers = gql.livestream.viewer_count || 0;
-                    updates.is_live = gql.livestream.is_live;
-                } else {
-                    updates.is_live = false;
-                }
-                await db.ref(`channels/${id}/stats`).update(updates);
-            }
-        }
-    } catch (e) {
-        console.error("Sync Stats Error:", e.message);
-    }
-}
+// (Duplicate syncChannelStats removed)
 
 // YENİ CHAT GÖNDERME FONKSİYONU (V3 - Hibrit & ID Bulucu)
 async function sendChatMessage_V3_FAILED(message, broadcasterId) {
@@ -5135,6 +5076,19 @@ app.post('/admin-api/lottery', authAdmin, hasPerm('troll'), async (req, res) => 
     }
 });
 
+app.post('/admin-api/toggle-command', authAdmin, hasPerm('channels'), async (req, res) => {
+    const { channelId, command, value } = req.body;
+    try {
+        await db.ref(`channels/${channelId}/settings`).update({ [command]: value });
+        // Log, sensitive datayı gizle (uzunsa)
+        const valStr = String(value).length > 50 ? String(value).substring(0, 50) + "..." : value;
+        addLog("Ayar Değişimi", `${channelId} -> ${command}: ${valStr}`, channelId);
+        res.json({ success: true });
+    } catch (e) {
+        res.json({ success: false, error: e.message });
+    }
+});
+
 app.post('/admin-api/toggle-infinite', authAdmin, hasPerm('users'), async (req, res) => {
     const { key, user, value } = req.body;
     await db.ref(`users/${user.toLowerCase()}`).update({ is_infinite: value });
@@ -5523,28 +5477,82 @@ async function syncSingleChannelStats(chanId, chan) {
         const username = chan.username || chan.slug;
         if (!username) return null;
 
-        const currentStatsSnap = await db.ref(`channels/${chanId}/stats`).once('value');
-        const currentStats = currentStatsSnap.val() || { followers: 0, subscribers: 0 };
+        // 1. Fetch Latest Data via GraphQL (Most Reliable for Live Status)
+        const gql = await fetchKickGraphQL(username);
 
-        // Cloudflare tarafından engelleniyor, webhook'lara güveniyoruz
-        // Sadece token'ı kontrol et ve gerekirse yenile
-        if (chan.access_token) {
-            try {
-                await axios.get(`https://api.kick.com/public/v1/channels?slug=${username}`, {
-                    headers: { 'Authorization': `Bearer ${chan.access_token}` },
-                    timeout: 5000
-                });
-            } catch (e) {
-                if (e.response?.status === 401) {
-                    console.log(`[Token] ${username} için token yenileniyor...`);
-                    await refreshChannelToken(chanId).catch(() => { });
+        // Fallback or additional checks could go here, but GraphQL is usually sufficient for Live/Followers
+
+        if (gql) {
+            const statsRef = db.ref(`channels/${chanId}/stats`);
+            const currentStatsSnap = await statsRef.once('value');
+            const currentStats = currentStatsSnap.val() || { followers: 0, subscribers: 0, is_live: false };
+
+            const wasLive = currentStats.is_live || false;
+            const isLive = gql.livestream && gql.livestream.is_live;
+
+            // 2. DISCORD NOTIFICATION LOGIC
+            if (isLive && !wasLive) {
+                console.log(`🎥 ${username} yayına girdi! Bildirim gönderiliyor...`);
+                // Check settings for webhook
+                const settingsSnap = await db.ref(`channels/${chanId}/settings`).once('value');
+                const settings = settingsSnap.val() || {};
+                const webhookUrl = settings.discord_live_webhook;
+
+                if (webhookUrl) {
+                    try {
+                        const streamTitle = gql.livestream.session_title || "Yayındayım!";
+                        const streamGame = gql.livestream.categories?.[0]?.name || "Just Chatting";
+                        const thumbUrl = gql.livestream.thumbnail?.url || "https://kick.com/favicon.ico";
+
+                        await axios.post(webhookUrl, {
+                            content: `@everyone ${username} KICK'TE YAYINDA! 🔴\nhttps://kick.com/${username}`,
+                            embeds: [{
+                                title: streamTitle,
+                                url: `https://kick.com/${username}`,
+                                color: 5763719, // Kick Greenish
+                                fields: [
+                                    { name: "Oyun/Kategori", value: streamGame, inline: true }
+                                ],
+                                image: { url: thumbUrl },
+                                timestamp: new Date().toISOString()
+                            }]
+                        });
+                        addLog("Discord Bildirim", `Yayın başladı bildirimi gönderildi.`, chanId);
+                    } catch (err) {
+                        console.error(`Webhook Error (${username}):`, err.message);
+                        addLog("Discord Hata", `Webhook hatası: ${err.message}`, chanId);
+                    }
                 }
             }
-        }
 
-        // Mevcut verileri döndür (webhook'lar güncelleyecek)
-        return currentStats;
+            // 3. UPDATE DB
+            const updates = {
+                last_sync: Date.now(),
+                followers: gql.followersCount || currentStats.followers,
+                // Keep sub count if not available in Public API (GraphQL might have it)
+                subscribers: currentStats.subscribers
+            };
+
+            if (gql.livestream) {
+                updates.viewers = gql.livestream.viewer_count || 0;
+                updates.is_live = gql.livestream.is_live;
+                // Session ID track could be useful to prevent duplicate notifies
+            } else {
+                updates.is_live = false;
+                updates.viewers = 0;
+            }
+
+            await statsRef.update(updates);
+            return { ...currentStats, ...updates };
+        } else {
+            // API Failure Fallback: Try to refresh token if 401 suspected, or just return null
+            if (chan.access_token) {
+                await refreshChannelToken(chanId).catch(() => { });
+            }
+        }
+        return null;
     } catch (e) {
+        console.error("Sync Single Stats Error:", e.message);
         return null;
     }
 }
@@ -5984,11 +5992,41 @@ app.post('/admin-api/assign-property', authAdmin, hasPerm('users'), async (req, 
     };
 
     try {
-        await db.ref(`users/${user.toLowerCase()}/real_estate`).push(newProp);
+        await db.ref(`users/${user.toLowerCase()}/properties`).push(newProp);
         addLog("Emlak Atama", `${user} kullanıcısına ${cityName} şehrinde ${propInfo.n} atandı.`);
         res.json({ success: true });
     } catch (e) {
         res.json({ success: false, error: e.message });
+    }
+});
+
+app.post('/admin-api/remove-property', authAdmin, hasPerm('users'), async (req, res) => {
+    const { user, index } = req.body;
+    if (!user || index === undefined) return res.status(400).json({ error: "Eksik bilgi" });
+
+    try {
+        const cleanUser = user.toLowerCase();
+        const ref = db.ref(`users/${cleanUser}/properties`); // Note: Changed to 'properties' to match new structure
+        const snap = await ref.once('value');
+        let properties = snap.val() || [];
+
+        // Convert object to array if needed (Firebase stores arrays with integer keys as object-like structure if sparse, but usually array)
+        if (!Array.isArray(properties) && typeof properties === 'object') {
+            // If it's an object with keys like "0", "1", treat values as array
+            properties = Object.values(properties);
+        }
+
+        if (index >= 0 && index < properties.length) {
+            const removed = properties.splice(index, 1);
+            await ref.set(properties);
+            addLog("Emlak Silme", `${user} kullanıcısından ${removed[0]?.name || 'Mülk'} silindi.`);
+            res.json({ success: true });
+        } else {
+            res.status(400).json({ error: "Geçersiz indeks" });
+        }
+    } catch (e) {
+        console.error("Remove Property Error:", e);
+        res.status(500).json({ error: e.message });
     }
 });
 

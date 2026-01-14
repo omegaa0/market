@@ -2346,7 +2346,7 @@
             style="color:var(--primary);">@${username}</span> Varlıkları`;
                 const content = document.getElementById('asset-modal-content');
 
-                const realEstateCount = user.real_estate ? Object.keys(user.real_estate).length : 0;
+                const realEstateCount = user.properties ? (Array.isArray(user.properties) ? user.properties.length : Object.keys(user.properties).length) : 0;
                 const stocksCount = user.stocks ? Object.keys(user.stocks).length : 0;
                 const totalBalance = user.balance || 0;
 
@@ -2374,13 +2374,16 @@
                 <div style="flex:1; overflow-y:auto; padding:10px;">
                     <ul style="list-style:none;">
                         ${realEstateCount > 0 ?
-                        Object.values(user.real_estate).map(p => `
+                        (Array.isArray(user.properties) ? user.properties : Object.values(user.properties)).map(p => `
                         <li style="margin-bottom:8px; padding:10px; background:#161616; border-radius:8px; border:1px solid #252525;">
-                            <div style="display:flex; justify-content:space-between; margin-bottom:4px;">
-                                <span style="color:#fff; font-weight:600;">${p.name}</span>
-                                <span style="font-size:0.7rem; background:#222; padding:2px 6px; border-radius:4px; color:#888;">${p.city}</span>
+                            <div style="display:flex; justify-content:space-between; margin-bottom:4px; align-items:center;">
+                                <div>
+                                    <span style="color:#fff; font-weight:600;">${p.name}</span>
+                                    <span style="font-size:0.7rem; background:#222; padding:2px 6px; border-radius:4px; color:#888;">${p.city}</span>
+                                </div>
+                                <button onclick="deleteUserProperty('${username}', ${Object.values(user.properties).indexOf(p)})" class="btn btn-small btn-danger" style="width:24px; height:24px; padding:0; display:flex; align-items:center; justify-content:center; border-radius:4px; font-size:0.7rem;">✕</button>
                             </div>
-                            <div style="font-size:0.75rem; color:var(--primary);">Kira: +${p.rent_price} 💰</div>
+                            <div style="font-size:0.75rem; color:var(--primary);">Günlük Gelir: +${p.income} 💰</div>
                         </li>
                         `).join('')
                         : '<li style="text-align:center; padding:20px; color:#444; font-size:0.8rem;">Mülk bulunmuyor.</li>'}
@@ -2428,6 +2431,23 @@
                 typeSelect.innerHTML = EMLAK_TYPES.map((t, i) => `<option value="${i}">${t.n} (Kira: ${t.p})</option>`).join('');
 
                 document.getElementById('assignModal').style.display = 'flex';
+            }
+
+            async function deleteUserProperty(user, index) {
+                if (!confirm(`${user} kullanıcısının bu mülkünü silmek istediğine emin misin?`)) return;
+                const res = await fetch('/admin-api/remove-property', {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({ key: sessionKey, user, index })
+                });
+                const d = await res.json();
+                if (d.success) {
+                    alert("Mülk silindi!");
+                    await loadUsers(); // Reload user data
+                    openAssetModal(user); // Re-open modal to refresh list
+                } else {
+                    alert("Hata: " + d.error);
+                }
             }
 
         </script>
