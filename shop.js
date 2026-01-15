@@ -2155,7 +2155,8 @@ async function loadCityProperties(cityId, cityName) {
 
             // Gelir Kısmı
             let incomeHtml = "";
-            if (p.income > 0) {
+            // Sadece Konutlar gelir getirir (Şimdilik)
+            if (p.category === 'residence' && p.income > 0) {
                 incomeHtml = `
                     <div style="margin-top:15px; background:rgba(0,0,0,0.3); padding:10px; border-radius:10px; display:flex; justify-content:space-between; align-items:center;">
                         <span style="color:#aaa; font-size:0.8rem;">GÜNLÜK GELİR</span>
@@ -2163,6 +2164,13 @@ async function loadCityProperties(cityId, cityName) {
                             <i class="fas fa-arrow-trend-up" style="color:#00ff88; font-size:0.9rem;"></i>
                             <span style="color:#00ff88; font-weight:700;">+${p.income.toLocaleString()} 💰</span>
                         </div>
+                    </div>
+                `;
+            } else if (p.category === 'shop') {
+                incomeHtml = `
+                    <div style="margin-top:15px; background:rgba(255,255,255,0.03); padding:10px; border-radius:10px; display:flex; align-items:center; justify-content:center; gap:8px;">
+                        <i class="fas fa-briefcase" style="color:#aaa; font-size:0.9rem;"></i>
+                        <span style="color:#888; font-size:0.8rem;">İşletme Kurulabilir</span>
                     </div>
                 `;
             }
@@ -2199,17 +2207,18 @@ async function loadCityProperties(cityId, cityName) {
             item.innerHTML = `
                 <div style="padding:20px; display:flex; flex-direction:column; gap:10px; height:100%;">
                     
-                    <div style="position:absolute; top:15px; right:15px; font-size:0.7rem; font-weight:800; color:${borderColor}; background:${borderColor}22; padding:4px 10px; border-radius:6px; letter-spacing:0.5px;">
-                        ${catName}
-                    </div>
-
-                    <div style="display:flex; align-items:center; gap:15px;">
-                        <div style="width:50px; height:50px; background:${borderColor}22; border-radius:12px; display:flex; align-items:center; justify-content:center; box-shadow:inset 0 0 10px ${borderColor}11;">
-                            <i class="fa-solid fa-${p.icon || 'building'}" style="font-size:1.6rem; color:${iconColor};"></i>
+                    <div style="display:flex; justify-content:space-between; align-items:flex-start; gap:10px;">
+                        <div style="display:flex; align-items:center; gap:15px; flex:1;">
+                            <div style="width:50px; height:50px; background:${borderColor}22; border-radius:12px; display:flex; align-items:center; justify-content:center; box-shadow:inset 0 0 10px ${borderColor}11; flex-shrink:0;">
+                                <i class="fa-solid fa-${p.icon || 'building'}" style="font-size:1.6rem; color:${iconColor};"></i>
+                            </div>
+                            <div style="flex:1;">
+                                <div style="font-size:1.1rem; font-weight:800; color:#fff; line-height:1.2; margin-bottom:4px; word-break: break-word;">${p.name.replace(cityName, '').trim()}</div>
+                                <div style="font-size:0.9rem; font-weight:700; color:#fff;">${p.price.toLocaleString()} 💰</div>
+                            </div>
                         </div>
-                        <div style="flex:1;">
-                            <div style="font-size:1.1rem; font-weight:800; color:#fff; line-height:1.2; margin-bottom:4px;">${p.name.replace(cityName, '').trim()}</div>
-                            <div style="font-size:0.9rem; font-weight:700; color:#fff;">${p.price.toLocaleString()} 💰</div>
+                        <div style="font-size:0.7rem; font-weight:800; color:${borderColor}; background:${borderColor}22; padding:4px 10px; border-radius:6px; letter-spacing:0.5px; white-space:nowrap;">
+                            ${catName}
                         </div>
                     </div>
 
