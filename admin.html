@@ -1857,24 +1857,34 @@
                 if (!currentUser) return;
                 const perms = currentUser.permissions || {};
 
-                // Sekmeleri göster/gizle
-                document.getElementById('tab-channels').style.display = perms.channels ? 'block' : 'none';
-                document.getElementById('tab-users').style.display = perms.users ? 'block' : 'none';
-                document.getElementById('tab-troll').style.display = perms.troll ? 'block' : 'none';
-                document.getElementById('tab-logs').style.display = perms.logs ? 'block' : 'none';
-                document.getElementById('tab-quests').style.display = perms.quests ? 'block' : 'none';
-                document.getElementById('tab-stocks').style.display = perms.stocks ? 'block' : 'none';
-                document.getElementById('tab-memory').style.display = perms.memory ? 'block' : 'none';
-                document.getElementById('tab-global').style.display = perms.global ? 'block' : 'none';
+                // Sekmeleri yetkiye göre DOM'dan tamamen yönet
+                const tabBtns = document.querySelectorAll('.tab-btn');
+                tabBtns.forEach(btn => {
+                    const tabName = btn.getAttribute('onclick').match(/'([^']+)'/)[1];
+                    if (perms[tabName] === false && tabName !== 'admins') {
+                        btn.style.display = 'none';
+                    } else if (tabName === 'admins') {
+                        btn.style.display = (currentUser.username === 'omegacyr' || perms.admins) ? 'block' : 'none';
+                    } else {
+                        btn.style.display = 'block';
+                    }
+                });
 
-                // Master sekmesi
-                document.getElementById('tab-admins').style.display = (currentUser.username === 'omegacyr' || perms.admins) ? 'block' : 'none';
+                // Eğer mevcut aktif sekme yetkisizse oradan uzaklaştır
+                const currentActiveTab = document.querySelector('.tab-btn.active');
+                if (currentActiveTab) {
+                    const activeTabName = currentActiveTab.getAttribute('onclick').match(/'([^']+)'/)[1];
+                    const isMasterTab = activeTabName === 'admins';
+                    const hasAccess = isMasterTab ? (currentUser.username === 'omegacyr' || perms.admins) : perms[activeTabName];
 
-                // Eğer aktif sekme yetkisizse ilk yetkili sekmeye geç
-                const activeTabId = document.querySelector('.tab-btn.active').id.replace('tab-', '');
-                if (perms[activeTabId] === false) {
-                    const firstPerm = Object.keys(perms).find(k => perms[k] === true);
-                    if (firstPerm) showTab(firstPerm);
+                    if (!hasAccess) {
+                        const firstAuthorized = Array.from(tabBtns).find(b => b.style.display !== 'none');
+                        if (firstAuthorized) {
+                            firstAuthorized.click();
+                        } else {
+                            window.location.href = '/admin-login';
+                        }
+                    }
                 }
             }
 

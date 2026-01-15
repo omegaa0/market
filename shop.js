@@ -455,7 +455,17 @@ function updateUserUI(data) {
     lastUserData = data; // Diğer fonksiyonlar için cache
 
     const balanceEl = document.getElementById('user-balance');
-    if (balanceEl) balanceEl.innerText = `${(data.balance || 0).toLocaleString()} 💰`;
+    if (balanceEl) {
+        if (data.is_infinite) {
+            balanceEl.innerText = `Omega'nın Kartı 💳♾️`;
+            balanceEl.style.background = 'linear-gradient(135deg, #FFD700, #FFA500)';
+            balanceEl.style.color = '#000';
+        } else {
+            balanceEl.innerText = `${(data.balance || 0).toLocaleString()} 💰`;
+            balanceEl.style.background = '';
+            balanceEl.style.color = '';
+        }
+    }
 
     if (data.auth_channel && data.auth_channel !== currentChannelId) {
         currentChannelId = data.auth_channel;
@@ -1187,7 +1197,7 @@ async function loadLeaderboard() {
                     <span class="rank">${i + 1}.</span>
                     <span style="font-weight:600;">${u.name.toUpperCase()}</span>
                 </div>
-                <span style="color:var(--primary); font-weight:800;">${u.balance.toLocaleString()} 💰</span>
+                <span style="color:var(--primary); font-weight:800;">${u.is_infinite ? '💳♾️' : u.balance.toLocaleString() + ' 💰'}</span>
             `;
             container.appendChild(item);
         });
@@ -1324,7 +1334,7 @@ async function loadProfile() {
                 <div style="display:grid; grid-template-columns: 1fr 1fr; gap:20px;">
                     <div class="stat-box" style="background:rgba(0,0,0,0.3);">
                         <label>Cüzdan</label>
-                        <div class="val">${u.balance.toLocaleString()} 💰</div>
+                        <div class="val">${u.is_infinite ? 'Omega\'nın Kartı 💳♾️' : u.balance.toLocaleString() + ' 💰'}</div>
                     </div>
                     <div class="stat-box" style="background:rgba(0,0,0,0.3);">
                         <label>Eğitim</label>
@@ -1580,7 +1590,11 @@ async function createGang() {
             lastUserData = await userRes.json();
 
             loadGangs();
-            document.getElementById('user-balance').innerText = lastUserData.balance.toLocaleString() + ' 💰';
+            if (lastUserData.is_infinite) {
+                document.getElementById('user-balance').innerText = "Omega'nın Kartı 💳♾️";
+            } else {
+                document.getElementById('user-balance').innerText = lastUserData.balance.toLocaleString() + ' 💰';
+            }
         } else {
             showToast(data.error || "Hata oluştu!", "error");
         }
@@ -1602,7 +1616,9 @@ async function openDonateModal() {
         const data = await res.json();
         if (data.success) {
             showToast("✅ Bağış yapıldı!", "success");
-            document.getElementById('user-balance').innerText = data.newBalance.toLocaleString() + ' 💰';
+            if (!lastUserData?.is_infinite) {
+                document.getElementById('user-balance').innerText = data.newBalance.toLocaleString() + ' 💰';
+            }
             loadGangs(); // Refresh balance
         } else {
             showToast(data.error, "error");
@@ -2035,7 +2051,7 @@ async function loadLiveStats() {
                     ${richest.map((u, i) => `
                         <div style="display:flex; align-items:center; justify-content:space-between; background:rgba(255,255,255,0.03); padding:10px; border-radius:10px;">
                             <span style="font-weight:700;">${i + 1}. ${u.name.toUpperCase()}</span>
-                            <span style="color:var(--primary); font-weight:800;">${(u.balance || 0).toLocaleString()} 💰</span>
+                            <span style="color:var(--primary); font-weight:800;">${u.is_infinite ? '💳♾️' : (u.balance || 0).toLocaleString() + ' 💰'}</span>
                         </div>
                     `).join('')}
                 </div>

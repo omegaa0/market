@@ -1297,10 +1297,9 @@ app.post('/api/borsa/reset', async (req, res) => {
 // BORSA ALIM İŞLEMİ (Server-Side Secure)
 app.post('/api/borsa/buy', async (req, res) => {
     try {
-        const { username, code, amount } = req.body;
-        if (!username || !code || !amount || amount <= 0) return res.status(400).json({ success: false, error: "Geçersiz parametreler." });
-
-        if (!Number.isInteger(amount) && amount < 0.00000001) return res.status(400).json({ success: false, error: "Geçersiz miktar." });
+        let { username, code, amount } = req.body;
+        amount = parseFloat(amount);
+        if (!username || !code || isNaN(amount) || amount <= 0) return res.status(400).json({ success: false, error: "Geçersiz miktar veya parametre." });
 
         // 1. Güncel Hisse Fiyatını Çek
         const stockSnap = await db.ref(`global_stocks/${code}`).once('value');
@@ -1358,8 +1357,9 @@ app.post('/api/borsa/buy', async (req, res) => {
 // BORSA SATIŞ İŞLEMİ (Server-Side Secure)
 app.post('/api/borsa/sell', async (req, res) => {
     try {
-        const { username, code, amount } = req.body;
-        if (!username || !code || !amount || amount <= 0) return res.status(400).json({ success: false, error: "Geçersiz parametreler." });
+        let { username, code, amount } = req.body;
+        amount = parseFloat(amount);
+        if (!username || !code || isNaN(amount) || amount <= 0) return res.status(400).json({ success: false, error: "Geçersiz miktar veya parametre." });
 
         // 1. Güncel Hisse Fiyatını Çek
         const stockSnap = await db.ref(`global_stocks/${code}`).once('value');
@@ -3319,7 +3319,7 @@ app.post('/webhook/kick', async (req, res) => {
 
         if (isEnabled('slot') && lowMsg.startsWith('!çevir')) {
             const cost = parseInt(args[0]);
-            if (isNaN(cost) || cost < 10) return await reply(`@${user}, En az 10 💰 ile oynayabilirsin!`);
+            if (isNaN(cost) || cost < 10 || !isFinite(cost)) return await reply(`@${user}, En az 10 💰 ile oynayabilirsin!`);
             const snap = await userRef.once('value');
             let data = snap.val() || { balance: 1000 };
 
@@ -3389,7 +3389,7 @@ app.post('/webhook/kick', async (req, res) => {
         else if (isEnabled('yazitura') && lowMsg.startsWith('!yazitura')) {
             const cost = parseInt(args[0]);
             const pick = args[1]?.toLowerCase();
-            if (isNaN(cost) || !['y', 't', 'yazı', 'tura'].includes(pick)) return await reply(`@${user}, Kullanım: !yazitura [miktar] [y/t]`);
+            if (isNaN(cost) || cost <= 0 || !isFinite(cost) || !['y', 't', 'yazı', 'tura'].includes(pick)) return await reply(`@${user}, Kullanım: !yazitura [miktar] [y/t]`);
 
             const snap = await userRef.once('value');
             let data = snap.val() || { balance: 1000 };
@@ -4617,7 +4617,7 @@ EK TALİMAT: ${aiInst}`;
             const target = args[0]?.replace('@', '').toLowerCase();
             const amount = parseInt(args[1]);
 
-            if (!target || isNaN(amount) || amount <= 0) {
+            if (!target || isNaN(amount) || amount <= 0 || !isFinite(amount)) {
                 return await reply(`💸 @${user}, Kullanım: !hediye @kullanıcı [miktar]`);
             }
 
