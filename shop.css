@@ -389,7 +389,6 @@ header {
     width: 100%;
     height: auto;
     border-radius: 20px;
-    border: 2px solid rgba(255, 255, 255, 0.1);
 }
 
 @media (max-width: 1200px) {
