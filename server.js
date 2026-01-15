@@ -2187,6 +2187,24 @@ app.post('/api/market/buy', verifySession, async (req, res) => {
 
             if (elevenVoices[voice]) {
                 isEleven = true;
+
+                // --- ABONELİK KONTROLÜ (ELEVENLABS İÇİN) ---
+                const uSnap = await db.ref(`users/${username.toLowerCase()}`).once('value');
+                const uData = uSnap.val() || {};
+                const badges = uData.badges || [];
+
+                const isSubscriber = badges.some(b =>
+                    b.type === 'subscriber' ||
+                    b.type === 'founder' ||
+                    b.type === 'vip' ||
+                    b.type === 'moderator' ||
+                    b.type === 'broadcaster'
+                );
+
+                if (!isSubscriber && username.toLowerCase() !== 'omegacyr') {
+                    return res.json({ success: false, error: "Bu ses sadece ABONELERE özeldir! 💎" });
+                }
+
                 try {
                     // ElevenLabs API Call
                     const elevenKey = process.env.ELEVENLABS_API_KEY || "sk_73928..."; // Fallback placeholder
