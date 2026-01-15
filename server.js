@@ -830,18 +830,16 @@ async function updateGlobalStocks() {
         const effects = cycleMultipliers[currentMarketCycle] || cycleMultipliers["NORMAL"];
 
         // NEWS GENERATION LOGIC - 30-60 dakikada bir haber üret
-        // Son haber zamanını kontrol et
-        const newsRef = db.ref('market_meta/lastNewsTime');
-        const lastNewsSnap = await newsRef.once('value');
-        const lastNewsTime = lastNewsSnap.val() || 0;
-        const timeSinceLastNews = Date.now() - lastNewsTime;
+        // Sonraki haber zamanını kontrol et (sabit değer, her seferinde değişmez)
+        const newsMetaRef = db.ref('market_meta');
+        const newsMetaSnap = await newsMetaRef.once('value');
+        const newsMeta = newsMetaSnap.val() || {};
 
-        // 30 dakika (1.800.000 ms) ile 60 dakika (3.600.000 ms) arası rastgele bekleme
-        const minWait = 30 * 60 * 1000; // 30 dakika
-        const maxWait = 60 * 60 * 1000; // 60 dakika
-        const randomWait = minWait + Math.random() * (maxWait - minWait);
+        let nextNewsTime = newsMeta.nextNewsTime || 0;
+        const now = Date.now();
 
-        if (timeSinceLastNews >= randomWait) {
+        // Eğer nextNewsTime ayarlanmamışsa veya geçmişse, haber üret ve yeni hedef belirle
+        if (now >= nextNewsTime) {
             const codes = Object.keys(stocks);
             const target = codes[Math.floor(Math.random() * codes.length)];
             const newsType = Math.random() > 0.5 ? 'GOOD' : 'BAD';
@@ -855,14 +853,23 @@ async function updateGlobalStocks() {
 
             await db.ref('global_news').push({
                 text: newsMsg,
-                timestamp: Date.now(),
+                timestamp: now,
                 type: newsType
             });
 
-            // Son haber zamanını güncelle
-            await newsRef.set(Date.now());
+            // Sonraki haber zamanını hesapla ve kaydet (30-60 dakika sonra)
+            const minWait = 30 * 60 * 1000; // 30 dakika
+            const maxWait = 60 * 60 * 1000; // 60 dakika
+            const waitTime = minWait + Math.random() * (maxWait - minWait);
+            const newNextNewsTime = now + waitTime;
 
-            console.log(`📰 PİYASA HABERİ: ${newsMsg} (Sonraki haber ~${Math.round(randomWait / 60000)} dk sonra)`);
+            await newsMetaRef.update({
+                lastNewsTime: now,
+                nextNewsTime: newNextNewsTime
+            });
+
+            const minutesUntilNext = Math.round(waitTime / 60000);
+            console.log(`📰 PİYASA HABERİ: ${newsMsg} (Sonraki haber ${minutesUntilNext} dakika sonra)`);
         }
 
         for (const [code, data] of Object.entries(stocks)) {
