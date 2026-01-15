@@ -884,29 +884,29 @@ async function updateGlobalStocks() {
             if (!baseData) {
                 const n = (data.name || code).toUpperCase();
 
-                // GÜÇLÜ VOLATİLİTE DEĞERLERİ - Hisseler kesinlikle hareket etsin
-                let fVol = 0.08; // Default volatilite artırıldı (0.03 -> 0.08)
-                let fDrift = 0.0002;
+                // YÜKSEK VOLATİLİTE DEĞERLERİ - Hisseler çok dinamik hareket etsin
+                let fVol = 0.15; // Default volatilite çok artırıldı (0.08 -> 0.15)
+                let fDrift = 0.0004;
 
-                // Smart Volatility Assignment based on Name
-                if (n.includes("ALTIN") || n.includes("GOLD")) { fVol = 0.12; fDrift = 0.0003; }
-                else if (n.includes("PLATIN") || n.includes("PLATINUM")) { fVol = 0.11; fDrift = 0.0003; }
-                else if (n.includes("GÜMÜŞ") || n.includes("SILVER")) { fVol = 0.10; fDrift = 0.0002; }
-                else if (n.includes("COIN") || n.includes("TOKEN") || n.includes("BITCOIN") || n.includes("CRYPTO")) { fVol = 0.18; fDrift = 0.001; }
-                else if (n.includes("TESLA") || n.includes("NVIDIA") || n.includes("TECH")) { fVol = 0.09; fDrift = 0.0004; }
+                // Smart Volatility Assignment based on Name - DAHA YÜKSEK DEĞERLER
+                if (n.includes("ALTIN") || n.includes("GOLD")) { fVol = 0.22; fDrift = 0.0006; }
+                else if (n.includes("PLATIN") || n.includes("PLATINUM")) { fVol = 0.20; fDrift = 0.0005; }
+                else if (n.includes("GÜMÜŞ") || n.includes("SILVER")) { fVol = 0.18; fDrift = 0.0004; }
+                else if (n.includes("COIN") || n.includes("TOKEN") || n.includes("BITCOIN") || n.includes("CRYPTO")) { fVol = 0.25; fDrift = 0.0015; }
+                else if (n.includes("TESLA") || n.includes("NVIDIA") || n.includes("TECH")) { fVol = 0.16; fDrift = 0.0006; }
 
                 baseData = { price: data.price || 100, volatility: fVol, drift: fDrift, name: code };
             }
 
             const startPrice = baseData.price || 100;
 
-            // DÜZELTME: Minimum volatilite 0.05 olarak garanti edildi
+            // DÜZELTME: Minimum volatilite 0.10 olarak garanti edildi (daha dinamik)
             // Veritabanında düşük veya sıfır volatilite varsa kesinlikle yükselt
-            let vol = Math.max(data.volatility || 0, baseData.volatility, 0.05);
+            let vol = Math.max(data.volatility || 0, baseData.volatility, 0.10);
             let drift = (data.drift !== undefined && data.drift !== 0) ? data.drift : baseData.drift;
 
             // Drift'in de minimum değeri olsun
-            if (Math.abs(drift) < 0.0001) drift = 0.0002;
+            if (Math.abs(drift) < 0.0003) drift = 0.0004;
 
             // Apply market effects
             vol = vol * effects.vol;
@@ -918,9 +918,9 @@ async function updateGlobalStocks() {
             if (oldPrice > effectiveStartPrice * 3) drift -= 0.0005;
             else if (oldPrice < effectiveStartPrice * 0.3) drift += 0.0005;
 
-            // DÜZELTME: Volatilite çarpanı 0.05 -> 0.15 olarak artırıldı (3 kat daha güçlü hareket)
+            // DÜZELTME: Volatilite çarpanı 0.25 olarak artırıldı (5 kat daha güçlü hareket)
             const epsilon = Math.random() * 2 - 1;
-            const changePercent = (drift * 0.5) + (vol * epsilon * 0.15);
+            const changePercent = (drift * 0.5) + (vol * epsilon * 0.25);
 
             let newPrice = Math.round(oldPrice * (1 + changePercent));
             if (newPrice < 1) newPrice = 1;
@@ -929,8 +929,8 @@ async function updateGlobalStocks() {
             if (!data.history) data.history = [];
 
             // Güncellenmiş volatilite ve drift değerlerini kaydet
-            const finalVol = Math.max(baseData.volatility, 0.05);
-            const finalDrift = Math.abs(baseData.drift) >= 0.0001 ? baseData.drift : 0.0002;
+            const finalVol = Math.max(baseData.volatility, 0.10);
+            const finalDrift = Math.abs(baseData.drift) >= 0.0003 ? baseData.drift : 0.0004;
 
             stocks[code] = {
                 ...data,
@@ -1165,27 +1165,27 @@ async function fixStockVolatility() {
             const currentVol = data.volatility || 0;
             const currentDrift = data.drift || 0;
 
-            // Minimum değerler
-            const minVol = 0.05;
-            const minDrift = 0.0002;
+            // Minimum değerler - YÜKSELTİLDİ
+            const minVol = 0.10;
+            const minDrift = 0.0004;
 
-            // İsme göre özel volatilite değerleri
+            // İsme göre özel volatilite değerleri - YÜKSELTİLDİ
             const n = (data.name || code).toUpperCase();
             let targetVol = minVol;
             let targetDrift = minDrift;
 
-            if (n.includes("ALTIN") || n.includes("GOLD")) { targetVol = 0.12; targetDrift = 0.0003; }
-            else if (n.includes("PLATIN") || n.includes("PLATINUM")) { targetVol = 0.11; targetDrift = 0.0003; }
-            else if (n.includes("GÜMÜŞ") || n.includes("SILVER")) { targetVol = 0.10; targetDrift = 0.0002; }
-            else if (n.includes("COIN") || n.includes("TOKEN") || n.includes("BITCOIN")) { targetVol = 0.18; targetDrift = 0.001; }
-            else if (n.includes("ETHEREUM") || n.includes("ETHER")) { targetVol = 0.15; targetDrift = 0.0008; }
-            else if (n.includes("TESLA") || n.includes("NVIDIA")) { targetVol = 0.09; targetDrift = 0.0004; }
+            if (n.includes("ALTIN") || n.includes("GOLD")) { targetVol = 0.22; targetDrift = 0.0006; }
+            else if (n.includes("PLATIN") || n.includes("PLATINUM")) { targetVol = 0.20; targetDrift = 0.0005; }
+            else if (n.includes("GÜMÜŞ") || n.includes("SILVER")) { targetVol = 0.18; targetDrift = 0.0004; }
+            else if (n.includes("COIN") || n.includes("TOKEN") || n.includes("BITCOIN")) { targetVol = 0.25; targetDrift = 0.0015; }
+            else if (n.includes("ETHEREUM") || n.includes("ETHER")) { targetVol = 0.22; targetDrift = 0.001; }
+            else if (n.includes("TESLA") || n.includes("NVIDIA")) { targetVol = 0.16; targetDrift = 0.0006; }
             else if (INITIAL_STOCKS[code]) {
-                targetVol = INITIAL_STOCKS[code].volatility || minVol;
-                targetDrift = INITIAL_STOCKS[code].drift || minDrift;
+                targetVol = Math.max(INITIAL_STOCKS[code].volatility || minVol, minVol);
+                targetDrift = Math.max(INITIAL_STOCKS[code].drift || minDrift, minDrift);
             } else {
-                targetVol = 0.08; // Yeni hisseler için varsayılan yüksek volatilite
-                targetDrift = 0.0003;
+                targetVol = 0.15; // Yeni hisseler için varsayılan yüksek volatilite
+                targetDrift = 0.0004;
             }
 
             // Düşük değerleri düzelt
