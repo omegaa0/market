@@ -2104,67 +2104,122 @@ async function loadCityProperties(cityId, cityName) {
             return;
         }
 
+        // Grid layout ayarı
+        list.style.display = "grid";
+        list.style.gridTemplateColumns = "repeat(auto-fill, minmax(280px, 1fr))";
+        list.style.gap = "20px";
+        list.style.padding = "10px";
+
         props.forEach((p, index) => {
             const item = document.createElement('div');
             item.className = 'property-card';
-            item.style.padding = "20px";
-            item.style.background = p.owner ? "rgba(255,50,50,0.03)" : "rgba(255,255,255,0.03)";
-            item.style.borderRadius = "18px";
-            item.style.border = p.owner ? "1px solid rgba(255,50,50,0.15)" : "1px solid rgba(255,255,255,0.05)";
-            item.style.transition = "all 0.4s cubic-bezier(0.175, 0.885, 0.32, 1.275)";
-            item.style.opacity = p.owner ? "0.6" : "1";
-            item.style.transform = "translateY(20px)";
-            item.style.animation = `fadeInUp 0.5s forwards ${index * 0.1}s`;
 
-            const catMap = {
-                residence: { name: 'Konut', color: '#00f2ff', icon: p.icon || 'house' },
-                shop: { name: 'Dükkan', color: '#ffcc00', icon: p.icon || 'shop' },
-                land: { name: 'Arazi', color: '#05ea6a', icon: p.icon || 'tree' }
-            };
-            const cat = catMap[p.category] || { name: 'Mülk', color: '#fff', icon: 'building' };
-
-            let infoText = "";
-            let infoValue = `+${(p.income).toLocaleString()} 💰`;
-            let infoSub = "/ Gün";
+            // Kategoriye Göre Renkler ve İkonlar
+            let borderColor = '#444';
+            let bgGradient = 'linear-gradient(135deg, rgba(255,255,255,0.03), rgba(0,0,0,0.5))';
+            let iconColor = '#aaa';
+            let catName = "MÜLK";
 
             if (p.category === 'residence') {
-                infoText = "Kira Geliri";
+                borderColor = '#00E676'; // Yeşil
+                iconColor = '#69F0AE';
+                catName = "KONUT";
+                bgGradient = 'linear-gradient(135deg, rgba(0, 230, 118, 0.05), rgba(0,0,0,0.4))';
             } else if (p.category === 'shop') {
-                infoText = "Ticari Kira";
-            } else {
-                infoText = "Üretim Potansiyeli";
-                infoValue = "Gelecek Özellik";
-                infoSub = "";
+                borderColor = '#2979FF'; // Mavi
+                iconColor = '#448AFF';
+                catName = "DÜKKAN";
+                bgGradient = 'linear-gradient(135deg, rgba(41, 121, 255, 0.05), rgba(0,0,0,0.4))';
+            } else if (p.category === 'land') {
+                borderColor = '#FFC400'; // Amber
+                iconColor = '#FFD740';
+                catName = "ARAZİ";
+                bgGradient = 'linear-gradient(135deg, rgba(255, 196, 0, 0.05), rgba(0,0,0,0.4))';
             }
 
-            const btnHtml = p.owner
-                ? `<div style="color:#ff4d4d; font-weight:900; font-size:0.75rem; background:rgba(255,77,77,0.1); padding:5px 12px; border-radius:10px; border:1px solid rgba(255,77,77,0.2);">💸 SAHİBİ: @${p.owner}</div>`
-                : `<button class="buy-btn" onclick="executePropertyBuy('${cityId}', '${p.id}', ${p.price}, '${cityName}')" style="background:var(--primary); color:#000; padding: 10px 20px; font-size: 0.85rem; font-weight:900; width: auto; margin:0; border-radius:12px; box-shadow: 0 10px 20px rgba(0,255,136,0.2);">SATIN AL</button>`;
+            const isOwned = !!p.owner;
+            const isMine = p.owner && p.owner.toLowerCase() === currentUser;
+
+            // Kart Stilleri
+            item.style.background = isMine ? 'linear-gradient(135deg, rgba(255, 215, 0, 0.1), rgba(0,0,0,0.4))' : bgGradient;
+            item.style.border = isMine ? '1px solid #FFD700' : `1px solid ${borderColor}33`; // Saydam border
+            item.style.boxShadow = isMine ? '0 0 15px rgba(255, 215, 0, 0.1)' : '0 4px 6px rgba(0,0,0,0.3)';
+            item.style.borderRadius = "16px";
+            item.style.display = "flex";
+            item.style.flexDirection = "column";
+            item.style.padding = "0";
+            item.style.overflow = "hidden";
+            item.style.position = "relative";
+            item.style.animation = `fadeInUp 0.5s forwards ${index * 0.05}s`;
+            item.style.opacity = "0";
+
+            // Gelir Kısmı
+            let incomeHtml = "";
+            if (p.income > 0) {
+                incomeHtml = `
+                    <div style="margin-top:15px; background:rgba(0,0,0,0.3); padding:10px; border-radius:10px; display:flex; justify-content:space-between; align-items:center;">
+                        <span style="color:#aaa; font-size:0.8rem;">GÜNLÜK GELİR</span>
+                        <div style="display:flex; align-items:center; gap:5px;">
+                            <i class="fas fa-arrow-trend-up" style="color:#00ff88; font-size:0.9rem;"></i>
+                            <span style="color:#00ff88; font-weight:700;">+${p.income.toLocaleString()} 💰</span>
+                        </div>
+                    </div>
+                `;
+            }
+
+            // Buton / Durum Kısmı
+            let actionHtml = "";
+            if (isMine) {
+                actionHtml = `
+                    <div style="background:#FFD700; color:#000; font-weight:900; padding:12px; text-align:center; font-size:0.9rem; letter-spacing:1px; margin-top:auto;">
+                        <i class="fas fa-check-circle"></i> SİZİN MÜLKÜNÜZ
+                    </div>`;
+            } else if (isOwned) {
+                actionHtml = `
+                    <div style="background:#ff3333; color:#fff; font-weight:800; padding:12px; text-align:center; font-size:0.9rem; letter-spacing:1px; margin-top:auto;">
+                        <i class="fas fa-lock"></i> SAHİBİ: @${p.owner}
+                    </div>`;
+            } else {
+                actionHtml = `
+                    <button onclick="executePropertyBuy('${cityId}', '${p.id}', ${p.price}, '${cityName}')" 
+                        class="buy-btn-anim"
+                        style="
+                            width:100%; padding:14px; background:var(--primary); color:#000; border:none; 
+                            font-weight:900; cursor:pointer; font-size:1rem; margin-top:auto;
+                            transition: background 0.2s;
+                        "
+                        onmouseover="this.style.background='#00e676'"
+                        onmouseout="this.style.background='var(--primary)'"
+                    >
+                        SATIN AL
+                    </button>
+                `;
+            }
 
             item.innerHTML = `
-                <div style="display:flex; align-items:flex-start; gap:15px; margin-bottom:15px;">
-                    <div style="width:50px; height:50px; background:rgba(255,255,255,0.05); border-radius:14px; display:flex; align-items:center; justify-content:center; font-size:1.5rem; color:${cat.color};">
-                        <i class="fas fa-${cat.icon}"></i>
+                <div style="padding:20px; display:flex; flex-direction:column; gap:10px; height:100%;">
+                    
+                    <div style="position:absolute; top:15px; right:15px; font-size:0.7rem; font-weight:800; color:${borderColor}; background:${borderColor}22; padding:4px 10px; border-radius:6px; letter-spacing:0.5px;">
+                        ${catName}
                     </div>
-                    <div style="flex:1;">
-                        <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:2px;">
-                            <div style="font-weight:900; color:white; font-size:1rem;">${p.name}</div>
-                            <span style="font-size:0.6rem; background:${cat.color}22; color:${cat.color}; padding:3px 8px; border-radius:6px; font-weight:800; text-transform:uppercase;">${cat.name}</span>
+
+                    <div style="display:flex; align-items:center; gap:15px;">
+                        <div style="width:50px; height:50px; background:${borderColor}22; border-radius:12px; display:flex; align-items:center; justify-content:center; box-shadow:inset 0 0 10px ${borderColor}11;">
+                            <i class="fa-solid fa-${p.icon || 'building'}" style="font-size:1.6rem; color:${iconColor};"></i>
                         </div>
-                        <div style="color:var(--primary); font-size:0.9rem; font-weight:900;">
-                            <span style="color:#666; font-size:0.7rem; font-weight:400; margin-right:5px;">${infoText}:</span>
-                            ${infoValue} <span style="font-weight:400; font-size:0.7rem; color:#888;">${infoSub}</span>
+                        <div style="flex:1;">
+                            <div style="font-size:1.1rem; font-weight:800; color:#fff; line-height:1.2; margin-bottom:4px;">${p.name.replace(cityName, '').trim()}</div>
+                            <div style="font-size:0.9rem; font-weight:700; color:#fff;">${p.price.toLocaleString()} 💰</div>
                         </div>
                     </div>
+
+                    ${incomeHtml}
+
+                    <div style="flex:1;"></div> <!-- Spacer -->
                 </div>
-                <div style="display:flex; justify-content:space-between; align-items:center; background:rgba(0,0,0,0.2); padding:10px; border-radius:14px;">
-                    <div style="display:flex; flex-direction:column;">
-                        <span style="color:#666; font-size:0.65rem; text-transform:uppercase; letter-spacing:1px; font-weight:700;">SATIŞ FİYATI</span>
-                        <span style="color:#fff; font-size:0.95rem; font-weight:800;">${p.price.toLocaleString()} 💰</span>
-                    </div>
-                    ${btnHtml}
-                </div>
+                ${actionHtml}
             `;
+
             list.appendChild(item);
         });
     } catch (e) {

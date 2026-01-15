@@ -1178,70 +1178,98 @@ const EMLAK_CITIES = [
 
 const REAL_ESTATE_TYPES = [
     // KONUTLAR (Kira Geliri)
-    { name: "1+1 Daire", minPrice: 400000, maxPrice: 750000, minInc: 500, maxInc: 1100, category: "residence", icon: "house-user" },
-    { name: "2+1 Daire", minPrice: 900000, maxPrice: 1500000, minInc: 1300, maxInc: 2500, category: "residence", icon: "building" },
-    { name: "Penthouses", minPrice: 3000000, maxPrice: 6000000, minInc: 5000, maxInc: 10000, category: "residence", icon: "building-user" },
-    { name: "Lüks Villa", minPrice: 7500000, maxPrice: 18000000, minInc: 15000, maxInc: 35000, category: "residence", icon: "house-chimney-window" },
+    { name: "1+1 Daire", minPrice: 650000, maxPrice: 950000, minInc: 800, maxInc: 1500, category: "residence", icon: "house-user" },
+    { name: "2+1 Daire", minPrice: 1200000, maxPrice: 1800000, minInc: 1600, maxInc: 2800, category: "residence", icon: "house" },
+    { name: "3+1 Lüks Daire", minPrice: 2000000, maxPrice: 3500000, minInc: 3000, maxInc: 6000, category: "residence", icon: "building" },
+    { name: "Rezidans Katı", minPrice: 5000000, maxPrice: 9000000, minInc: 7000, maxInc: 14000, category: "residence", icon: "hotel" },
 
-    // DÜKKANLAR (Kira veya İş)
-    { name: "Küçük Esnaf Dükkanı", minPrice: 600000, maxPrice: 1300000, minInc: 1000, maxInc: 2000, category: "shop", icon: "shop" },
-    { name: "Büyük Mağaza", minPrice: 2500000, maxPrice: 5500000, minInc: 4500, maxInc: 9500, category: "shop", icon: "store" },
-    { name: "İş Merkezi Ofisi", minPrice: 4500000, maxPrice: 10000000, minInc: 8000, maxInc: 18000, category: "shop", icon: "building-columns" },
+    // DÜKKANLAR (Kira Getirmez - İleride İşletme Olacak)
+    { name: "Küçük Dükkan", minPrice: 500000, maxPrice: 1500000, minInc: 0, maxInc: 0, category: "shop", icon: "store" },
+    { name: "Orta Boy Dükkan", minPrice: 2000000, maxPrice: 5000000, minInc: 0, maxInc: 0, category: "shop", icon: "store" },
+    { name: "Büyük Mağaza", minPrice: 10000000, maxPrice: 25000000, minInc: 0, maxInc: 0, category: "shop", icon: "building-columns" },
 
-    // ARAZİLER (İleride İş Kurma)
-    { name: "Tarım Arazisi", minPrice: 300000, maxPrice: 1500000, minInc: 0, maxInc: 0, category: "land", icon: "seedling" },
-    { name: "Sanayi Bölgesi", minPrice: 5000000, maxPrice: 15000000, minInc: 0, maxInc: 0, category: "land", icon: "industry" },
-    { name: "Maden Sahası", minPrice: 12000000, maxPrice: 35000000, minInc: 0, maxInc: 0, category: "land", icon: "mountain-city" }
+    // ARAZİLER (Tek Tip: Arazi)
+    { name: "Küçük Arazi", minPrice: 250000, maxPrice: 1500000, minInc: 0, maxInc: 0, category: "land", icon: "map" },
+    { name: "Orta Boy Arazi", minPrice: 2000000, maxPrice: 8000000, minInc: 0, maxInc: 0, category: "land", icon: "map" },
+    { name: "Büyük Arazi", minPrice: 10000000, maxPrice: 50000000, minInc: 0, maxInc: 0, category: "land", icon: "map" }
 ];
 
-// --- RPG ITEMS (SİLAHLAR VE ZIRHLAR) ---
-const RPG_WEAPONS = {
-    "yumruk": { name: "Çıplak El", dmg: 5, price: 0, icon: "✊" },
-    "sopa": { name: "Tahta Sopa", dmg: 12, price: 5000, icon: "🪵" },
-    "bicak": { name: "Paslı Bıçak", dmg: 20, price: 15000, icon: "🔪" },
-    "kilic": { name: "Demir Kılıç", dmg: 35, price: 50000, icon: "⚔️" },
-    "balta": { name: "Savaş Baltası", dmg: 55, price: 120000, icon: "🪓" },
-    "katana": { name: "Katana", dmg: 80, price: 300000, icon: "🗡️" },
-    "lazer": { name: "Lazer Tabancası", dmg: 150, price: 1000000, icon: "🔫" }
-};
-
-const RPG_ARMORS = {
-    "tisort": { name: "Yırtık Tişört", def: 0, hp: 0, price: 0, icon: "👕" },
-    "deri": { name: "Deri Ceket", def: 5, hp: 50, price: 7500, icon: "🧥" },
-    "yelek": { name: "Çelik Yelek", def: 15, hp: 150, price: 40000, icon: "🦺" },
-    "zirh": { name: "Şövalye Zırhı", def: 30, hp: 400, price: 150000, icon: "🛡️" },
-    "nano": { name: "Nano Suit", def: 60, hp: 1000, price: 500000, icon: "🤖" },
-    "kral": { name: "Kraliyet Zırhı", def: 100, hp: 2500, price: 2000000, icon: "👑" }
-};
-
-
+// ... (RPG_WEAPONS ve RPG_ARMORS aynı kalabilir)
 
 async function getCityMarket(cityId) {
     try {
         const marketRef = db.ref(`real_estate_market/${cityId}`);
         const snap = await marketRef.once('value');
         let data = snap.val();
+
         if (!data) {
             data = [];
-            const count = Math.floor(Math.random() * 8) + 5; // Şehir başına 5-13 mülk
-            for (let i = 1; i <= count; i++) {
-                const tpl = REAL_ESTATE_TYPES[Math.floor(Math.random() * REAL_ESTATE_TYPES.length)];
+            // Toplam hedef: 75 ile 250 arası
+            const targetCount = Math.floor(Math.random() * (250 - 75 + 1)) + 75;
 
-                // Kesin fiyat aralığı kontrolü (500K - 10M)
+            // Minimum kotalar
+            const minLand = 10;
+            const minShop = 40;
+            const minResidence = 25;
+
+            // Kategorilere göre tipleri filtrele
+            const lands = REAL_ESTATE_TYPES.filter(t => t.category === 'land');
+            const shops = REAL_ESTATE_TYPES.filter(t => t.category === 'shop');
+            const residences = REAL_ESTATE_TYPES.filter(t => t.category === 'residence');
+
+            let currentCount = 0;
+
+            // Yardımcı fonksiyon: Mülk Ekle
+            const addProperty = (typeList) => {
+                const tpl = typeList[Math.floor(Math.random() * typeList.length)];
+
+                // Fiyat
                 let price = Math.floor(tpl.minPrice + Math.random() * (tpl.maxPrice - tpl.minPrice));
-                if (price < 500000) price = 500000;
-                if (price > 10000000) price = 10000000;
+
+                // Gelir
+                let income = 0;
+                if (tpl.maxInc > 0) {
+                    income = Math.floor(tpl.minInc + Math.random() * (tpl.maxInc - tpl.minInc));
+                }
+
+                // İsimlendirme: Araziler hep "Arazi", diğerleri normal
+                let finalName = `${cityId} ${tpl.name}`;
+                if (tpl.category === 'land') {
+                    finalName = `${cityId} Arazisi`;
+                }
 
                 data.push({
-                    id: `${cityId.toLowerCase()}_${i}`,
-                    name: `${cityId} ${tpl.name}`,
+                    id: `${cityId.toLowerCase()}_${currentCount + 1}`,
+                    name: finalName,
                     price: price,
-                    income: Math.floor(tpl.minInc + Math.random() * (tpl.maxInc - tpl.minInc)),
+                    income: income,
                     owner: null,
                     category: tpl.category,
-                    icon: tpl.icon
+                    icon: tpl.icon,
+                    tier: tpl.name // Orijinal tip adını (Küçük, Orta vb.) sakla ama gösterme
                 });
+                currentCount++;
+            };
+
+            // 1. Kotaları Doldur
+            for (let i = 0; i < minLand; i++) addProperty(lands);
+            for (let i = 0; i < minShop; i++) addProperty(shops);
+            for (let i = 0; i < minResidence; i++) addProperty(residences);
+
+            // 2. Kalanı Rastgele Doldur
+            while (currentCount < targetCount) {
+                const randomCat = Math.random();
+                if (randomCat < 0.2) addProperty(lands);       // %20 ihtimalle arazi
+                else if (randomCat < 0.6) addProperty(shops);  // %40 ihtimalle dükkan
+                else addProperty(residences);                 // %40 ihtimalle konut
             }
+
+            // Karıştır (Shuffle) ki hepsi peş peşe gelmesin
+            data.sort(() => Math.random() - 0.5);
+
+            // ID'leri yeniden sırala
+            data = data.map((item, idx) => ({ ...item, id: `${cityId.toLowerCase()}_${idx + 1}` }));
+
             await marketRef.set(data);
         }
         return data;
