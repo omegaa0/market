@@ -12,8 +12,6 @@ const fetch = (...args) => import('node-fetch').then(({ default: fetch }) => fet
 const app = express();
 app.use(bodyParser.json());
 
-app.use(bodyParser.json());
-
 // GÜVENLİK HEADERS (Helmet benzeri manuel koruma)
 // GÜVENLİK HEADERS 
 app.use((req, res, next) => {
@@ -108,7 +106,9 @@ try {
     console.error("❌ Firebase Admin başlatılamadı:", e.message);
 }
 
-const db = admin.database();
+const instance = admin.database();
+global.db = instance;
+const db = instance; // For existing code references
 
 const KICK_CLIENT_ID = process.env.KICK_CLIENT_ID || "01KDQNP2M930Y7YYNM62TVWJCP";
 const KICK_CLIENT_SECRET = process.env.KICK_CLIENT_SECRET;

@@ -1,6 +1,6 @@
 {
     "name": "kickbot-market",
-    "version": "1.0.0",
+    "version": "1.0.1",
     "description": "KickBot Premium Market",
     "main": "server.js",
     "scripts": {
