@@ -88,12 +88,25 @@ const storage = multer.diskStorage({
 const upload = multer({ storage: storage });
 
 const admin = require('firebase-admin');
-const serviceAccount = require("./firebase-admin-key.json");
 
-admin.initializeApp({
-    credential: admin.credential.cert(serviceAccount),
-    databaseURL: process.env.FIREBASE_DB_URL
-});
+// Firebase Admin initialization (File or Env Variable)
+let serviceAccount;
+try {
+    if (process.env.FIREBASE_SERVICE_ACCOUNT) {
+        serviceAccount = JSON.parse(process.env.FIREBASE_SERVICE_ACCOUNT);
+    } else {
+        serviceAccount = require("./firebase-admin-key.json");
+    }
+
+    if (!admin.apps.length) {
+        admin.initializeApp({
+            credential: admin.credential.cert(serviceAccount),
+            databaseURL: process.env.FIREBASE_DB_URL
+        });
+    }
+} catch (e) {
+    console.error("❌ Firebase Admin başlatılamadı:", e.message);
+}
 
 const db = admin.database();
 
