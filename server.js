@@ -6,8 +6,7 @@ const path = require('path');
 const crypto = require('crypto');
 const fs = require('fs');
 const multer = require('multer');
-const firebase = require('firebase/compat/app');
-require('firebase/compat/database');
+
 const fetch = (...args) => import('node-fetch').then(({ default: fetch }) => fetch(...args));
 
 const app = express();
@@ -88,13 +87,15 @@ const storage = multer.diskStorage({
 });
 const upload = multer({ storage: storage });
 
-// 1. FIREBASE INITIALIZATION
-const firebaseConfig = {
-    apiKey: process.env.FIREBASE_API_KEY,
+const admin = require('firebase-admin');
+const serviceAccount = require("./firebase-admin-key.json");
+
+admin.initializeApp({
+    credential: admin.credential.cert(serviceAccount),
     databaseURL: process.env.FIREBASE_DB_URL
-};
-if (!firebase.apps.length) firebase.initializeApp(firebaseConfig);
-const db = firebase.database();
+});
+
+const db = admin.database();
 
 const KICK_CLIENT_ID = process.env.KICK_CLIENT_ID || "01KDQNP2M930Y7YYNM62TVWJCP";
 const KICK_CLIENT_SECRET = process.env.KICK_CLIENT_SECRET;
