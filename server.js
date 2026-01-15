@@ -94,22 +94,22 @@ let isFirebaseReady = false;
 try {
     if (process.env.FIREBASE_SERVICE_ACCOUNT) {
         console.log("ℹ️ Firebase SERVICE_ACCOUNT Environment Variable üzerinden okunuyor...");
-        serviceAccount = JSON.parse(process.env.FIREBASE_SERVICE_ACCOUNT);
+        let rawKey = process.env.FIREBASE_SERVICE_ACCOUNT;
+        serviceAccount = JSON.parse(rawKey);
     } else {
         console.log("ℹ️ Firebase anahtarı yerel dosyadan okunuyor...");
         serviceAccount = require("./firebase-admin-key.json");
     }
 
-    // KRİTİK: Private Key düzeltme (Render/Heroku/Vercel vb. için)
     if (serviceAccount && serviceAccount.private_key) {
-        // Eğer anahtarda gerçek newline yoksa ve \\n şeklinde kaçmışsa düzelt
-        serviceAccount.private_key = serviceAccount.private_key.replace(/\\n/g, '\n');
+        // ÇOK AGRESİF TEMİZLİK: Render/Vercel gibi ortamlar anahtarı bozabiliyor
+        serviceAccount.private_key = serviceAccount.private_key
+            .replace(/\\n/g, '\n') // Kaçış karakterlerini gerçek newline yap
+            .replace(/\n\n/g, '\n') // Çift satırları teke indir
+            .trim();
 
-        // Anahtarın başında/sonunda tırnak veya boşluk kalmışsa temizle
-        serviceAccount.private_key = serviceAccount.private_key.trim();
-        if (serviceAccount.private_key.startsWith('"') && serviceAccount.private_key.endsWith('"')) {
-            serviceAccount.private_key = serviceAccount.private_key.substring(1, serviceAccount.private_key.length - 1);
-        }
+        if (serviceAccount.private_key.startsWith('"')) serviceAccount.private_key = serviceAccount.private_key.slice(1);
+        if (serviceAccount.private_key.endsWith('"')) serviceAccount.private_key = serviceAccount.private_key.slice(0, -1);
     }
 
     if (!admin.apps.length) {
@@ -119,17 +119,22 @@ try {
         });
     }
     isFirebaseReady = true;
-    console.log("✅ Firebase Admin başarıyla başlatıldı ve yetkilendirildi.");
+    console.log("✅ Firebase Admin başarıyla başlatıldı.");
 } catch (e) {
     console.error("❌ Firebase Admin başlatılamadı!");
-    console.error("⚠️ Hata Detayı:", e.message);
+    console.error("⚠️ Hata:", e.message);
     console.log("💡 İpucu: Render panelindeki FIREBASE_SERVICE_ACCOUNT değişkeninin tam ve doğru olduğundan emin ol.");
 }
 
-// Global DB instance (Eğer başlatılamazsa hata vermemesi için korumalı obje)
+// Global DB instance (Crash korumalı)
 const db = isFirebaseReady ? admin.database() : {
     ref: () => ({
-        once: () => Promise.resolve({ val: () => null, numChildren: () => 0 }),
+        once: () => Promise.resolve({
+            val: () => null,
+            exists: () => false,
+            numChildren: () => 0,
+            forEach: () => { }
+        }),
         on: () => { },
         off: () => { },
         set: () => Promise.resolve(),
