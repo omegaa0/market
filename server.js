@@ -579,6 +579,7 @@ const INITIAL_STOCKS = {
 
 let currentMarketCycle = "NORMAL";
 let cycleDuration = 0;
+let nextNewsTimeMemory = 0; // Bellek içi haber zamanlayıcı (Firebase race condition önlemi)
 
 // ... (existing constants)
 
@@ -830,20 +831,25 @@ async function updateGlobalStocks() {
         const effects = cycleMultipliers[currentMarketCycle] || cycleMultipliers["NORMAL"];
 
         // NEWS GENERATION LOGIC - 30-60 dakikada bir haber üret
-        // Sonraki haber zamanını kontrol et (sabit değer, her seferinde değişmez)
-        const newsMetaRef = db.ref('market_meta');
-        const newsMetaSnap = await newsMetaRef.once('value');
-        const newsMeta = newsMetaSnap.val() || {};
-
-        let nextNewsTime = newsMeta.nextNewsTime || 0;
+        // Önce bellek içi kontrolü yap (Firebase race condition önlemi)
         const now = Date.now();
 
-        // Eğer nextNewsTime ayarlanmamışsa veya geçmişse, haber üret ve yeni hedef belirle
-        if (now >= nextNewsTime) {
+        // Bellek değişkeni sıfırsa Firebase'den oku (sunucu yeni başlamış)
+        if (nextNewsTimeMemory === 0) {
+            try {
+                const newsMetaSnap = await db.ref('market_meta/nextNewsTime').once('value');
+                nextNewsTimeMemory = newsMetaSnap.val() || 0;
+                console.log(`📰 Haber zamanlayıcı yüklendi: ${nextNewsTimeMemory > 0 ? new Date(nextNewsTimeMemory).toLocaleTimeString() : 'Henüz ayarlanmamış'}`);
+            } catch (e) {
+                console.error("Haber meta okuma hatası:", e.message);
+            }
+        }
+
+        // Sadece hedef zaman geçtiyse haber üret
+        if (now >= nextNewsTimeMemory) {
             const codes = Object.keys(stocks);
             const target = codes[Math.floor(Math.random() * codes.length)];
             const newsType = Math.random() > 0.5 ? 'GOOD' : 'BAD';
-            // Etkiyi biraz daha dramatize edelim: %10 - %25 arası
             const percent = (Math.random() * 0.15) + 0.10;
             const impact = newsType === 'GOOD' ? (1 + percent) : (1 - percent);
 
@@ -851,25 +857,31 @@ async function updateGlobalStocks() {
 
             const newsMsg = getRandomStockNews(stocks[target].name || target, newsType);
 
+            // Sonraki haber zamanını ÖNCE hesapla ve belleğe yaz (race condition önlemi)
+            const minWait = 30 * 60 * 1000; // 30 dakika
+            const maxWait = 60 * 60 * 1000; // 60 dakika
+            const waitTime = minWait + Math.random() * (maxWait - minWait);
+            const newNextNewsTime = now + waitTime;
+
+            // ÖNCE belleği güncelle (anında etkili)
+            nextNewsTimeMemory = newNextNewsTime;
+
+            // Sonra Firebase'e yaz (async, ama artık önemli değil)
             await db.ref('global_news').push({
                 text: newsMsg,
                 timestamp: now,
                 type: newsType
             });
 
-            // Sonraki haber zamanını hesapla ve kaydet (30-60 dakika sonra)
-            const minWait = 30 * 60 * 1000; // 30 dakika
-            const maxWait = 60 * 60 * 1000; // 60 dakika
-            const waitTime = minWait + Math.random() * (maxWait - minWait);
-            const newNextNewsTime = now + waitTime;
-
-            await newsMetaRef.update({
+            await db.ref('market_meta').update({
                 lastNewsTime: now,
                 nextNewsTime: newNextNewsTime
             });
 
             const minutesUntilNext = Math.round(waitTime / 60000);
-            console.log(`📰 PİYASA HABERİ: ${newsMsg} (Sonraki haber ${minutesUntilNext} dakika sonra)`);
+            const nextTime = new Date(newNextNewsTime).toLocaleTimeString('tr-TR');
+            console.log(`📰 PİYASA HABERİ: ${newsMsg}`);
+            console.log(`   ⏰ Sonraki haber: ${nextTime} (${minutesUntilNext} dakika sonra)`);
         }
 
         for (const [code, data] of Object.entries(stocks)) {
