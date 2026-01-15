@@ -1042,7 +1042,7 @@
                 fetchLiveStats(data.username);
             } catch (e) {
                 console.error(e);
-                alert("Oturum süresi dolmuş.");
+                await showDashAlert("Oturum süresi dolmuş.", "⚠️ Hata");
                 window.location.href = "/";
             }
         }
@@ -1229,7 +1229,8 @@
         }
 
         async function resetOverlayKey() {
-            if (!confirm('TÜM OVERLAY LİNKLERİ SIFIRLANACAK! OBS üzerindeki linkleri güncellemeniz gerekecek. Emin misiniz?')) return;
+            const confirmed = await showDashConfirm('TÜM OVERLAY LİNKLERİ SIFIRLANACAK! OBS üzerindeki linkleri güncellemeniz gerekecek. Emin misiniz?', '⚠️ Kritik Uyarı');
+            if (!confirmed) return;
 
             const res = await fetch('/dashboard-api/reset-overlay-key', {
                 method: 'POST',
@@ -1238,7 +1239,7 @@
             });
             const data = await res.json();
             if (data.success) {
-                alert('Tüm overlay anahtarları sıfırlandı! Sayfa yenileniyor...');
+                await showDashAlert('Tüm overlay anahtarları sıfırlandı! Sayfa yenileniyor...', '✅ Başarılı');
                 location.reload();
             }
         }
@@ -1273,7 +1274,7 @@
             const data = await res.json();
             if (data.url) {
                 document.getElementById('snd-url').value = data.url;
-                alert("Yüklendi!");
+                await showDashAlert("Yüklendi!", "✅ Başarılı");
             }
         }
 
@@ -1281,7 +1282,7 @@
             const name = document.getElementById('snd-name').value.trim().toLowerCase().replace('!', '');
             const cost = parseInt(document.getElementById('snd-cost').value) || 1000;
             const url = document.getElementById('snd-url').value.trim();
-            if (!name || !url) return alert("Eksik bilgi!");
+            if (!name || !url) { await showDashAlert("Eksik bilgi!", "⚠️ Uyarı"); return; }
 
             const res = await fetch('/dashboard-api/add-sound', {
                 method: 'POST',
@@ -1292,7 +1293,8 @@
         }
 
         async function removeSound(name) {
-            if (!confirm("Silinsin mi?")) return;
+            const confirmed = await showDashConfirm("Bu sesi silmek istediğine emin misin?", "🔊 Ses Sil");
+            if (!confirmed) return;
             await fetch('/dashboard-api/remove-sound', {
                 method: 'POST',
                 headers: { 'Content-Type': 'application/json' },
@@ -1301,18 +1303,18 @@
             init();
         }
 
-        function copyOverlay() {
+        async function copyOverlay() {
             const el = document.getElementById('overlay-url');
             el.select();
             document.execCommand('copy');
-            alert("Kopyalandı!");
+            await showDashAlert("Kopyalandı!", "📋 Başarılı");
         }
 
-        function copyHorseRace() {
+        async function copyHorseRace() {
             const el = document.getElementById('horse-race-url');
             el.select();
             document.execCommand('copy');
-            alert("At Yarışı Overlay Linki Kopyalandı!");
+            await showDashAlert("At Yarışı Overlay Linki Kopyalandı!", "📋 Başarılı");
         }
 
         async function testFireworks() {
@@ -1329,7 +1331,7 @@
                 headers: { 'Content-Type': 'application/json' },
                 body: JSON.stringify({ channelId, key: loginKey })
             });
-            alert('Takipçi testi gönderildi!');
+            await showDashAlert('Takipçi testi gönderildi!', '✅ Test');
             init(); // Verileri anlık güncelle
         }
 
@@ -1339,7 +1341,7 @@
                 headers: { 'Content-Type': 'application/json' },
                 body: JSON.stringify({ channelId, key: loginKey })
             });
-            alert('Abonelik testi gönderildi!');
+            await showDashAlert('Abonelik testi gönderildi!', '✅ Test');
             init(); // Verileri anlık güncelle
         }
 
@@ -1358,16 +1360,56 @@
         init();
         setInterval(init, 30000); // 30 saniyede bir verileri tazele
 
-        function copyLink(id) {
+        async function copyLink(id) {
             const input = document.getElementById(id);
             input.select();
             document.execCommand('copy');
-            alert('Bağlantı kopyalandı!');
+            await showDashAlert('Bağlantı kopyalandı!', '📋 Başarılı');
         }
         async function logout() {
-            if (confirm('Çıkış yapmak istediğine emin misin?')) {
+            const confirmed = await showDashConfirm('Çıkış yapmak istediğine emin misin?', '🚪 Çıkış');
+            if (confirmed) {
                 window.location.href = '/';
             }
+        }
+
+        // CUSTOM MODAL HELPERS
+        function showDashAlert(msg, title = "Bilgi") {
+            return new Promise(resolve => {
+                const el = document.getElementById('custom-alert');
+                document.getElementById('custom-alert-title').innerText = title;
+                document.getElementById('custom-alert-msg').innerText = msg;
+                el.style.display = 'flex';
+
+                const btn = document.getElementById('custom-alert-btn');
+                const newBtn = btn.cloneNode(true);
+                btn.parentNode.replaceChild(newBtn, btn);
+
+                newBtn.onclick = () => {
+                    el.style.display = 'none';
+                    resolve();
+                };
+            });
+        }
+
+        function showDashConfirm(msg, title = "Onay") {
+            return new Promise(resolve => {
+                const el = document.getElementById('custom-confirm');
+                document.getElementById('custom-confirm-title').innerText = title;
+                document.getElementById('custom-confirm-msg').innerText = msg;
+                el.style.display = 'flex';
+
+                const yes = document.getElementById('custom-confirm-yes');
+                const no = document.getElementById('custom-confirm-no');
+
+                const newYes = yes.cloneNode(true);
+                const newNo = no.cloneNode(true);
+                yes.parentNode.replaceChild(newYes, yes);
+                no.parentNode.replaceChild(newNo, no);
+
+                newYes.onclick = () => { el.style.display = 'none'; resolve(true); };
+                newNo.onclick = () => { el.style.display = 'none'; resolve(false); };
+            });
         }
     </script>
     <script>
@@ -1402,6 +1444,32 @@
             }
         });
     </script>
+
+    <!-- CUSTOM MODALS -->
+    <div id="custom-alert"
+        style="display:none; position:fixed; top:0; left:0; width:100%; height:100%; background:rgba(0,0,0,0.9); z-index:10000; align-items:center; justify-content:center; flex-direction:column;">
+        <div
+            style="background:var(--card); padding:40px; border-radius:24px; border:1px solid var(--border); max-width:400px; text-align:center; box-shadow:0 20px 50px rgba(0,0,0,0.5);">
+            <h3 id="custom-alert-title" style="color:var(--primary); margin-bottom:15px; font-size:1.4rem;">Bilgi</h3>
+            <p id="custom-alert-msg" style="color:#ddd; margin-bottom:25px; line-height:1.5;">...</p>
+            <button id="custom-alert-btn" class="btn btn-primary" style="width:100%;">TAMAM</button>
+        </div>
+    </div>
+
+    <div id="custom-confirm"
+        style="display:none; position:fixed; top:0; left:0; width:100%; height:100%; background:rgba(0,0,0,0.9); z-index:10000; align-items:center; justify-content:center; flex-direction:column;">
+        <div
+            style="background:var(--card); padding:40px; border-radius:24px; border:1px solid var(--border); max-width:400px; text-align:center; box-shadow:0 20px 50px rgba(0,0,0,0.5);">
+            <h3 id="custom-confirm-title" style="color:var(--secondary); margin-bottom:15px; font-size:1.4rem;">Onay
+            </h3>
+            <p id="custom-confirm-msg" style="color:#ddd; margin-bottom:25px; line-height:1.5;">...</p>
+            <div style="display:flex; gap:15px;">
+                <button id="custom-confirm-no" class="btn btn-outline"
+                    style="flex:1; color:var(--danger); border-color:var(--danger);">İPTAL</button>
+                <button id="custom-confirm-yes" class="btn btn-primary" style="flex:1;">EVET</button>
+            </div>
+        </div>
+    </div>
 </body>
 
 </html>

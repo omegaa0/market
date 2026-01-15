@@ -1003,15 +1003,15 @@
                     if (d.url) {
                         document.getElementById(targetId).value = d.url;
                         toggleCmd(channelId, settingKey, d.url); // Save immediately
-                        alert("✅ Resim yüklendi ve ayar güncellendi!");
+                        await showAdminAlert("✅ Resim yüklendi ve ayar güncellendi!", "✅ Başarılı");
                         // Refresh to show image thumbnail
                         setTimeout(loadChannels, 500);
                     } else {
-                        alert("Yükleme hatası: " + (d.error || 'Bilinmiyor'));
+                        await showAdminAlert("Yükleme hatası: " + (d.error || 'Bilinmiyor'), "❌ Hata");
                     }
                 } catch (e) {
                     console.error(e);
-                    alert("Yükleme sırasında hata!");
+                    await showAdminAlert("Yükleme sırasında hata!", "❌ Hata");
                 }
             }
 
@@ -1127,7 +1127,8 @@
                 });
             }
             async function deleteQuest(id) {
-                if (!confirm("Emin misin?")) return;
+                const confirmed = await showAdminConfirm("Bu görevi silmek istediğine emin misin?", "⚠️ Görev Sil");
+                if (!confirmed) return;
                 const res = await fetch('/admin-api/delete-quest', {
                     method: 'POST', headers: { 'Content-Type': 'application/json' },
                     body: JSON.stringify({ key: sessionKey, id })
@@ -1728,7 +1729,8 @@
 
             // --- Helper APIs ---
             async function resetOverlayKey(id) {
-                if (!confirm("Bu işlem OBS linkini geçersiz kılar. Yeni linki eklemeniz gerekecek. Emin misiniz?")) return;
+                const confirmed = await showAdminConfirm("Bu işlem OBS linkini geçersiz kılar. Yeni linki eklemeniz gerekecek. Emin misiniz?", "⚠️ Link Sıfırla");
+                if (!confirmed) return;
                 await fetch('/admin-api/reset-overlay-key', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ key: sessionKey, channelId: id }) });
                 loadChannels();
             }
@@ -1742,7 +1744,8 @@
             }
 
             async function reloadOverlay(id) {
-                if (!confirm("Kanalın overlay'ini uzaktan yenilemek istiyor musunuz?")) return;
+                const confirmed = await showAdminConfirm("Kanalın overlay'ini uzaktan yenilemek istiyor musunuz?", "🔄 Overlay Yenile");
+                if (!confirmed) return;
                 await fetch('/admin-api/reload-overlay', {
                     method: 'POST',
                     headers: { 'Content-Type': 'application/json' },
@@ -1751,10 +1754,10 @@
             }
 
             async function distributeBalancePrompt(id) {
-                const amt = prompt("Miktar (💰):", "1000");
+                const amt = await showAdminPrompt("Dağıtılacak miktar:", "1000", "💰 Bakiye Dağıt");
                 if (amt) {
                     await fetch('/admin-api/distribute-balance', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ key: sessionKey, channelId: id, amount: amt }) });
-                    alert("Dağıtım başarılı!");
+                    await showAdminAlert("Dağıtım başarılı!", "✅ Başarılı");
                 }
             }
 
@@ -1807,7 +1810,8 @@
 
             // New Function to handle deletion
             async function removeUserProperty(user, index) {
-                if (!confirm("Bu mülkü silmek istediğine emin misin?")) return;
+                const confirmed = await showAdminConfirm("Bu mülkü silmek istediğine emin misin?", "⚠️ Mülk Silme");
+                if (!confirmed) return;
 
                 const res = await fetch('/admin-api/remove-property', {
                     method: 'POST',
@@ -1816,7 +1820,7 @@
                 });
 
                 if (res.ok) {
-                    alert('Mülk silindi');
+                    await showAdminAlert('Mülk silindi', '✅ Başarılı');
                     closeModal('assetModal');
                     loadUsers();
                 } else {
@@ -1845,11 +1849,11 @@
 
                 const data = await res.json();
                 if (data.success) {
-                    alert("Emlak başarıyla atandı!");
+                    await showAdminAlert("Emlak başarıyla atandı!", "✅ Başarılı");
                     closeModal('assignModal');
                     loadUsers();
                 } else {
-                    alert("Hata: " + data.error);
+                    await showAdminAlert("Hata: " + data.error, "❌ Hata");
                 }
             }
 
@@ -1978,7 +1982,8 @@
             }
 
             async function deleteChannel(id) {
-                if (!confirm("Kanalı sildiğinizde tüm ayarlar kaybolur. Emin misiniz?")) return;
+                const confirmed = await showAdminConfirm("Kanalı sildiğinizde tüm ayarlar kaybolur. Emin misiniz?", "⚠️ Kanal Sil");
+                if (!confirmed) return;
                 await fetch('/admin-api/delete-channel', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ key: sessionKey, channelId: id }) });
                 loadChannels();
             }
@@ -2029,7 +2034,8 @@
             }
 
             async function removeSound(id, name) {
-                if (!confirm("Bu sesi silmek istediğine emin misin?")) return;
+                const confirmed = await showAdminConfirm("Bu sesi silmek istediğine emin misin?", "🔊 Ses Sil");
+                if (!confirmed) return;
                 const chanRes = await fetch('/admin-api/channels', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ key: sessionKey }) });
                 const channels = await chanRes.json();
                 const current = channels[id]?.settings?.custom_sounds || {};
@@ -2039,7 +2045,8 @@
             }
 
             async function resetUser(u) {
-                if (!confirm("Bakiyeyi 1000 yap?")) return;
+                const confirmed = await showAdminConfirm("Bakiyeyi 1000 yap?", "💰 Bakiye Sıfırla");
+                if (!confirmed) return;
                 await fetch('/admin-api/update-user', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ key: sessionKey, user: u, balance: 1000 }) });
                 loadUsers();
             }
@@ -2268,7 +2275,8 @@
             }
 
             async function deleteStock(code) {
-                if (!confirm(`${code} hissesini silmek istediğine emin misin?`)) return;
+                const confirmed = await showAdminConfirm(`${code} hissesini silmek istediğine emin misin?`, "📉 Hisse Sil");
+                if (!confirmed) return;
                 const res = await fetch('/admin-api/stocks/delete', {
                     method: 'POST', headers: { 'Content-Type': 'application/json' },
                     body: JSON.stringify({ key: sessionKey, code })
@@ -2320,7 +2328,8 @@
             }
 
             async function deleteMemory(id) {
-                if (!confirm("Bu bilgiyi hafızadan silmek istediğine emin misin?")) return;
+                const confirmed = await showAdminConfirm("Bu bilgiyi hafızadan silmek istediğine emin misin?", "🗑️ Hafıza Sil");
+                if (!confirmed) return;
                 const res = await fetch('/admin-api/memory/delete', {
                     method: 'POST', headers: { 'Content-Type': 'application/json' },
                     body: JSON.stringify({ key: sessionKey, id })
@@ -2338,10 +2347,12 @@
             // Auto login if possible (not implemented here but sessionKey could be in localStorage)
 
             async function resetMarketUsers() {
-                if (!confirm("⚠️ DİKKAT!\n\nBu işlem TÜM kullanıcıların:\n1. Bakiyesini 0 yapar.\n2. Tüm hisse senetlerini siler.\n\nBu işlem geri alınamaz. Emin misin?")) return;
+                const confirmed1 = await showAdminConfirm("⚠️ DİKKAT!\n\nBu işlem TÜM kullanıcıların bakiyesini 0 yapar ve tüm hisse senetlerini siler.\n\nBu işlem geri alınamaz. Emin misin?", "⚠️ Kritik Uyarı");
+                if (!confirmed1) return;
 
                 // İkinci onay (Master işlemi olduğu için)
-                if (!confirm("🚨 SON UYARI: Market sıfırlanıyor. Devam edilsin mi?")) return;
+                const confirmed2 = await showAdminConfirm("🚨 SON UYARI: Market sıfırlanıyor. Devam edilsin mi?", "🚨 Son Onay");
+                if (!confirmed2) return;
 
                 try {
                     const res = await fetch('/api/market/reset-users', {
@@ -2352,13 +2363,13 @@
 
                     const data = await res.json();
                     if (data.success) {
-                        alert(data.message);
+                        await showAdminAlert(data.message, "✅ Başarılı");
                         showToast(data.message);
                     } else {
-                        alert("Hata: " + data.error);
+                        await showAdminAlert("Hata: " + data.error, "❌ Hata");
                     }
                 } catch (e) {
-                    alert("Sunucu hatası!");
+                    await showAdminAlert("Sunucu hatası!", "❌ Hata");
                 }
             }
         </script>
@@ -2531,7 +2542,8 @@
             }
 
             async function deleteUserProperty(user, index) {
-                if (!confirm(`${user} kullanıcısının bu mülkünü silmek istediğine emin misin?`)) return;
+                const confirmed = await showAdminConfirm(`${user} kullanıcısının bu mülkünü silmek istediğine emin misin?`, "⚠️ Mülk Sil");
+                if (!confirmed) return;
                 const res = await fetch('/admin-api/remove-property', {
                     method: 'POST',
                     headers: { 'Content-Type': 'application/json' },
@@ -2539,11 +2551,11 @@
                 });
                 const d = await res.json();
                 if (d.success) {
-                    alert("Mülk silindi!");
+                    await showAdminAlert("Mülk silindi!", "✅ Başarılı");
                     await loadUsers(); // Reload user data
                     openAssetModal(user); // Re-open modal to refresh list
                 } else {
-                    alert("Hata: " + d.error);
+                    await showAdminAlert("Hata: " + d.error, "❌ Hata");
                 }
             }
 
@@ -2566,12 +2578,81 @@
 
                 const d = await res.json();
                 if (d.success) {
-                    alert('Mülk başarıyla atandı ve pazardan kaldırıldı!');
+                    await showAdminAlert('Mülk başarıyla atandı ve pazardan kaldırıldı!', '✅ Başarılı');
                     closeModal('assignModal');
                     loadUsers();
                 } else {
-                    alert('Hata: ' + d.error);
+                    await showAdminAlert('Hata: ' + d.error, '❌ Hata');
                 }
+            }
+
+            // CUSTOM MODAL HELPERS
+            function showAdminAlert(msg, title = "Bilgi") {
+                return new Promise(resolve => {
+                    const el = document.getElementById('custom-alert');
+                    document.getElementById('custom-alert-title').innerText = title;
+                    document.getElementById('custom-alert-msg').innerText = msg;
+                    el.style.display = 'block';
+
+                    const btn = document.getElementById('custom-alert-btn');
+                    const newBtn = btn.cloneNode(true);
+                    btn.parentNode.replaceChild(newBtn, btn);
+
+                    newBtn.onclick = () => {
+                        el.style.display = 'none';
+                        resolve();
+                    };
+                });
+            }
+
+            function showAdminConfirm(msg, title = "Onay") {
+                return new Promise(resolve => {
+                    const el = document.getElementById('custom-confirm');
+                    document.getElementById('custom-confirm-title').innerText = title;
+                    document.getElementById('custom-confirm-msg').innerText = msg;
+                    el.style.display = 'block';
+
+                    const yes = document.getElementById('custom-confirm-yes');
+                    const no = document.getElementById('custom-confirm-no');
+
+                    const newYes = yes.cloneNode(true);
+                    const newNo = no.cloneNode(true);
+                    yes.parentNode.replaceChild(newYes, yes);
+                    no.parentNode.replaceChild(newNo, no);
+
+                    newYes.onclick = () => { el.style.display = 'none'; resolve(true); };
+                    newNo.onclick = () => { el.style.display = 'none'; resolve(false); };
+                });
+            }
+
+            function showAdminPrompt(msg, defaultVal = "", title = "Giriş") {
+                return new Promise(resolve => {
+                    const el = document.getElementById('custom-prompt');
+                    const inp = document.getElementById('custom-prompt-input');
+                    document.getElementById('custom-prompt-title').innerText = title;
+                    document.getElementById('custom-prompt-msg').innerText = msg;
+                    inp.value = defaultVal;
+                    el.style.display = 'block';
+                    inp.focus();
+
+                    const ok = document.getElementById('custom-prompt-ok');
+                    const cancel = document.getElementById('custom-prompt-cancel');
+
+                    const newOk = ok.cloneNode(true);
+                    const newCancel = cancel.cloneNode(true);
+                    ok.parentNode.replaceChild(newOk, ok);
+                    cancel.parentNode.replaceChild(newCancel, cancel);
+
+                    const close = (val) => { el.style.display = 'none'; resolve(val); };
+
+                    newOk.onclick = () => close(inp.value);
+                    newCancel.onclick = () => close(null);
+
+                    inp.onkeydown = (e) => {
+                        if (e.key === 'Enter') newOk.click();
+                        if (e.key === 'Escape') newCancel.click();
+                    };
+                });
             }
 
             window.onload = () => {
@@ -2618,6 +2699,34 @@
                         onclick="submitPropertyAssignment()">ONAYLA & ATA</button>
                     <button class="btn btn-danger" style="flex:1" onclick="closeModal('assignModal')">İPTAL</button>
                 </div>
+            </div>
+        </div>
+        <!-- CUSTOM MODALS -->
+        <div id="custom-alert" class="login-box"
+            style="display:none; position:fixed; top:50%; left:50%; transform:translate(-50%, -50%); z-index:10005; width:400px; box-shadow:0 0 50px rgba(0,0,0,0.8);">
+            <h3 id="custom-alert-title" style="color:var(--primary); margin-bottom:15px;">Bilgi</h3>
+            <p id="custom-alert-msg" style="color:#ddd; margin-bottom:20px; line-height:1.5;">...</p>
+            <button id="custom-alert-btn" class="btn" style="width:100%;">TAMAM</button>
+        </div>
+
+        <div id="custom-confirm" class="login-box"
+            style="display:none; position:fixed; top:50%; left:50%; transform:translate(-50%, -50%); z-index:10005; width:400px; box-shadow:0 0 50px rgba(0,0,0,0.8);">
+            <h3 id="custom-confirm-title" style="color:var(--secondary); margin-bottom:15px;">Onay</h3>
+            <p id="custom-confirm-msg" style="color:#ddd; margin-bottom:20px; line-height:1.5;">...</p>
+            <div style="display:flex; gap:10px;">
+                <button id="custom-confirm-no" class="btn btn-danger" style="flex:1">İPTAL</button>
+                <button id="custom-confirm-yes" class="btn" style="flex:1">EVET</button>
+            </div>
+        </div>
+
+        <div id="custom-prompt" class="login-box"
+            style="display:none; position:fixed; top:50%; left:50%; transform:translate(-50%, -50%); z-index:10005; width:400px; box-shadow:0 0 50px rgba(0,0,0,0.8);">
+            <h3 id="custom-prompt-title" style="color:var(--primary); margin-bottom:15px;">Giriş</h3>
+            <p id="custom-prompt-msg" style="color:#aaa; font-size:0.9rem; margin-bottom:10px;">...</p>
+            <input type="text" id="custom-prompt-input" class="inp" style="margin-bottom:20px;">
+            <div style="display:flex; gap:10px;">
+                <button id="custom-prompt-cancel" class="btn btn-danger" style="flex:1">İPTAL</button>
+                <button id="custom-prompt-ok" class="btn" style="flex:1">TAMAM</button>
             </div>
         </div>
 </body>

@@ -655,14 +655,14 @@ async function executePurchase(type, trigger, price) {
         openTTSModal(price);
         return;
     } else if (type === 'mute') {
-        userInput = prompt("Susturulacak kullanıcının adını girin (Örn: aloske):");
+        userInput = await showInput("Kullanıcı Sustur", "Susturulacak kullanıcının adını girin:", "Örn: aloske");
         if (!userInput) return;
         userInput = userInput.replace('@', '').toLowerCase().trim();
     } else if (type === 'sr') {
-        userInput = prompt("YouTube Video Linkini Yapıştırın:");
+        userInput = await showInput("Şarkı İsteği", "YouTube Video Linkini Yapıştırın:", "https://youtube.com/...");
         if (!userInput) return;
         if (!userInput.includes('youtube.com') && !userInput.includes('youtu.be')) {
-            alert("Lütfen geçerli bir YouTube linki girin!");
+            await showAlert("Hata", "Lütfen geçerli bir YouTube linki girin!");
             return;
         }
         // No confirm, direct play 
@@ -909,7 +909,8 @@ async function loadBorsa() {
         resetBtn.style.color = "white";
         resetBtn.style.flex = "1";
         resetBtn.onclick = async () => {
-            if (!confirm("Tüm kullanıcıların tüm hisselerini silmek istediğine emin misin?")) return;
+            const confirmed = await showConfirm("⚠️ Borsa Sıfırlama", "Tüm kullanıcıların tüm hisselerini silmek istediğine emin misin?");
+            if (!confirmed) return;
             const res = await fetch('/api/borsa/reset', {
                 method: 'POST',
                 headers: { 'Content-Type': 'application/json' },
@@ -926,7 +927,8 @@ async function loadBorsa() {
         fixBtn.style.color = "white";
         fixBtn.style.flex = "1";
         fixBtn.onclick = async () => {
-            if (!confirm("Eksik maliyet verisi olan hisseler için GÜNCEL FİYAT baz alınarak maliyet eklenecek. Onaylıyor musun?")) return;
+            const confirmed = await showConfirm("🔧 Maliyet Düzelt", "Eksik maliyet verisi olan hisseler için GÜNCEL FİYAT baz alınarak maliyet eklenecek. Onaylıyor musun?");
+            if (!confirmed) return;
             const res = await fetch('/api/borsa/fix-costs', {
                 method: 'POST',
                 headers: { 'Content-Type': 'application/json' },
@@ -1721,7 +1723,8 @@ async function leaveGang() {
         ? "Çete Liderisin! Ayrılırsan çete tamamen feshedilecek (disband). Emin misin?"
         : "Çeteden ayrılmak istediğine emin misin?";
 
-    if (!confirm(msg)) return;
+    const confirmed = await showConfirm("Ayrılma Onayı", msg);
+    if (!confirmed) return;
 
     try {
         const res = await fetch('/api/gang/leave', {
@@ -1806,7 +1809,8 @@ async function promoteMember(targetUser, newRank, gangId) {
 }
 
 async function kickMember(target, gangId) {
-    if (!confirm(`${target} kullanıcısını çeteden atmak istediğine emin misin?`)) return;
+    const confirmed = await showConfirm("👢 Üye At", `${target} kullanıcısını çeteden atmak istediğine emin misin?`);
+    if (!confirmed) return;
     try {
         const res = await fetch('/api/gang/kick', {
             method: 'POST',
@@ -1906,7 +1910,8 @@ async function loadEmlak() {
         resetBtn.className = "primary-btn";
         resetBtn.style = "background: #ff4d4d; color: white; margin-bottom: 20px; width: auto; padding: 10px 25px;";
         resetBtn.onclick = async () => {
-            if (!confirm("Tüm şehirlerdeki mülkleri ve tüm kullanıcıların tapularını silmek istediğine emin misin? (Fiyatları güncellemek için gereklidir)")) return;
+            const confirmed = await showConfirm("🚨 Emlak Sıfırlama", "Tüm şehirlerdeki mülkleri ve tüm kullanıcıların tapularını silmek istediğine emin misin? (Fiyatları güncellemek için gereklidir)");
+            if (!confirmed) return;
             const res = await fetch('/api/emlak/reset', {
                 method: 'POST',
                 headers: { 'Content-Type': 'application/json' },
@@ -2072,13 +2077,205 @@ function renderEmlakMap() {
     });
 }
 
+// Global değişkenler (Filtreleme için)
+let currentCityProperties = [];
+let currentLoadedCityId = "";
+let currentLoadedCityName = "";
+
+function filterProperties(category, btnElement) {
+    // UI Update
+    if (btnElement) {
+        document.querySelectorAll('.filter-btn').forEach(b => {
+            b.classList.remove('active');
+            b.style.color = '#aaa';
+        });
+        btnElement.classList.add('active');
+        btnElement.style.color = '#fff';
+    }
+
+    if (!currentCityProperties) return;
+
+    let filtered = [];
+    if (category === 'all') {
+        filtered = currentCityProperties;
+    } else {
+        filtered = currentCityProperties.filter(p => p.category === category);
+    }
+
+    renderPropertyList(filtered, currentLoadedCityId, currentLoadedCityName);
+}
+
+function renderPropertyList(props, cityId, cityName) {
+    const list = document.getElementById('city-properties-list');
+    if (!list) return;
+
+    list.innerHTML = "";
+
+    // Grid layout ayarı (Tekrar emin olmak için)
+    list.style.display = "grid";
+    list.style.gridTemplateColumns = "repeat(auto-fill, minmax(280px, 1fr))";
+    list.style.gap = "20px";
+    list.style.padding = "10px";
+
+    if (!props || props.length === 0) {
+        list.innerHTML = `
+            <div style="grid-column: 1 / -1; text-align:center; padding:40px; color:#666; display:flex; flex-direction:column; align-items:center;">
+                <i class="fas fa-search" style="font-size:2rem; margin-bottom:15px; opacity:0.5;"></i>
+                <p>Bu kategoride mülk bulunamadı.</p>
+            </div>
+        `;
+        return;
+    }
+
+    props.forEach((p, index) => {
+        const item = document.createElement('div');
+        item.className = 'property-card';
+
+        // Kategoriye Göre Renkler ve İkonlar
+        let borderColor = '#444';
+        let bgGradient = 'linear-gradient(135deg, rgba(255,255,255,0.03), rgba(0,0,0,0.5))';
+        let iconColor = '#aaa';
+        let catName = "MÜLK";
+
+        if (p.category === 'residence') {
+            borderColor = '#00E676'; // Yeşil
+            iconColor = '#69F0AE';
+            catName = "KONUT";
+            bgGradient = 'linear-gradient(135deg, rgba(0, 230, 118, 0.05), rgba(0,0,0,0.4))';
+        } else if (p.category === 'shop') {
+            borderColor = '#2979FF'; // Mavi
+            iconColor = '#448AFF';
+            catName = "DÜKKAN";
+            bgGradient = 'linear-gradient(135deg, rgba(41, 121, 255, 0.05), rgba(0,0,0,0.4))';
+        } else if (p.category === 'land') {
+            borderColor = '#FFC400'; // Amber
+            iconColor = '#FFD740';
+            catName = "ARAZİ";
+            bgGradient = 'linear-gradient(135deg, rgba(255, 196, 0, 0.05), rgba(0,0,0,0.4))';
+        }
+
+        const isOwned = !!p.owner;
+        const isMine = p.owner && p.owner.toLowerCase() === currentUser;
+
+        // Kart Stilleri
+        item.style.background = isMine ? 'linear-gradient(135deg, rgba(255, 215, 0, 0.1), rgba(0,0,0,0.4))' : bgGradient;
+        item.style.border = isMine ? '1px solid #FFD700' : `1px solid ${borderColor}33`; // Saydam border
+        item.style.boxShadow = isMine ? '0 0 15px rgba(255, 215, 0, 0.1)' : '0 4px 6px rgba(0,0,0,0.3)';
+        item.style.borderRadius = "16px";
+        item.style.display = "flex";
+        item.style.flexDirection = "column";
+        item.style.padding = "0";
+        item.style.overflow = "hidden";
+        item.style.position = "relative";
+        item.style.animation = `fadeInUp 0.5s forwards ${index * 0.05}s`;
+        item.style.opacity = "0";
+
+        // Gelir Kısmı
+        let incomeHtml = "";
+        // Sadece Konutlar gelir getirir (Şimdilik)
+        if (p.category === 'residence' && p.income > 0) {
+            incomeHtml = `
+                <div style="margin-top:15px; background:rgba(0,0,0,0.3); padding:10px; border-radius:10px; display:flex; justify-content:space-between; align-items:center;">
+                    <span style="color:#aaa; font-size:0.8rem;">GÜNLÜK GELİR</span>
+                    <div style="display:flex; align-items:center; gap:5px;">
+                        <i class="fas fa-arrow-trend-up" style="color:#00ff88; font-size:0.9rem;"></i>
+                        <span style="color:#00ff88; font-weight:700;">+${p.income.toLocaleString()} 💰</span>
+                    </div>
+                </div>
+            `;
+        } else if (p.category === 'shop') {
+            incomeHtml = `
+                <div style="margin-top:15px; background:rgba(255,255,255,0.03); padding:10px; border-radius:10px; display:flex; align-items:center; justify-content:center; gap:8px;">
+                    <i class="fas fa-briefcase" style="color:#aaa; font-size:0.9rem;"></i>
+                    <span style="color:#888; font-size:0.8rem;">İşletme Kurulabilir</span>
+                </div>
+            `;
+        }
+
+        // Buton / Durum Kısmı
+        let actionHtml = "";
+        if (isMine) {
+            actionHtml = `
+                <div style="background:#FFD700; color:#000; font-weight:900; padding:12px; text-align:center; font-size:0.9rem; letter-spacing:1px; margin-top:auto;">
+                    <i class="fas fa-check-circle"></i> SİZİN MÜLKÜNÜZ
+                </div>`;
+        } else if (isOwned) {
+            actionHtml = `
+                <div style="background:#ff3333; color:#fff; font-weight:800; padding:12px; text-align:center; font-size:0.9rem; letter-spacing:1px; margin-top:auto;">
+                    <i class="fas fa-lock"></i> SAHİBİ: @${p.owner}
+                </div>`;
+        } else {
+            actionHtml = `
+                <button onclick="executePropertyBuy('${cityId}', '${p.id}', ${p.price}, '${cityName}')" 
+                    class="buy-btn-anim"
+                    style="
+                        width:100%; padding:14px; background:var(--primary); color:#000; border:none; 
+                        font-weight:900; cursor:pointer; font-size:1rem; margin-top:auto;
+                        transition: background 0.2s;
+                    "
+                    onmouseover="this.style.background='#00e676'"
+                    onmouseout="this.style.background='var(--primary)'"
+                >
+                    SATIN AL
+                </button>
+            `;
+        }
+
+        item.innerHTML = `
+            <div style="padding:20px; display:flex; flex-direction:column; gap:10px; height:100%;">
+                
+                <div style="display:flex; justify-content:space-between; align-items:flex-start; gap:10px;">
+                    <div style="display:flex; align-items:center; gap:15px; flex:1;">
+                        <div style="width:50px; height:50px; background:${borderColor}22; border-radius:12px; display:flex; align-items:center; justify-content:center; box-shadow:inset 0 0 10px ${borderColor}11; flex-shrink:0;">
+                            <i class="fa-solid fa-${p.icon || 'building'}" style="font-size:1.6rem; color:${iconColor};"></i>
+                        </div>
+                        <div style="flex:1;">
+                            <div style="font-size:1.1rem; font-weight:800; color:#fff; line-height:1.2; margin-bottom:4px; word-break: break-word;">${p.name.replace(cityName, '').trim()}</div>
+                            <div style="font-size:0.9rem; font-weight:700; color:#fff;">${p.price.toLocaleString()} 💰</div>
+                        </div>
+                    </div>
+                    <div style="font-size:0.7rem; font-weight:800; color:${borderColor}; background:${borderColor}22; padding:4px 10px; border-radius:6px; letter-spacing:0.5px; white-space:nowrap;">
+                        ${catName}
+                    </div>
+                </div>
+
+                ${incomeHtml}
+
+                <div style="flex:1;"></div> <!-- Spacer -->
+            </div>
+            ${actionHtml}
+        `;
+
+        list.appendChild(item);
+    });
+}
+
 async function loadCityProperties(cityId, cityName) {
     const list = document.getElementById('city-properties-list');
     if (!list) return;
 
+    currentLoadedCityId = cityId;
+    currentLoadedCityName = cityName;
+
     // Başlığı güncelle
     const cityTitle = document.getElementById('city-title');
     if (cityTitle) cityTitle.innerText = cityName;
+
+    // Filtreleri Göster
+    const filters = document.getElementById('property-filters');
+    if (filters) filters.style.display = 'flex';
+
+    // Butonları resetle
+    document.querySelectorAll('.filter-btn').forEach(b => {
+        b.classList.remove('active');
+        b.style.color = '#aaa';
+    });
+    // İlk butonu (Hepsi) aktif yap
+    const firstBtn = document.querySelector('.filter-btn:first-child');
+    if (firstBtn) {
+        firstBtn.classList.add('active');
+        firstBtn.style.color = '#fff';
+    }
 
     list.innerHTML = `<div class="loader" style="margin: 20px auto;"></div>`;
 
@@ -2086,159 +2283,30 @@ async function loadCityProperties(cityId, cityName) {
         const res = await fetch(`/api/real-estate/properties/${cityId}`);
         const props = await res.json();
 
-        list.innerHTML = "";
+        // Veriyi kaydet
+        currentCityProperties = props || [];
 
-        if (!props || props.length === 0) {
+        if (!currentCityProperties || currentCityProperties.length === 0) {
             list.innerHTML = `
-                <div style="text-align:center; padding:30px 10px; background: rgba(255, 0, 0, 0.05); border: 1px dashed rgba(255, 0, 0, 0.3); border-radius: 15px;">
+                <div style="text-align:center; padding:30px 10px; background: rgba(255, 0, 0, 0.05); border: 1px dashed rgba(255, 0, 0, 0.3); border-radius: 15px; grid-column: 1 / -1;">
                     <i class="fas fa-lock" style="font-size: 2.5rem; color: #ff4d4d; margin-bottom: 15px;"></i>
-                    <h4 style="color: white; margin-bottom: 10px;">Veri Erişim Engellendi</h4>
-                    <p style="font-size: 0.8rem; color: #aaa; line-height: 1.5;">
-                        Şehir verileri sunucudan boş döndü. Bu durum genellikle <b>Firebase Security Rules</b> ayarlarından kaynaklanır.
-                    </p>
-                    <div style="margin-top: 15px; padding: 10px; background: #000; border-radius: 8px; font-family: monospace; font-size: 0.7rem; color: #00ff88; text-align: left;">
-                        Rules -> real_estate_market: { ".read": true, ".write": true }
-                    </div>
+                    <h4 style="color: white; margin-bottom: 10px;">Veri Bulunamadı veya Erişim Engellendi</h4>
+                    <p style="font-size: 0.8rem; color: #aaa; line-height: 1.5;">Sunucudan mülk verisi alınamadı.</p>
                 </div>
             `;
             return;
         }
 
-        // Grid layout ayarı
-        list.style.display = "grid";
-        list.style.gridTemplateColumns = "repeat(auto-fill, minmax(280px, 1fr))";
-        list.style.gap = "20px";
-        list.style.padding = "10px";
+        // Varsayılan olarak hepsini renderla
+        renderPropertyList(currentCityProperties, cityId, cityName);
 
-        props.forEach((p, index) => {
-            const item = document.createElement('div');
-            item.className = 'property-card';
-
-            // Kategoriye Göre Renkler ve İkonlar
-            let borderColor = '#444';
-            let bgGradient = 'linear-gradient(135deg, rgba(255,255,255,0.03), rgba(0,0,0,0.5))';
-            let iconColor = '#aaa';
-            let catName = "MÜLK";
-
-            if (p.category === 'residence') {
-                borderColor = '#00E676'; // Yeşil
-                iconColor = '#69F0AE';
-                catName = "KONUT";
-                bgGradient = 'linear-gradient(135deg, rgba(0, 230, 118, 0.05), rgba(0,0,0,0.4))';
-            } else if (p.category === 'shop') {
-                borderColor = '#2979FF'; // Mavi
-                iconColor = '#448AFF';
-                catName = "DÜKKAN";
-                bgGradient = 'linear-gradient(135deg, rgba(41, 121, 255, 0.05), rgba(0,0,0,0.4))';
-            } else if (p.category === 'land') {
-                borderColor = '#FFC400'; // Amber
-                iconColor = '#FFD740';
-                catName = "ARAZİ";
-                bgGradient = 'linear-gradient(135deg, rgba(255, 196, 0, 0.05), rgba(0,0,0,0.4))';
-            }
-
-            const isOwned = !!p.owner;
-            const isMine = p.owner && p.owner.toLowerCase() === currentUser;
-
-            // Kart Stilleri
-            item.style.background = isMine ? 'linear-gradient(135deg, rgba(255, 215, 0, 0.1), rgba(0,0,0,0.4))' : bgGradient;
-            item.style.border = isMine ? '1px solid #FFD700' : `1px solid ${borderColor}33`; // Saydam border
-            item.style.boxShadow = isMine ? '0 0 15px rgba(255, 215, 0, 0.1)' : '0 4px 6px rgba(0,0,0,0.3)';
-            item.style.borderRadius = "16px";
-            item.style.display = "flex";
-            item.style.flexDirection = "column";
-            item.style.padding = "0";
-            item.style.overflow = "hidden";
-            item.style.position = "relative";
-            item.style.animation = `fadeInUp 0.5s forwards ${index * 0.05}s`;
-            item.style.opacity = "0";
-
-            // Gelir Kısmı
-            let incomeHtml = "";
-            // Sadece Konutlar gelir getirir (Şimdilik)
-            if (p.category === 'residence' && p.income > 0) {
-                incomeHtml = `
-                    <div style="margin-top:15px; background:rgba(0,0,0,0.3); padding:10px; border-radius:10px; display:flex; justify-content:space-between; align-items:center;">
-                        <span style="color:#aaa; font-size:0.8rem;">GÜNLÜK GELİR</span>
-                        <div style="display:flex; align-items:center; gap:5px;">
-                            <i class="fas fa-arrow-trend-up" style="color:#00ff88; font-size:0.9rem;"></i>
-                            <span style="color:#00ff88; font-weight:700;">+${p.income.toLocaleString()} 💰</span>
-                        </div>
-                    </div>
-                `;
-            } else if (p.category === 'shop') {
-                incomeHtml = `
-                    <div style="margin-top:15px; background:rgba(255,255,255,0.03); padding:10px; border-radius:10px; display:flex; align-items:center; justify-content:center; gap:8px;">
-                        <i class="fas fa-briefcase" style="color:#aaa; font-size:0.9rem;"></i>
-                        <span style="color:#888; font-size:0.8rem;">İşletme Kurulabilir</span>
-                    </div>
-                `;
-            }
-
-            // Buton / Durum Kısmı
-            let actionHtml = "";
-            if (isMine) {
-                actionHtml = `
-                    <div style="background:#FFD700; color:#000; font-weight:900; padding:12px; text-align:center; font-size:0.9rem; letter-spacing:1px; margin-top:auto;">
-                        <i class="fas fa-check-circle"></i> SİZİN MÜLKÜNÜZ
-                    </div>`;
-            } else if (isOwned) {
-                actionHtml = `
-                    <div style="background:#ff3333; color:#fff; font-weight:800; padding:12px; text-align:center; font-size:0.9rem; letter-spacing:1px; margin-top:auto;">
-                        <i class="fas fa-lock"></i> SAHİBİ: @${p.owner}
-                    </div>`;
-            } else {
-                actionHtml = `
-                    <button onclick="executePropertyBuy('${cityId}', '${p.id}', ${p.price}, '${cityName}')" 
-                        class="buy-btn-anim"
-                        style="
-                            width:100%; padding:14px; background:var(--primary); color:#000; border:none; 
-                            font-weight:900; cursor:pointer; font-size:1rem; margin-top:auto;
-                            transition: background 0.2s;
-                        "
-                        onmouseover="this.style.background='#00e676'"
-                        onmouseout="this.style.background='var(--primary)'"
-                    >
-                        SATIN AL
-                    </button>
-                `;
-            }
-
-            item.innerHTML = `
-                <div style="padding:20px; display:flex; flex-direction:column; gap:10px; height:100%;">
-                    
-                    <div style="display:flex; justify-content:space-between; align-items:flex-start; gap:10px;">
-                        <div style="display:flex; align-items:center; gap:15px; flex:1;">
-                            <div style="width:50px; height:50px; background:${borderColor}22; border-radius:12px; display:flex; align-items:center; justify-content:center; box-shadow:inset 0 0 10px ${borderColor}11; flex-shrink:0;">
-                                <i class="fa-solid fa-${p.icon || 'building'}" style="font-size:1.6rem; color:${iconColor};"></i>
-                            </div>
-                            <div style="flex:1;">
-                                <div style="font-size:1.1rem; font-weight:800; color:#fff; line-height:1.2; margin-bottom:4px; word-break: break-word;">${p.name.replace(cityName, '').trim()}</div>
-                                <div style="font-size:0.9rem; font-weight:700; color:#fff;">${p.price.toLocaleString()} 💰</div>
-                            </div>
-                        </div>
-                        <div style="font-size:0.7rem; font-weight:800; color:${borderColor}; background:${borderColor}22; padding:4px 10px; border-radius:6px; letter-spacing:0.5px; white-space:nowrap;">
-                            ${catName}
-                        </div>
-                    </div>
-
-                    ${incomeHtml}
-
-                    <div style="flex:1;"></div> <!-- Spacer -->
-                </div>
-                ${actionHtml}
-            `;
-
-            list.appendChild(item);
-        });
     } catch (e) {
         list.innerHTML = `
-            <div style="text-align:center; padding:20px; color:var(--danger);">
+            <div style="text-align:center; padding:20px; color:var(--danger); grid-column: 1 / -1;">
                 <i class="fas fa-exclamation-triangle" style="font-size:2rem; margin-bottom:10px;"></i>
                 <p>Veriler yüklenemedi!</p>
                 <p style="font-size:0.7rem; color:#888; margin-top:10px;">
-                    Hata: ${e.message}<br><br>
-                    <b>Çözüm:</b> Firebase konsolundan 'real_estate_market' düğümü için Security Rules ayarlarını güncelleyin veya botun yetkilerini kontrol edin.
+                    Hata: ${e.message}
                 </p>
             </div>
         `;
@@ -2638,3 +2706,145 @@ document.addEventListener('keydown', function (event) {
         return false;
     }
 });
+
+// UTILS: Custom Modals replacing browser defaults
+function showAlert(title, message) {
+    return new Promise((resolve) => {
+        const modal = document.getElementById('alert-modal');
+        if (!modal) { console.warn("Alert modal not found, fallback to native"); alert(message); resolve(); return; }
+
+        const titleEl = document.getElementById('alert-modal-title');
+        const msgEl = document.getElementById('alert-modal-message');
+        if (titleEl) titleEl.innerText = title;
+        if (msgEl) msgEl.innerText = message;
+
+        modal.classList.remove('hidden');
+        modal.style.display = 'flex';
+
+        const btn = document.getElementById('alert-modal-btn');
+        if (btn) {
+            btn.onclick = () => {
+                modal.classList.add('hidden');
+                modal.style.display = 'none';
+                resolve();
+            };
+        } else {
+            setTimeout(() => {
+                modal.classList.add('hidden');
+                modal.style.display = 'none';
+                resolve();
+            }, 2000);
+        }
+    });
+}
+
+function showInput(title, desc, placeholder) {
+    return new Promise((resolve) => {
+        const modal = document.getElementById('input-modal');
+        if (!modal) { const r = prompt(desc); resolve(r); return; }
+
+        const titleEl = document.getElementById('input-modal-title');
+        const descEl = document.getElementById('input-modal-desc');
+        const input = document.getElementById('input-modal-value');
+
+        if (titleEl) titleEl.innerText = title;
+        if (descEl) descEl.innerText = desc;
+        if (input) {
+            input.value = "";
+            input.placeholder = placeholder || "...";
+        }
+
+        modal.classList.remove('hidden');
+        modal.style.display = 'flex';
+        if (input) input.focus();
+
+        const close = () => {
+            modal.classList.add('hidden');
+            modal.style.display = 'none';
+        };
+
+        const confirmBtn = document.getElementById('input-modal-confirm');
+        const cancelBtn = document.getElementById('input-modal-cancel');
+
+        if (confirmBtn && cancelBtn) {
+            // Remove old listeners to prevent multiple fires if called repeatedly
+            // Cloning node is a clean way to wipe listeners
+            const newConfirm = confirmBtn.cloneNode(true);
+            const newCancel = cancelBtn.cloneNode(true);
+            confirmBtn.parentNode.replaceChild(newConfirm, confirmBtn);
+            cancelBtn.parentNode.replaceChild(newCancel, cancelBtn);
+
+            newConfirm.onclick = () => {
+                const val = input ? input.value.trim() : "";
+                if (!val) {
+                    if (input) {
+                        input.style.border = "1px solid red";
+                        setTimeout(() => input.style.border = "1px solid var(--glass-border)", 1000);
+                    }
+                    return;
+                }
+                close();
+                resolve(val);
+            };
+
+            newCancel.onclick = () => {
+                close();
+                resolve(null);
+            };
+
+            if (input) {
+                input.onkeydown = (e) => {
+                    if (e.key === 'Enter') newConfirm.click();
+                    if (e.key === 'Escape') newCancel.click();
+                };
+            }
+        } else {
+            // Fallback if buttons missing
+            close();
+            resolve(null);
+        }
+    });
+}
+
+function showConfirm(title, message) {
+    return new Promise((resolve) => {
+        const modal = document.getElementById('confirm-modal');
+        if (!modal) { const r = confirm(message); resolve(r); return; } // Fallback
+
+        const titleEl = document.getElementById('confirm-modal-title');
+        const msgEl = document.getElementById('confirm-modal-message');
+
+        if (titleEl) titleEl.innerText = title;
+        if (msgEl) msgEl.innerText = message;
+
+        modal.classList.remove('hidden');
+        modal.style.display = 'flex';
+
+        const yesBtn = document.getElementById('confirm-modal-yes');
+        const noBtn = document.getElementById('confirm-modal-cancel');
+
+        const close = () => {
+            modal.classList.add('hidden');
+            modal.style.display = 'none';
+        };
+
+        if (yesBtn && noBtn) {
+            const newYes = yesBtn.cloneNode(true);
+            const newNo = noBtn.cloneNode(true);
+            yesBtn.parentNode.replaceChild(newYes, yesBtn);
+            noBtn.parentNode.replaceChild(newNo, noBtn);
+
+            newYes.onclick = () => {
+                close();
+                resolve(true);
+            };
+            newNo.onclick = () => {
+                close();
+                resolve(false);
+            };
+        } else {
+            close();
+            resolve(false);
+        }
+    });
+}
