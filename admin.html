@@ -840,278 +840,281 @@
                     <button class="btn" style="background:#222;" onclick="triggerNews()">📰 TEST HABERİ TETİKLE</button>
                 </div>
             </div>
-        </div>
-        <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:20px;">
-            <h2 style="margin:0;">📈 Borsa Yönetimi</h2>
-            <div
-                style="background:rgba(255,255,255,0.05); padding:8px; border-radius:8px; display:flex; gap:10px; align-items:center;">
-                <label style="font-size:0.8rem; color:var(--muted)">Piyasa Modu:</label>
-                <select id="marketCycleSelect" class="inp" style="height:35px; width:140px; margin:0;"
-                    onchange="setMarketCycle(this.value)">
-                    <option value="NORMAL">Normal</option>
-                    <option value="BULLISH">🚀 BOĞA (Yükseliş)</option>
-                    <option value="BEARISH">🩸 AYI (Düşüş)</option>
-                    <option value="VOLATILE">⚡ Volatil (Riskli)</option>
-                    <option value="STAGNANT">🛑 Durgun (Yatay)</option>
-                    <option value="CRASH">📉 ÇÖKÜŞ (Kriz)</option>
-                </select>
-            </div>
-            <div style="display:flex; gap:10px;">
-                <input type="text" id="newStockCode" placeholder="Kod (Örn: AAPL)" class="inp"
-                    style="margin:0; width:120px;">
-                <input type="text" id="newStockName" placeholder="Hisse Adı" class="inp" style="margin:0; width:180px;">
-                <input type="number" id="newStockPrice" placeholder="Fiyat" class="inp" style="margin:0; width:100px;">
-                <button class="btn" style="width: auto; padding: 0 20px;" onclick="addStock()">+ EKLE</button>
-                <button class="btn btn-danger" style="width: auto; padding: 0 15px;" onclick="resetMarketUsers()">🚨
-                    TÜM KULLANICILARI SIFIRLA</button>
-            </div>
-        </div>
-        <div class="table-container">
-            <table>
-                <thead>
-                    <tr>
-                        <th>Kod</th>
-                        <th>İsim (Görünen)</th>
-                        <th>Fiyat (💰)</th>
-                        <th>Trend</th>
-                        <th style="text-align:right">İşlemler</th>
-                    </tr>
-                </thead>
-                <tbody id="stock-list"></tbody>
-            </table>
-        </div>
-
-        <!-- NEWS MANAGEMENT -->
-        <div
-            style="margin-top: 30px; background: rgba(0,0,0,0.3); padding: 20px; border-radius: 12px; border: 1px solid #333;">
-            <h3 style="margin-bottom: 15px; color: var(--secondary);">📢 Haber Yönetimi</h3>
-            <div style="display: flex; gap: 15px; flex-wrap: wrap;">
-                <div style="flex:1; min-width: 150px;">
-                    <label class="range-label">İlgili Hisse (veya GLOBAL)</label>
-                    <input type="text" id="newsCode" class="inp" placeholder="Örn: AAPL" style="height:35px">
-                </div>
-                <div style="flex:3; min-width: 300px;">
-                    <label class="range-label">Haber Metni</label>
-                    <input type="text" id="newsText" class="inp" placeholder="Haber metni..." style="height:35px">
-                </div>
-                <div style="flex:1; min-width: 120px;">
-                    <label class="range-label">Tür</label>
-                    <select id="newsType" class="inp" style="height:35px">
-                        <option value="GOOD">🚀 Olumlu</option>
-                        <option value="BAD">📉 Olumsuz</option>
+            <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:20px;">
+                <h2 style="margin:0;">📈 Borsa Yönetimi</h2>
+                <div
+                    style="background:rgba(255,255,255,0.05); padding:8px; border-radius:8px; display:flex; gap:10px; align-items:center;">
+                    <label style="font-size:0.8rem; color:var(--muted)">Piyasa Modu:</label>
+                    <select id="marketCycleSelect" class="inp" style="height:35px; width:140px; margin:0;"
+                        onchange="setMarketCycle(this.value)">
+                        <option value="NORMAL">Normal</option>
+                        <option value="BULLISH">🚀 BOĞA (Yükseliş)</option>
+                        <option value="BEARISH">🩸 AYI (Düşüş)</option>
+                        <option value="VOLATILE">⚡ Volatil (Riskli)</option>
+                        <option value="STAGNANT">🛑 Durgun (Yatay)</option>
+                        <option value="CRASH">📉 ÇÖKÜŞ (Kriz)</option>
                     </select>
                 </div>
-                <div style="flex:1; min-width: 100px;">
-                    <label class="range-label">Etki %</label>
-                    <input type="number" id="newsImpact" class="inp" placeholder="0" value="0" style="height:35px">
+                <div style="display:flex; gap:10px;">
+                    <input type="text" id="newStockCode" placeholder="Kod (Örn: AAPL)" class="inp"
+                        style="margin:0; width:120px;">
+                    <input type="text" id="newStockName" placeholder="Hisse Adı" class="inp"
+                        style="margin:0; width:180px;">
+                    <input type="number" id="newStockPrice" placeholder="Fiyat" class="inp"
+                        style="margin:0; width:100px;">
+                    <button class="btn" style="width: auto; padding: 0 20px;" onclick="addStock()">+ EKLE</button>
+                    <button class="btn btn-danger" style="width: auto; padding: 0 15px;" onclick="resetMarketUsers()">🚨
+                        TÜM KULLANICILARI SIFIRLA</button>
                 </div>
-                <div style="display:flex; align-items:flex-end;">
-                    <button class="btn" style="height:35px; padding: 0 20px;" onclick="publishNews()">YAYINLA</button>
+            </div>
+            <div class="table-container">
+                <table>
+                    <thead>
+                        <tr>
+                            <th>Kod</th>
+                            <th>İsim (Görünen)</th>
+                            <th>Fiyat (💰)</th>
+                            <th>Trend</th>
+                            <th style="text-align:right">İşlemler</th>
+                        </tr>
+                    </thead>
+                    <tbody id="stock-list"></tbody>
+                </table>
+            </div>
+
+            <!-- NEWS MANAGEMENT -->
+            <div
+                style="margin-top: 30px; background: rgba(0,0,0,0.3); padding: 20px; border-radius: 12px; border: 1px solid #333;">
+                <h3 style="margin-bottom: 15px; color: var(--secondary);">📢 Haber Yönetimi</h3>
+                <div style="display: flex; gap: 15px; flex-wrap: wrap;">
+                    <div style="flex:1; min-width: 150px;">
+                        <label class="range-label">İlgili Hisse (veya GLOBAL)</label>
+                        <input type="text" id="newsCode" class="inp" placeholder="Örn: AAPL" style="height:35px">
+                    </div>
+                    <div style="flex:3; min-width: 300px;">
+                        <label class="range-label">Haber Metni</label>
+                        <input type="text" id="newsText" class="inp" placeholder="Haber metni..." style="height:35px">
+                    </div>
+                    <div style="flex:1; min-width: 120px;">
+                        <label class="range-label">Tür</label>
+                        <select id="newsType" class="inp" style="height:35px">
+                            <option value="GOOD">🚀 Olumlu</option>
+                            <option value="BAD">📉 Olumsuz</option>
+                        </select>
+                    </div>
+                    <div style="flex:1; min-width: 100px;">
+                        <label class="range-label">Etki %</label>
+                        <input type="number" id="newsImpact" class="inp" placeholder="0" value="0" style="height:35px">
+                    </div>
+                    <div style="display:flex; align-items:flex-end;">
+                        <button class="btn" style="height:35px; padding: 0 20px;"
+                            onclick="publishNews()">YAYINLA</button>
+                    </div>
                 </div>
             </div>
         </div>
-    </div>
 
-    <!-- BALANCE MODAL -->
-    <div id="balanceModal" class="modal">
-        <div class="card" style="width:350px;">
-            <h3 id="bal-modal-title">Bakiye Güncelle</h3>
-            <input type="number" id="newBalance" class="inp" style="margin-top:20px;">
-            <div style="display:flex; gap:10px;">
-                <button class="btn" id="saveBalBtn">KAYDET</button>
-                <button class="btn btn-danger" onclick="closeModal('balanceModal')">İPTAL</button>
+        <!-- BALANCE MODAL -->
+        <div id="balanceModal" class="modal">
+            <div class="card" style="width:350px;">
+                <h3 id="bal-modal-title">Bakiye Güncelle</h3>
+                <input type="number" id="newBalance" class="inp" style="margin-top:20px;">
+                <div style="display:flex; gap:10px;">
+                    <button class="btn" id="saveBalBtn">KAYDET</button>
+                    <button class="btn btn-danger" onclick="closeModal('balanceModal')">İPTAL</button>
+                </div>
             </div>
         </div>
-    </div>
 
-    <!-- DETAIL MODAL -->
-    <div id="detailModal" class="modal">
-        <div class="card" style="width:500px; max-height:80vh; overflow-y:auto;">
-            <h3 id="detail-modal-title">Kanal İstatistikleri</h3>
-            <div id="detail-modal-content" style="margin-top:20px;"></div>
-            <button class="btn btn-danger" onclick="closeModal('detailModal')" style="margin-top:20px;">KAPAT</button>
-        </div>
-    </div>
-
-    <!-- QUEST MODAL -->
-    <div id="questModal" class="modal">
-        <div class="card" style="width:400px;">
-            <h3>🎯 Yeni Görev Oluştur</h3>
-            <label>Görev Adı</label>
-            <input type="text" id="qName" class="inp" placeholder="Örn: 50 Mesaj At">
-            <label>Tür</label>
-            <select id="qType" class="inp">
-                <option value="m">💬 Mesaj</option>
-                <option value="g">🎲 Kumar (Gamble)</option>
-                <option value="d">⚔️ Düello</option>
-                <option value="w">👁️ İzleme (Dakika)</option>
-            </select>
-            <label>Hedef Sayı</label>
-            <input type="number" id="qGoal" class="inp" value="50">
-            <label>Ödül (💰)</label>
-            <input type="number" id="qReward" class="inp" value="1000">
-            <div style="display:flex; gap:10px; margin-top:15px;">
-                <button class="btn" onclick="saveQuest()">OLUŞTUR</button>
-                <button class="btn btn-danger" onclick="closeModal('questModal')">İPTAL</button>
+        <!-- DETAIL MODAL -->
+        <div id="detailModal" class="modal">
+            <div class="card" style="width:500px; max-height:80vh; overflow-y:auto;">
+                <h3 id="detail-modal-title">Kanal İstatistikleri</h3>
+                <div id="detail-modal-content" style="margin-top:20px;"></div>
+                <button class="btn btn-danger" onclick="closeModal('detailModal')"
+                    style="margin-top:20px;">KAPAT</button>
             </div>
         </div>
-    </div>
 
-    <style>
-        .modal {
-            display: none;
-            position: fixed;
-            top: 0;
-            left: 0;
-            width: 100%;
-            height: 100%;
-            background: rgba(0, 0, 0, 0.85);
-            z-index: 9000;
-            align-items: center;
-            justify-content: center;
-        }
-    </style>
+        <!-- QUEST MODAL -->
+        <div id="questModal" class="modal">
+            <div class="card" style="width:400px;">
+                <h3>🎯 Yeni Görev Oluştur</h3>
+                <label>Görev Adı</label>
+                <input type="text" id="qName" class="inp" placeholder="Örn: 50 Mesaj At">
+                <label>Tür</label>
+                <select id="qType" class="inp">
+                    <option value="m">💬 Mesaj</option>
+                    <option value="g">🎲 Kumar (Gamble)</option>
+                    <option value="d">⚔️ Düello</option>
+                    <option value="w">👁️ İzleme (Dakika)</option>
+                </select>
+                <label>Hedef Sayı</label>
+                <input type="number" id="qGoal" class="inp" value="50">
+                <label>Ödül (💰)</label>
+                <input type="number" id="qReward" class="inp" value="1000">
+                <div style="display:flex; gap:10px; margin-top:15px;">
+                    <button class="btn" onclick="saveQuest()">OLUŞTUR</button>
+                    <button class="btn btn-danger" onclick="closeModal('questModal')">İPTAL</button>
+                </div>
+            </div>
+        </div>
 
-    <script>
-        let sessionKey = "";
-        let currentUser = null;
-        let rawUsers = {};
-        const COMMANDS = ['slot', 'yazitura', 'kutu', 'duello', 'soygun', 'fal', 'ship', 'hava', 'zenginler', 'tts', 'ses', 'atyarisi', 'sr', 'ai', 'gundem'];
-        let JOBS = [];
+        <style>
+            .modal {
+                display: none;
+                position: fixed;
+                top: 0;
+                left: 0;
+                width: 100%;
+                height: 100%;
+                background: rgba(0, 0, 0, 0.85);
+                z-index: 9000;
+                align-items: center;
+                justify-content: center;
+            }
+        </style>
 
-        let logInterval = null;
+        <script>
+            let sessionKey = "";
+            let currentUser = null;
+            let rawUsers = {};
+            const COMMANDS = ['slot', 'yazitura', 'kutu', 'duello', 'soygun', 'fal', 'ship', 'hava', 'zenginler', 'tts', 'ses', 'atyarisi', 'sr', 'ai', 'gundem'];
+            let JOBS = [];
 
-        async function uploadAdminImage(input, targetId, channelId, settingKey) {
-            if (!input.files || !input.files[0]) return;
-            const formData = new FormData();
-            formData.append('image', input.files[0]);
-            // formData.append('key', sessionKey); // Not accessible if middleware parses body first. Use Header.
+            let logInterval = null;
 
-            try {
-                const res = await fetch('/admin-api/upload-image', {
-                    method: 'POST',
-                    headers: {
-                        'c-id': channelId,
-                        'Authorization': sessionKey
-                    },
-                    body: formData
-                });
-                const d = await res.json();
-                if (d.url) {
-                    document.getElementById(targetId).value = d.url;
-                    toggleCmd(channelId, settingKey, d.url); // Save immediately
-                    alert("✅ Resim yüklendi ve ayar güncellendi!");
-                    // Refresh to show image thumbnail
-                    setTimeout(loadChannels, 500);
-                } else {
-                    alert("Yükleme hatası: " + (d.error || 'Bilinmiyor'));
+            async function uploadAdminImage(input, targetId, channelId, settingKey) {
+                if (!input.files || !input.files[0]) return;
+                const formData = new FormData();
+                formData.append('image', input.files[0]);
+                // formData.append('key', sessionKey); // Not accessible if middleware parses body first. Use Header.
+
+                try {
+                    const res = await fetch('/admin-api/upload-image', {
+                        method: 'POST',
+                        headers: {
+                            'c-id': channelId,
+                            'Authorization': sessionKey
+                        },
+                        body: formData
+                    });
+                    const d = await res.json();
+                    if (d.url) {
+                        document.getElementById(targetId).value = d.url;
+                        toggleCmd(channelId, settingKey, d.url); // Save immediately
+                        alert("✅ Resim yüklendi ve ayar güncellendi!");
+                        // Refresh to show image thumbnail
+                        setTimeout(loadChannels, 500);
+                    } else {
+                        alert("Yükleme hatası: " + (d.error || 'Bilinmiyor'));
+                    }
+                } catch (e) {
+                    console.error(e);
+                    alert("Yükleme sırasında hata!");
                 }
-            } catch (e) {
-                console.error(e);
-                alert("Yükleme sırasında hata!");
             }
-        }
 
-        async function request2FA() {
-            const username = document.getElementById('adminUser').value.trim();
-            const password = document.getElementById('adminKey').value.trim();
-            if (!username || !password) return;
+            async function request2FA() {
+                const username = document.getElementById('adminUser').value.trim();
+                const password = document.getElementById('adminKey').value.trim();
+                if (!username || !password) return;
 
-            const res = await fetch('/admin-api/2fa-request', {
-                method: 'POST', headers: { 'Content-Type': 'application/json' },
-                body: JSON.stringify({ username, password })
-            });
-            const data = await res.json();
-            if (data.success) {
-                document.getElementById('auth-step-1').style.display = 'none';
-                document.getElementById('auth-step-2').style.display = 'block';
-                document.getElementById('error-log').innerText = "";
-                setTimeout(() => document.getElementById('admin2FA').focus(), 100);
-            } else {
-                document.getElementById('error-log').innerText = data.error || "Giriş Bilgileri Yanlış!";
-            }
-        }
-
-        function resetAuth() {
-            document.getElementById('auth-step-1').style.display = 'block';
-            document.getElementById('auth-step-2').style.display = 'none';
-            document.getElementById('admin2FA').value = "";
-        }
-
-        async function verify2FA() {
-            const username = document.getElementById('adminUser').value;
-            const password = document.getElementById('adminKey').value;
-            const code = document.getElementById('admin2FA').value;
-            if (!code) return;
-
-            try {
-                const res = await fetch('/admin-api/check', {
-                    method: 'POST',
-                    headers: { 'Content-Type': 'application/json' },
-                    body: JSON.stringify({ username, password, code })
+                const res = await fetch('/admin-api/2fa-request', {
+                    method: 'POST', headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({ username, password })
                 });
                 const data = await res.json();
                 if (data.success) {
-                    sessionKey = `${username}:${password}`;
-                    currentUser = data.user;
-
-                    document.getElementById('login-overlay').style.opacity = '0';
-                    setTimeout(() => document.getElementById('login-overlay').style.display = 'none', 500);
-                    document.getElementById('admin-panel').style.display = 'block';
-
-                    applyPermissions();
-                    loadChannels();
-                    loadUsers();
+                    document.getElementById('auth-step-1').style.display = 'none';
+                    document.getElementById('auth-step-2').style.display = 'block';
+                    document.getElementById('error-log').innerText = "";
+                    setTimeout(() => document.getElementById('admin2FA').focus(), 100);
                 } else {
-                    document.getElementById('error-log').innerText = data.error || "Kod Hatalı!";
+                    document.getElementById('error-log').innerText = data.error || "Giriş Bilgileri Yanlış!";
                 }
-            } catch (e) {
-                document.getElementById('error-log').innerText = "Bağlantı Hatası!";
             }
-        }
 
-
-
-        // --- ASSET MODALS HTML INJECTION ---
-        // This is a helper to inject modals if they don't exist in body (simplified for single file)
-        // Ideally should be in HTML body, but we inject here or assume user added them.
-        // Since we are editing the file, let's add them to the body dynamically or check if we should add them to HTML section.
-        // Let's rely on standard HTML structure.
-
-        /* QUEST FUNCTIONS */
-        function openQuestModal() {
-            document.getElementById('questModal').style.display = 'flex';
-        }
-        function closeModal(id) {
-            document.getElementById(id).style.display = 'none';
-        }
-        async function saveQuest() {
-            const name = document.getElementById('qName').value;
-            const type = document.getElementById('qType').value;
-            const goal = document.getElementById('qGoal').value;
-            const reward = document.getElementById('qReward').value;
-            if (!name) return alert("İsim lazım");
-
-            const res = await fetch('/admin-api/add-quest', {
-                method: 'POST', headers: { 'Content-Type': 'application/json' },
-                body: JSON.stringify({ key: sessionKey, name, type, goal, reward })
-            });
-            if ((await res.json()).success) {
-                closeModal('questModal');
-                loadAdminQuests();
+            function resetAuth() {
+                document.getElementById('auth-step-1').style.display = 'block';
+                document.getElementById('auth-step-2').style.display = 'none';
+                document.getElementById('admin2FA').value = "";
             }
-        }
-        async function loadAdminQuests() {
-            const res = await fetch('/admin-api/get-quests', {
-                method: 'POST', headers: { 'Content-Type': 'application/json' },
-                body: JSON.stringify({ key: sessionKey })
-            });
-            const quests = await res.json();
-            const container = document.getElementById('admin-quest-list');
-            container.innerHTML = "";
-            Object.entries(quests || {}).forEach(([id, q]) => {
-                const tr = document.createElement('tr');
-                tr.innerHTML = `
+
+            async function verify2FA() {
+                const username = document.getElementById('adminUser').value;
+                const password = document.getElementById('adminKey').value;
+                const code = document.getElementById('admin2FA').value;
+                if (!code) return;
+
+                try {
+                    const res = await fetch('/admin-api/check', {
+                        method: 'POST',
+                        headers: { 'Content-Type': 'application/json' },
+                        body: JSON.stringify({ username, password, code })
+                    });
+                    const data = await res.json();
+                    if (data.success) {
+                        sessionKey = `${username}:${password}`;
+                        currentUser = data.user;
+
+                        document.getElementById('login-overlay').style.opacity = '0';
+                        setTimeout(() => document.getElementById('login-overlay').style.display = 'none', 500);
+                        document.getElementById('admin-panel').style.display = 'block';
+
+                        applyPermissions();
+                        loadChannels();
+                        loadUsers();
+                    } else {
+                        document.getElementById('error-log').innerText = data.error || "Kod Hatalı!";
+                    }
+                } catch (e) {
+                    document.getElementById('error-log').innerText = "Bağlantı Hatası!";
+                }
+            }
+
+
+
+            // --- ASSET MODALS HTML INJECTION ---
+            // This is a helper to inject modals if they don't exist in body (simplified for single file)
+            // Ideally should be in HTML body, but we inject here or assume user added them.
+            // Since we are editing the file, let's add them to the body dynamically or check if we should add them to HTML section.
+            // Let's rely on standard HTML structure.
+
+            /* QUEST FUNCTIONS */
+            function openQuestModal() {
+                document.getElementById('questModal').style.display = 'flex';
+            }
+            function closeModal(id) {
+                document.getElementById(id).style.display = 'none';
+            }
+            async function saveQuest() {
+                const name = document.getElementById('qName').value;
+                const type = document.getElementById('qType').value;
+                const goal = document.getElementById('qGoal').value;
+                const reward = document.getElementById('qReward').value;
+                if (!name) return alert("İsim lazım");
+
+                const res = await fetch('/admin-api/add-quest', {
+                    method: 'POST', headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({ key: sessionKey, name, type, goal, reward })
+                });
+                if ((await res.json()).success) {
+                    closeModal('questModal');
+                    loadAdminQuests();
+                }
+            }
+            async function loadAdminQuests() {
+                const res = await fetch('/admin-api/get-quests', {
+                    method: 'POST', headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({ key: sessionKey })
+                });
+                const quests = await res.json();
+                const container = document.getElementById('admin-quest-list');
+                container.innerHTML = "";
+                Object.entries(quests || {}).forEach(([id, q]) => {
+                    const tr = document.createElement('tr');
+                    tr.innerHTML = `
                         <td>${q.name}</td>
                         <td>${q.type === 'm' ? '💬 Mesaj' : q.type === 'g' ? '🎲 Kumar' : q.type === 'w' ? '👁️ İzleme' : '⚔️ Düello'}</td>
                         <td>${q.goal}</td>
@@ -1120,72 +1123,72 @@
                             <button class="btn btn-danger" style="width:auto; padding:5px 10px;" onclick="deleteQuest('${id}')">SİL</button>
                         </td>
                     `;
-                container.appendChild(tr);
-            });
-        }
-        async function deleteQuest(id) {
-            if (!confirm("Emin misin?")) return;
-            const res = await fetch('/admin-api/delete-quest', {
-                method: 'POST', headers: { 'Content-Type': 'application/json' },
-                body: JSON.stringify({ key: sessionKey, id })
-            });
-            if ((await res.json()).success) loadAdminQuests();
-        }
-
-        function showTab(id) {
-            document.querySelectorAll('.section').forEach(d => d.classList.remove('active'));
-            const target = document.getElementById(id);
-            if (target) target.classList.add('active');
-
-            document.querySelectorAll('.tab-btn').forEach(b => b.classList.remove('active'));
-            if (window.event) window.event.currentTarget.classList.add('active');
-
-            if (id === 'logs') {
-                loadLogs();
-                if (!logInterval) logInterval = setInterval(loadLogs, 5000);
-            } else if (id === 'quests') {
-                loadAdminQuests();
-            } else if (id === 'stocks') {
-                loadStocks();
-            } else {
-                if (logInterval) { clearInterval(logInterval); logInterval = null; }
-            }
-        }
-
-        function showSubTab(channelId, section, event) {
-            const card = event.target.closest('.card');
-            card.querySelectorAll('.sub-tab-btn').forEach(b => b.classList.remove('active'));
-            event.target.classList.add('active');
-            card.querySelectorAll('.sub-section').forEach(s => s.classList.remove('active'));
-            card.querySelector(`#sub-${section}-${channelId}`).classList.add('active');
-        }
-
-        async function loadChannels() {
-            const res = await fetch('/admin-api/channels', {
-                method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ key: sessionKey })
-            });
-            const channels = await res.json();
-            const container = document.getElementById('channel-list');
-            container.innerHTML = "";
-
-            const dropdown = document.getElementById('targetChannel');
-            dropdown.innerHTML = '<option value="">Gönderilecek Kanalı Seç...</option>';
-
-            for (const [id, data] of Object.entries(channels)) {
-                dropdown.innerHTML += `<option value="${id}">${data.username || id}</option>`;
-
-                let toggles = "";
-                COMMANDS.forEach(cmd => {
-                    const isChecked = data.settings && data.settings[cmd] !== false ? "checked" : "";
-                    toggles += `<div class="toggle-item"><span>!${cmd}</span><label class="switch"><input type="checkbox" ${isChecked} onchange="toggleCmd('${id}', '${cmd}', this.checked)"><span class="slider"></span></label></div>`;
+                    container.appendChild(tr);
                 });
+            }
+            async function deleteQuest(id) {
+                if (!confirm("Emin misin?")) return;
+                const res = await fetch('/admin-api/delete-quest', {
+                    method: 'POST', headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({ key: sessionKey, id })
+                });
+                if ((await res.json()).success) loadAdminQuests();
+            }
 
-                const s = data.settings || {};
-                const getVal = (v, def) => (v !== undefined ? v : def);
-                const overlayUrl = `${window.location.origin}/overlay?key=${data.overlay_key || 'YOK'}`;
-                const horseRaceUrl = `${window.location.origin}/horse-race?key=${data.overlay_key || 'YOK'}`;
+            function showTab(id) {
+                document.querySelectorAll('.section').forEach(d => d.classList.remove('active'));
+                const target = document.getElementById(id);
+                if (target) target.classList.add('active');
 
-                const html = `
+                document.querySelectorAll('.tab-btn').forEach(b => b.classList.remove('active'));
+                if (window.event) window.event.currentTarget.classList.add('active');
+
+                if (id === 'logs') {
+                    loadLogs();
+                    if (!logInterval) logInterval = setInterval(loadLogs, 5000);
+                } else if (id === 'quests') {
+                    loadAdminQuests();
+                } else if (id === 'stocks') {
+                    loadStocks();
+                } else {
+                    if (logInterval) { clearInterval(logInterval); logInterval = null; }
+                }
+            }
+
+            function showSubTab(channelId, section, event) {
+                const card = event.target.closest('.card');
+                card.querySelectorAll('.sub-tab-btn').forEach(b => b.classList.remove('active'));
+                event.target.classList.add('active');
+                card.querySelectorAll('.sub-section').forEach(s => s.classList.remove('active'));
+                card.querySelector(`#sub-${section}-${channelId}`).classList.add('active');
+            }
+
+            async function loadChannels() {
+                const res = await fetch('/admin-api/channels', {
+                    method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ key: sessionKey })
+                });
+                const channels = await res.json();
+                const container = document.getElementById('channel-list');
+                container.innerHTML = "";
+
+                const dropdown = document.getElementById('targetChannel');
+                dropdown.innerHTML = '<option value="">Gönderilecek Kanalı Seç...</option>';
+
+                for (const [id, data] of Object.entries(channels)) {
+                    dropdown.innerHTML += `<option value="${id}">${data.username || id}</option>`;
+
+                    let toggles = "";
+                    COMMANDS.forEach(cmd => {
+                        const isChecked = data.settings && data.settings[cmd] !== false ? "checked" : "";
+                        toggles += `<div class="toggle-item"><span>!${cmd}</span><label class="switch"><input type="checkbox" ${isChecked} onchange="toggleCmd('${id}', '${cmd}', this.checked)"><span class="slider"></span></label></div>`;
+                    });
+
+                    const s = data.settings || {};
+                    const getVal = (v, def) => (v !== undefined ? v : def);
+                    const overlayUrl = `${window.location.origin}/overlay?key=${data.overlay_key || 'YOK'}`;
+                    const horseRaceUrl = `${window.location.origin}/horse-race?key=${data.overlay_key || 'YOK'}`;
+
+                    const html = `
                     <div class="card">
                         <h3>
                             <span>${data.username} <span class="status-dot"></span></span>
@@ -1415,17 +1418,17 @@
                         </div>
                     </div>
                 `;
-                container.innerHTML += html;
-                renderSoundList(id, s.custom_sounds || {});
+                    container.innerHTML += html;
+                    renderSoundList(id, s.custom_sounds || {});
+                }
             }
-        }
 
-        function renderSoundList(channelId, sounds) {
-            const container = document.getElementById(`sound-list-${channelId}`);
-            if (!container) return;
-            container.innerHTML = Object.keys(sounds).length ? "" : "<p style='color:#444'>Henüz ses yok.</p>";
-            Object.entries(sounds).forEach(([name, data]) => {
-                container.innerHTML += `
+            function renderSoundList(channelId, sounds) {
+                const container = document.getElementById(`sound-list-${channelId}`);
+                if (!container) return;
+                container.innerHTML = Object.keys(sounds).length ? "" : "<p style='color:#444'>Henüz ses yok.</p>";
+                Object.entries(sounds).forEach(([name, data]) => {
+                    container.innerHTML += `
                     <div style="padding:8px; background:#121212; margin-bottom:5px; border-radius:8px; border: 1px solid #222;">
                         <div style="display:flex; justify-content:space-between; margin-bottom:5px; align-items:center;">
                             <span>!ses <b>${name}</b></span>
@@ -1440,97 +1443,97 @@
                             <div style="flex:1"><label style="font-size:0.6rem; color:#666">Süre</label><input type="number" value="${data.duration || 0}" class="inp" style="height:25px; font-size:0.7rem;" onchange="editSound('${channelId}','${name}','duration',this.value)"></div>
                         </div>
                     </div>`;
-            });
-        }
-
-        async function editSound(channelId, name, key, val) {
-            const chanRes = await fetch('/admin-api/channels', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ key: sessionKey }) });
-            const channels = await chanRes.json();
-            const current = channels[channelId]?.settings?.custom_sounds || {};
-            if (current[name]) {
-                current[name][key] = parseInt(val);
-                await toggleCmd(channelId, 'custom_sounds', current);
-            }
-        }
-
-        async function loadUsers() {
-            const res = await fetch('/admin-api/all-users', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ key: sessionKey }) });
-            rawUsers = await res.json();
-            userLimit = 100;
-
-            // Sync JOBS from server to ensure admin panel has latest job list
-            const jobsRes = await fetch('/admin-api/get-jobs', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ key: sessionKey }) });
-            if (jobsRes.ok) {
-                JOBS = await jobsRes.json();
+                });
             }
 
-            // Job filtresini doldur
-            const jobSelect = document.getElementById('filterJob');
-            const currentVal = jobSelect.value;
-            jobSelect.innerHTML = '<option value="all">Tüm Meslekler</option>' +
-                JOBS.map(j => `<option value="${j}">${j}</option>`).join('');
-            jobSelect.value = currentVal;
+            async function editSound(channelId, name, key, val) {
+                const chanRes = await fetch('/admin-api/channels', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ key: sessionKey }) });
+                const channels = await chanRes.json();
+                const current = channels[channelId]?.settings?.custom_sounds || {};
+                if (current[name]) {
+                    current[name][key] = parseInt(val);
+                    await toggleCmd(channelId, 'custom_sounds', current);
+                }
+            }
 
-            filterUsers();
-        }
+            async function loadUsers() {
+                const res = await fetch('/admin-api/all-users', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ key: sessionKey }) });
+                rawUsers = await res.json();
+                userLimit = 100;
 
-        let userLimit = 100;
-        function loadMoreUsers() {
-            userLimit += 100;
-            filterUsers();
-        }
+                // Sync JOBS from server to ensure admin panel has latest job list
+                const jobsRes = await fetch('/admin-api/get-jobs', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ key: sessionKey }) });
+                if (jobsRes.ok) {
+                    JOBS = await jobsRes.json();
+                }
 
-        async function deepSearch() {
-            const q = document.getElementById('usersearch').value.trim();
-            if (!q) return;
-            const res = await fetch('/admin-api/all-users', {
-                method: 'POST',
-                headers: { 'Content-Type': 'application/json' },
-                body: JSON.stringify({ key: sessionKey, search: q })
-            });
-            const data = await res.json();
-            if (Object.keys(data).length) {
-                rawUsers = { ...rawUsers, ...data };
+                // Job filtresini doldur
+                const jobSelect = document.getElementById('filterJob');
+                const currentVal = jobSelect.value;
+                jobSelect.innerHTML = '<option value="all">Tüm Meslekler</option>' +
+                    JOBS.map(j => `<option value="${j}">${j}</option>`).join('');
+                jobSelect.value = currentVal;
+
                 filterUsers();
-            } else {
-                alert("Kullanıcı bulunamadı.");
             }
-        }
 
-        function displayUsers(users) {
-            const list = document.getElementById('user-list');
-            if (!users.length) {
-                list.innerHTML = "<tr><td colspan='8' style='text-align:center; padding:50px;'><p style='color:#555; margin-bottom:10px;'>Yerel listede bulunamadı.</p><button class='btn' style='width:auto; margin:0 auto;' onclick='deepSearch()'>🔍 SUNUCUDA ARA</button></td></tr>";
-                return;
+            let userLimit = 100;
+            function loadMoreUsers() {
+                userLimit += 100;
+                filterUsers();
             }
-            list.innerHTML = users.map(([u, d]) => {
-                const lastSeen = d.last_seen ? new Date(d.last_seen).toLocaleString('tr-TR') : 'N/A';
-                const banCount = (d.bans && Object.values(d.bans).reduce((a, b) => a + b, 0)) || 0;
-                const isInf = d.is_infinite;
-                const userJob = d.job || "İşsiz";
-                const totalWatch = d.lifetime_w || 0;
-                const today = new Date().toLocaleDateString('en-CA', { timeZone: 'Europe/Istanbul' });
-                const todayData = d.quests?.[today] || { m: 0, w: 0 };
-                const todayWatch = todayData.w || 0;
-                const todayMessages = todayData.m || 0;
 
-                // En çok izlediği kanalı bul
-                let mostWatched = "Yok";
-                if (d.channel_watch_time) {
-                    const top = Object.entries(d.channel_watch_time).sort((a, b) => b[1] - a[1])[0];
-                    if (top) mostWatched = `${top[1]}dk`;
+            async function deepSearch() {
+                const q = document.getElementById('usersearch').value.trim();
+                if (!q) return;
+                const res = await fetch('/admin-api/all-users', {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({ key: sessionKey, search: q })
+                });
+                const data = await res.json();
+                if (Object.keys(data).length) {
+                    rawUsers = { ...rawUsers, ...data };
+                    filterUsers();
+                } else {
+                    alert("Kullanıcı bulunamadı.");
                 }
+            }
 
-                // En çok mesaj attığı kanalı bul
-                let mostMessages = "Yok";
-                if (d.channel_m) {
-                    const top = Object.entries(d.channel_m).sort((a, b) => b[1] - a[1])[0];
-                    if (top) mostMessages = `${top[1]}`;
+            function displayUsers(users) {
+                const list = document.getElementById('user-list');
+                if (!users.length) {
+                    list.innerHTML = "<tr><td colspan='8' style='text-align:center; padding:50px;'><p style='color:#555; margin-bottom:10px;'>Yerel listede bulunamadı.</p><button class='btn' style='width:auto; margin:0 auto;' onclick='deepSearch()'>🔍 SUNUCUDA ARA</button></td></tr>";
+                    return;
                 }
+                list.innerHTML = users.map(([u, d]) => {
+                    const lastSeen = d.last_seen ? new Date(d.last_seen).toLocaleString('tr-TR') : 'N/A';
+                    const banCount = (d.bans && Object.values(d.bans).reduce((a, b) => a + b, 0)) || 0;
+                    const isInf = d.is_infinite;
+                    const userJob = d.job || "İşsiz";
+                    const totalWatch = d.lifetime_w || 0;
+                    const today = new Date().toLocaleDateString('en-CA', { timeZone: 'Europe/Istanbul' });
+                    const todayData = d.quests?.[today] || { m: 0, w: 0 };
+                    const todayWatch = todayData.w || 0;
+                    const todayMessages = todayData.m || 0;
 
-                let jobOptions = JOBS.map(j => `<option value="${j}" ${userJob === j ? 'selected' : ''}>${j}</option>`).join('');
+                    // En çok izlediği kanalı bul
+                    let mostWatched = "Yok";
+                    if (d.channel_watch_time) {
+                        const top = Object.entries(d.channel_watch_time).sort((a, b) => b[1] - a[1])[0];
+                        if (top) mostWatched = `${top[1]}dk`;
+                    }
 
-                return `
+                    // En çok mesaj attığı kanalı bul
+                    let mostMessages = "Yok";
+                    if (d.channel_m) {
+                        const top = Object.entries(d.channel_m).sort((a, b) => b[1] - a[1])[0];
+                        if (top) mostMessages = `${top[1]}`;
+                    }
+
+                    let jobOptions = JOBS.map(j => `<option value="${j}" ${userJob === j ? 'selected' : ''}>${j}</option>`).join('');
+
+                    return `
                 <tr style="${isInf ? 'background:rgba(0,255,136,0.05)' : ''}">
                     <td><b>${u}</b> ${isInf ? '<span style="color:var(--primary); font-size:0.7rem;">(♾️)</span>' : ''}</td>
                     <td>${isInf ? '♾️' : (d.balance || 0).toLocaleString() + ' 💰'}</td>
@@ -1566,81 +1569,81 @@
                         <button class="btn btn-small btn-danger" style="width:34px; height:34px; display:inline-flex;" onclick="resetUser('${u}')">🔄</button>
                     </td>
                 </tr>`;
-            }).join('');
-        }
+                }).join('');
+            }
 
-        function filterUsers() {
-            const q = document.getElementById('usersearch').value.toLowerCase();
-            const sort = document.getElementById('userSort').value;
-            const onlyInf = document.getElementById('filterInfinite').checked;
-            const onlyProp = document.getElementById('filterProperty').checked;
-            const onlyStock = document.getElementById('filterStock').checked;
-            const jobFilter = document.getElementById('filterJob').value;
+            function filterUsers() {
+                const q = document.getElementById('usersearch').value.toLowerCase();
+                const sort = document.getElementById('userSort').value;
+                const onlyInf = document.getElementById('filterInfinite').checked;
+                const onlyProp = document.getElementById('filterProperty').checked;
+                const onlyStock = document.getElementById('filterStock').checked;
+                const jobFilter = document.getElementById('filterJob').value;
 
-            let filtered = Object.entries(rawUsers);
+                let filtered = Object.entries(rawUsers);
 
-            // ARAMA
-            if (q) filtered = filtered.filter(([u]) => u.toLowerCase().includes(q));
+                // ARAMA
+                if (q) filtered = filtered.filter(([u]) => u.toLowerCase().includes(q));
 
-            // FİLTRE: SINIRSIZ
-            if (onlyInf) filtered = filtered.filter(([_, d]) => d.is_infinite);
+                // FİLTRE: SINIRSIZ
+                if (onlyInf) filtered = filtered.filter(([_, d]) => d.is_infinite);
 
-            // FİLTRE: MÜLK
-            if (onlyProp) filtered = filtered.filter(([_, d]) => d.properties && Object.keys(d.properties).length > 0);
+                // FİLTRE: MÜLK
+                if (onlyProp) filtered = filtered.filter(([_, d]) => d.properties && Object.keys(d.properties).length > 0);
 
-            // FİLTRE: HİSSE
-            if (onlyStock) filtered = filtered.filter(([_, d]) => d.stocks && Object.keys(d.stocks).length > 0);
+                // FİLTRE: HİSSE
+                if (onlyStock) filtered = filtered.filter(([_, d]) => d.stocks && Object.keys(d.stocks).length > 0);
 
-            // FİLTRE: MESLEK
-            if (jobFilter !== 'all') filtered = filtered.filter(([_, d]) => (d.job || "İşsiz") === jobFilter);
+                // FİLTRE: MESLEK
+                if (jobFilter !== 'all') filtered = filtered.filter(([_, d]) => (d.job || "İşsiz") === jobFilter);
 
-            // SIRALAMA
-            filtered.sort((a, b) => {
-                const [uA, dA] = a;
-                const [uB, dB] = b;
+                // SIRALAMA
+                filtered.sort((a, b) => {
+                    const [uA, dA] = a;
+                    const [uB, dB] = b;
 
-                if (sort === 'balance_desc') return (dB.balance || 0) - (dA.balance || 0);
-                if (sort === 'balance_asc') return (dA.balance || 0) - (dB.balance || 0);
-                if (sort === 'seen_desc') return (dB.last_seen || 0) - (dA.last_seen || 0);
-                if (sort === 'seen_asc') return (dA.last_seen || 0) - (dB.last_seen || 0);
-                if (sort === 'name_asc') return uA.localeCompare(uB);
-                return 0;
-            });
-
-            displayUsers(filtered.slice(0, userLimit));
-        }
-
-        function openBalanceModal(user, current) {
-            document.getElementById('bal-modal-title').innerText = `@${user} Bakiyesi`;
-            document.getElementById('newBalance').value = current;
-            document.getElementById('balanceModal').style.display = 'flex';
-            document.getElementById('saveBalBtn').onclick = async () => {
-                const val = document.getElementById('newBalance').value;
-                await fetch('/admin-api/update-user', {
-                    method: 'POST',
-                    headers: { 'Content-Type': 'application/json' },
-                    body: JSON.stringify({ key: sessionKey, user, balance: val })
+                    if (sort === 'balance_desc') return (dB.balance || 0) - (dA.balance || 0);
+                    if (sort === 'balance_asc') return (dA.balance || 0) - (dB.balance || 0);
+                    if (sort === 'seen_desc') return (dB.last_seen || 0) - (dA.last_seen || 0);
+                    if (sort === 'seen_asc') return (dA.last_seen || 0) - (dB.last_seen || 0);
+                    if (sort === 'name_asc') return uA.localeCompare(uB);
+                    return 0;
                 });
-                closeModal('balanceModal');
-                loadUsers();
-            };
-        }
 
-        function closeModal(id) { document.getElementById(id).style.display = 'none'; }
+                displayUsers(filtered.slice(0, userLimit));
+            }
 
-        async function openDetailModal(username, type) {
-            const user = rawUsers[username];
-            if (!user) return;
+            function openBalanceModal(user, current) {
+                document.getElementById('bal-modal-title').innerText = `@${user} Bakiyesi`;
+                document.getElementById('newBalance').value = current;
+                document.getElementById('balanceModal').style.display = 'flex';
+                document.getElementById('saveBalBtn').onclick = async () => {
+                    const val = document.getElementById('newBalance').value;
+                    await fetch('/admin-api/update-user', {
+                        method: 'POST',
+                        headers: { 'Content-Type': 'application/json' },
+                        body: JSON.stringify({ key: sessionKey, user, balance: val })
+                    });
+                    closeModal('balanceModal');
+                    loadUsers();
+                };
+            }
 
-            const title = document.getElementById('detail-modal-title');
-            const content = document.getElementById('detail-modal-content');
-            title.innerText = `@${username} - ${type === 'watch' ? 'İzleme' : 'Mesaj'} Detayları`;
+            function closeModal(id) { document.getElementById(id).style.display = 'none'; }
 
-            // Kanalları çek (İsimleri göstermek için)
-            const cRes = await fetch('/admin-api/channels', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ key: sessionKey }) });
-            const channels = await cRes.json();
+            async function openDetailModal(username, type) {
+                const user = rawUsers[username];
+                if (!user) return;
 
-            let html = `
+                const title = document.getElementById('detail-modal-title');
+                const content = document.getElementById('detail-modal-content');
+                title.innerText = `@${username} - ${type === 'watch' ? 'İzleme' : 'Mesaj'} Detayları`;
+
+                // Kanalları çek (İsimleri göstermek için)
+                const cRes = await fetch('/admin-api/channels', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ key: sessionKey }) });
+                const channels = await cRes.json();
+
+                let html = `
                     <table style="width:100%; border-collapse:collapse;">
                         <thead>
                             <tr style="border-bottom:1px solid #333;">
@@ -1651,67 +1654,67 @@
                         <tbody>
                 `;
 
-            const dataObj = type === 'watch' ? (user.channel_watch_time || {}) : (user.channel_m || {});
-            const sorted = Object.entries(dataObj).sort((a, b) => b[1] - a[1]);
+                const dataObj = type === 'watch' ? (user.channel_watch_time || {}) : (user.channel_m || {});
+                const sorted = Object.entries(dataObj).sort((a, b) => b[1] - a[1]);
 
-            if (sorted.length === 0) {
-                html += `<tr><td colspan="2" style="text-align:center; padding:20px; color:#666;">Veri bulunamadı.</td></tr>`;
-            } else {
-                sorted.forEach(([cid, val]) => {
-                    const cName = channels[cid]?.username || `ID: ${cid}`;
-                    html += `
+                if (sorted.length === 0) {
+                    html += `<tr><td colspan="2" style="text-align:center; padding:20px; color:#666;">Veri bulunamadı.</td></tr>`;
+                } else {
+                    sorted.forEach(([cid, val]) => {
+                        const cName = channels[cid]?.username || `ID: ${cid}`;
+                        html += `
                             <tr style="border-bottom:1px solid #111;">
                                 <td style="padding:10px; font-size:0.85rem;">${cName}</td>
                                 <td style="padding:10px; text-align:right; font-weight:bold; color:var(--primary); font-size:0.85rem;">${val}${type === 'watch' ? ' dk' : ''}</td>
                             </tr>
                         `;
+                    });
+                }
+
+                html += `</tbody></table>`;
+                content.innerHTML = html;
+                document.getElementById('detailModal').style.display = 'flex';
+            }
+
+            function previewAdminSound(url) {
+                const audio = new Audio(url);
+                audio.volume = 0.5;
+                audio.play().catch(e => console.error("Önizleme hatası:", e));
+            }
+
+            async function toggleInfinite(user, val) {
+                await fetch('/admin-api/toggle-infinite', {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({ key: sessionKey, user, value: val })
                 });
+                loadUsers();
             }
 
-            html += `</tbody></table>`;
-            content.innerHTML = html;
-            document.getElementById('detailModal').style.display = 'flex';
-        }
-
-        function previewAdminSound(url) {
-            const audio = new Audio(url);
-            audio.volume = 0.5;
-            audio.play().catch(e => console.error("Önizleme hatası:", e));
-        }
-
-        async function toggleInfinite(user, val) {
-            await fetch('/admin-api/toggle-infinite', {
-                method: 'POST',
-                headers: { 'Content-Type': 'application/json' },
-                body: JSON.stringify({ key: sessionKey, user, value: val })
-            });
-            loadUsers();
-        }
-
-        async function setUserJob(user, job) {
-            const res = await fetch('/admin-api/set-job', {
-                method: 'POST',
-                headers: { 'Content-Type': 'application/json' },
-                body: JSON.stringify({ key: sessionKey, user, job })
-            });
-            const d = await res.json();
-            if (d.success) {
-                const t = document.getElementById('toast');
-                t.innerText = "Meslek Atandı! 💼";
-                t.style.display = 'block';
-                setTimeout(() => t.style.display = 'none', 2000);
+            async function setUserJob(user, job) {
+                const res = await fetch('/admin-api/set-job', {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({ key: sessionKey, user, job })
+                });
+                const d = await res.json();
+                if (d.success) {
+                    const t = document.getElementById('toast');
+                    t.innerText = "Meslek Atandı! 💼";
+                    t.style.display = 'block';
+                    setTimeout(() => t.style.display = 'none', 2000);
+                }
             }
-        }
 
-        async function loadLogs() {
-            const res = await fetch('/admin-api/get-logs', {
-                method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ key: sessionKey })
-            });
-            const logs = await res.json();
-            const container = document.getElementById('log-container');
-            if (!logs.length) { container.innerHTML = "<p style='color:#444'>Henüz kayıt yok.</p>"; return; }
+            async function loadLogs() {
+                const res = await fetch('/admin-api/get-logs', {
+                    method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ key: sessionKey })
+                });
+                const logs = await res.json();
+                const container = document.getElementById('log-container');
+                if (!logs.length) { container.innerHTML = "<p style='color:#444'>Henüz kayıt yok.</p>"; return; }
 
-            container.innerHTML = logs.map(l => `
+                container.innerHTML = logs.map(l => `
                 <div class="log-entry">
                     <span class="log-ts">${new Date(l.timestamp).toLocaleTimeString()}</span>
                     <span class="log-chan">${l.channelId || 'Global'}</span>
@@ -1719,59 +1722,59 @@
                     <span class="log-details">${l.details}</span>
                 </div>
             `).join('');
-            // Scroll to top
-            container.scrollTop = 0;
-        }
-
-        // --- Helper APIs ---
-        async function resetOverlayKey(id) {
-            if (!confirm("Bu işlem OBS linkini geçersiz kılar. Yeni linki eklemeniz gerekecek. Emin misiniz?")) return;
-            await fetch('/admin-api/reset-overlay-key', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ key: sessionKey, channelId: id }) });
-            loadChannels();
-        }
-
-        async function testFireworks(id) {
-            await fetch('/admin-api/test-fireworks', {
-                method: 'POST',
-                headers: { 'Content-Type': 'application/json' },
-                body: JSON.stringify({ key: sessionKey, channelId: id })
-            });
-        }
-
-        async function reloadOverlay(id) {
-            if (!confirm("Kanalın overlay'ini uzaktan yenilemek istiyor musunuz?")) return;
-            await fetch('/admin-api/reload-overlay', {
-                method: 'POST',
-                headers: { 'Content-Type': 'application/json' },
-                body: JSON.stringify({ key: sessionKey, channelId: id })
-            });
-        }
-
-        async function distributeBalancePrompt(id) {
-            const amt = prompt("Miktar (💰):", "1000");
-            if (amt) {
-                await fetch('/admin-api/distribute-balance', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ key: sessionKey, channelId: id, amount: amt }) });
-                alert("Dağıtım başarılı!");
+                // Scroll to top
+                container.scrollTop = 0;
             }
-        }
 
-        // --- ASSET MODALS AND LOGIC ---
-        function openAssetModal(username) {
-            const user = rawUsers[username];
-            if (!user) return;
+            // --- Helper APIs ---
+            async function resetOverlayKey(id) {
+                if (!confirm("Bu işlem OBS linkini geçersiz kılar. Yeni linki eklemeniz gerekecek. Emin misiniz?")) return;
+                await fetch('/admin-api/reset-overlay-key', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ key: sessionKey, channelId: id }) });
+                loadChannels();
+            }
 
-            document.getElementById('asset-modal-title').innerText = `@${username} Varlıkları`;
-            const content = document.getElementById('asset-modal-content');
+            async function testFireworks(id) {
+                await fetch('/admin-api/test-fireworks', {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({ key: sessionKey, channelId: id })
+                });
+            }
 
-            let html = `
+            async function reloadOverlay(id) {
+                if (!confirm("Kanalın overlay'ini uzaktan yenilemek istiyor musunuz?")) return;
+                await fetch('/admin-api/reload-overlay', {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({ key: sessionKey, channelId: id })
+                });
+            }
+
+            async function distributeBalancePrompt(id) {
+                const amt = prompt("Miktar (💰):", "1000");
+                if (amt) {
+                    await fetch('/admin-api/distribute-balance', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ key: sessionKey, channelId: id, amount: amt }) });
+                    alert("Dağıtım başarılı!");
+                }
+            }
+
+            // --- ASSET MODALS AND LOGIC ---
+            function openAssetModal(username) {
+                const user = rawUsers[username];
+                if (!user) return;
+
+                document.getElementById('asset-modal-title').innerText = `@${username} Varlıkları`;
+                const content = document.getElementById('asset-modal-content');
+
+                let html = `
                     <div style="display:flex; gap:20px;">
                         <div style="flex:1; background:#000; padding:10px; border-radius:8px;">
                             <h4 style="color:var(--secondary); border-bottom:1px solid #333; padding-bottom:5px; margin-bottom:10px;">🏢 Emlak (${Object.keys(user.real_estate || {}).length})</h4>
                             <ul style="list-style:none; max-height:200px; overflow-y:auto; padding-right:5px;">
                                 ${(() => {
-                    const props = user.properties ? (Array.isArray(user.properties) ? user.properties : Object.values(user.properties)) : [];
-                    if (props.length === 0) return '<li style="color:#666; font-size:0.8rem;">Hiç emlak yok.</li>';
-                    return props.map((p, index) => `
+                        const props = user.properties ? (Array.isArray(user.properties) ? user.properties : Object.values(user.properties)) : [];
+                        if (props.length === 0) return '<li style="color:#666; font-size:0.8rem;">Hiç emlak yok.</li>';
+                        return props.map((p, index) => `
                                         <li style="font-size:0.8rem; border-bottom:1px solid #222; padding:5px 0; display:flex; justify-content:space-between; align-items:center;">
                                             <div>
                                                 <b>${p.name}</b> <span style="color:#666">(${p.city})</span><br>
@@ -1780,14 +1783,14 @@
                                             <button onclick="removeUserProperty('${username}', ${index})" style="background:#ff4444; color:white; border:none; border-radius:4px; cursor:pointer; padding:2px 6px;">✖</button>
                                         </li>
                                     `).join('');
-                })()}
+                    })()}
                             </ul>
                         </div>
                         <div style="flex:1; background:#000; padding:10px; border-radius:8px;">
                             <h4 style="color:var(--primary); border-bottom:1px solid #333; padding-bottom:5px; margin-bottom:10px;">📈 Hisse Senetleri (${Object.keys(user.stocks || {}).length})</h4>
                             <ul style="list-style:none; max-height:200px; overflow-y:auto; padding-right:5px;">
                                 ${Object.keys(user.stocks || {}).length ?
-                    Object.entries(user.stocks).map(([sym, qty]) => `
+                        Object.entries(user.stocks).map(([sym, qty]) => `
                                         <li style="display:flex; justify-content:space-between; font-size:0.8rem; border-bottom:1px solid #222; padding:5px 0;">
                                             <span>${sym}</span>
                                             <b style="color:var(--secondary)">${qty} adet</b>
@@ -1798,96 +1801,96 @@
                     </div>
                 `;
 
-            content.innerHTML = html;
-            document.getElementById('assetModal').style.display = 'flex';
-        }
-
-        // New Function to handle deletion
-        async function removeUserProperty(user, index) {
-            if (!confirm("Bu mülkü silmek istediğine emin misin?")) return;
-
-            const res = await fetch('/admin-api/remove-property', {
-                method: 'POST',
-                headers: { 'Content-Type': 'application/json' },
-                body: JSON.stringify({ key: sessionKey, user, index })
-            });
-
-            if (res.ok) {
-                alert('Mülk silindi');
-                closeModal('assetModal');
-                loadUsers();
-            } else {
-                alert('Hata oluştu');
+                content.innerHTML = html;
+                document.getElementById('assetModal').style.display = 'flex';
             }
-        }
 
-        let assignUserTarget = null;
-        function openAssetAssignModal(username) {
-            assignUserTarget = username;
-            document.getElementById('assign-modal-title').innerText = `@${username} Emlak Ata`;
-            document.getElementById('assignModal').style.display = 'flex';
-        }
+            // New Function to handle deletion
+            async function removeUserProperty(user, index) {
+                if (!confirm("Bu mülkü silmek istediğine emin misin?")) return;
 
-        async function submitPropertyAssignment() {
-            const city = document.getElementById('assignCity').value;
-            const propType = document.getElementById('assignPropType').value;
+                const res = await fetch('/admin-api/remove-property', {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({ key: sessionKey, user, index })
+                });
 
-            if (!assignUserTarget) return;
-
-            const res = await fetch('/admin-api/assign-property', {
-                method: 'POST',
-                headers: { 'Content-Type': 'application/json' },
-                body: JSON.stringify({ key: sessionKey, user: assignUserTarget, cityId: parseInt(city), propertyIndex: parseInt(propType) })
-            });
-
-            const data = await res.json();
-            if (data.success) {
-                alert("Emlak başarıyla atandı!");
-                closeModal('assignModal');
-                loadUsers();
-            } else {
-                alert("Hata: " + data.error);
+                if (res.ok) {
+                    alert('Mülk silindi');
+                    closeModal('assetModal');
+                    loadUsers();
+                } else {
+                    alert('Hata oluştu');
+                }
             }
-        }
 
-        function applyPermissions() {
-            if (!currentUser) return;
-            const perms = currentUser.permissions || {};
-
-            // Sekmeleri göster/gizle
-            document.getElementById('tab-channels').style.display = perms.channels ? 'block' : 'none';
-            document.getElementById('tab-users').style.display = perms.users ? 'block' : 'none';
-            document.getElementById('tab-troll').style.display = perms.troll ? 'block' : 'none';
-            document.getElementById('tab-logs').style.display = perms.logs ? 'block' : 'none';
-            document.getElementById('tab-quests').style.display = perms.quests ? 'block' : 'none';
-            document.getElementById('tab-stocks').style.display = perms.stocks ? 'block' : 'none';
-            document.getElementById('tab-memory').style.display = perms.memory ? 'block' : 'none';
-            document.getElementById('tab-global').style.display = perms.global ? 'block' : 'none';
-
-            // Master sekmesi
-            document.getElementById('tab-admins').style.display = (currentUser.username === 'omegacyr' || perms.admins) ? 'block' : 'none';
-
-            // Eğer aktif sekme yetkisizse ilk yetkili sekmeye geç
-            const activeTabId = document.querySelector('.tab-btn.active').id.replace('tab-', '');
-            if (perms[activeTabId] === false) {
-                const firstPerm = Object.keys(perms).find(k => perms[k] === true);
-                if (firstPerm) showTab(firstPerm);
+            let assignUserTarget = null;
+            function openAssetAssignModal(username) {
+                assignUserTarget = username;
+                document.getElementById('assign-modal-title').innerText = `@${username} Emlak Ata`;
+                document.getElementById('assignModal').style.display = 'flex';
             }
-        }
 
-        async function loadAdmins() {
-            const res = await fetch('/admin-api/list-admins', {
-                method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ key: sessionKey })
-            });
-            const admins = await res.json();
-            const container = document.getElementById('admin-users-list');
-            container.innerHTML = "";
+            async function submitPropertyAssignment() {
+                const city = document.getElementById('assignCity').value;
+                const propType = document.getElementById('assignPropType').value;
 
-            Object.entries(admins).forEach(([u, d]) => {
-                const perms = d.permissions || {};
-                const isMaster = u === 'omegacyr';
+                if (!assignUserTarget) return;
 
-                container.innerHTML += `
+                const res = await fetch('/admin-api/assign-property', {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({ key: sessionKey, user: assignUserTarget, cityId: parseInt(city), propertyIndex: parseInt(propType) })
+                });
+
+                const data = await res.json();
+                if (data.success) {
+                    alert("Emlak başarıyla atandı!");
+                    closeModal('assignModal');
+                    loadUsers();
+                } else {
+                    alert("Hata: " + data.error);
+                }
+            }
+
+            function applyPermissions() {
+                if (!currentUser) return;
+                const perms = currentUser.permissions || {};
+
+                // Sekmeleri göster/gizle
+                document.getElementById('tab-channels').style.display = perms.channels ? 'block' : 'none';
+                document.getElementById('tab-users').style.display = perms.users ? 'block' : 'none';
+                document.getElementById('tab-troll').style.display = perms.troll ? 'block' : 'none';
+                document.getElementById('tab-logs').style.display = perms.logs ? 'block' : 'none';
+                document.getElementById('tab-quests').style.display = perms.quests ? 'block' : 'none';
+                document.getElementById('tab-stocks').style.display = perms.stocks ? 'block' : 'none';
+                document.getElementById('tab-memory').style.display = perms.memory ? 'block' : 'none';
+                document.getElementById('tab-global').style.display = perms.global ? 'block' : 'none';
+
+                // Master sekmesi
+                document.getElementById('tab-admins').style.display = (currentUser.username === 'omegacyr' || perms.admins) ? 'block' : 'none';
+
+                // Eğer aktif sekme yetkisizse ilk yetkili sekmeye geç
+                const activeTabId = document.querySelector('.tab-btn.active').id.replace('tab-', '');
+                if (perms[activeTabId] === false) {
+                    const firstPerm = Object.keys(perms).find(k => perms[k] === true);
+                    if (firstPerm) showTab(firstPerm);
+                }
+            }
+
+            async function loadAdmins() {
+                const res = await fetch('/admin-api/list-admins', {
+                    method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ key: sessionKey })
+                });
+                const admins = await res.json();
+                const container = document.getElementById('admin-users-list');
+                container.innerHTML = "";
+
+                Object.entries(admins).forEach(([u, d]) => {
+                    const perms = d.permissions || {};
+                    const isMaster = u === 'omegacyr';
+
+                    container.innerHTML += `
                         <tr>
                             <td><b>${u}</b> ${isMaster ? '<span style="color:var(--primary); font-size:0.7rem;">(MASTER)</span>' : ''}</td>
                             <td align="center">${renderCheck(u, 'channels', perms.channels, isMaster)}</td>
@@ -1903,276 +1906,276 @@
                             </td>
                         </tr>
                     `;
-            });
-        }
-
-        function renderCheck(user, key, val, isMaster) {
-            if (isMaster) return '✅';
-            return `<input type="checkbox" id="perm-${user}-${key}" ${val ? 'checked' : ''}>`;
-        }
-
-        async function saveAdminPerms(targetAdmin) {
-            const keys = ['channels', 'users', 'troll', 'logs', 'quests', 'stocks', 'memory', 'global'];
-            const permissions = {};
-            keys.forEach(k => {
-                permissions[k] = document.getElementById(`perm-${targetAdmin}-${k}`).checked;
-            });
-
-            const res = await fetch('/admin-api/update-admin-perms', {
-                method: 'POST',
-                headers: { 'Content-Type': 'application/json' },
-                body: JSON.stringify({ key: sessionKey, targetAdmin, permissions })
-            });
-            const d = await res.json();
-            if (d.success) {
-                alert(`${targetAdmin} yetkileri güncellendi!`);
-                loadAdmins();
-            } else {
-                alert(d.error || "Hata oluştu.");
+                });
             }
-        }
 
-        async function createNewAdmin() {
-            const username = document.getElementById('newAdminUser').value.trim();
-            const password = document.getElementById('newAdminPass').value.trim();
-
-            if (!username || !password) return alert("Kullanıcı adı ve şifre girmelisiniz!");
-
-            const res = await fetch('/admin-api/create-admin', {
-                method: 'POST',
-                headers: { 'Content-Type': 'application/json' },
-                body: JSON.stringify({ key: sessionKey, username, password })
-            });
-            const d = await res.json();
-            if (d.success) {
-                alert("Yeni admin başarıyla eklendi.");
-                document.getElementById('newAdminUser').value = "";
-                document.getElementById('newAdminPass').value = "";
-                loadAdmins();
-            } else {
-                alert(d.error || "Admin eklenirken hata oluştu.");
+            function renderCheck(user, key, val, isMaster) {
+                if (isMaster) return '✅';
+                return `<input type="checkbox" id="perm-${user}-${key}" ${val ? 'checked' : ''}>`;
             }
-        }
 
-        async function toggleCmd(channelId, cmd, val) {
-            const res = await fetch('/admin-api/toggle-command', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ key: sessionKey, channelId, command: cmd, value: val }) });
-            const d = await res.json();
-            if (d.success) {
-                const t = document.getElementById('toast');
-                t.style.display = 'block';
-                setTimeout(() => t.style.display = 'none', 2000);
-            }
-        }
+            async function saveAdminPerms(targetAdmin) {
+                const keys = ['channels', 'users', 'troll', 'logs', 'quests', 'stocks', 'memory', 'global'];
+                const permissions = {};
+                keys.forEach(k => {
+                    permissions[k] = document.getElementById(`perm-${targetAdmin}-${k}`).checked;
+                });
 
-        async function deleteChannel(id) {
-            if (!confirm("Kanalı sildiğinizde tüm ayarlar kaybolur. Emin misiniz?")) return;
-            await fetch('/admin-api/delete-channel', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ key: sessionKey, channelId: id }) });
-            loadChannels();
-        }
-
-        async function uploadSoundFile(id) {
-            const inp = document.getElementById(`snd-file-${id}`);
-            if (!inp.files[0]) return;
-            const fd = new FormData();
-            fd.append('sound', inp.files[0]);
-            fd.append('key', sessionKey);
-            fd.append('channelId', id);
-            try {
-                const res = await fetch('/admin-api/upload-sound', {
+                const res = await fetch('/admin-api/update-admin-perms', {
                     method: 'POST',
-                    body: fd,
-                    headers: {
-                        'c-id': id,
-                        'Authorization': sessionKey
-                    }
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({ key: sessionKey, targetAdmin, permissions })
                 });
                 const d = await res.json();
-                if (d.url) {
-                    document.getElementById(`snd-url-${id}`).value = d.url;
-                    alert("Dosya yüklendi!");
+                if (d.success) {
+                    alert(`${targetAdmin} yetkileri güncellendi!`);
+                    loadAdmins();
                 } else {
-                    alert("Yükleme hatası: " + (d.error || "Bilinmeyen hata"));
+                    alert(d.error || "Hata oluştu.");
                 }
-            } catch (e) {
-                console.error(e);
-                alert("Sunucuyla bağlantı kurulamadı!");
             }
-        }
 
-        async function addSound(id) {
-            const name = document.getElementById(`snd-name-${id}`).value.trim().toLowerCase();
-            const url = document.getElementById(`snd-url-${id}`).value.trim();
-            const cost = parseInt(document.getElementById(`snd-cost-${id}`).value) || 1000;
-            const volume = parseInt(document.getElementById(`snd-vol-${id}`).value) || 100;
-            const duration = parseInt(document.getElementById(`snd-dur-${id}`).value) || 0;
-            if (!name || !url) return alert("Eksik bilgi!");
+            async function createNewAdmin() {
+                const username = document.getElementById('newAdminUser').value.trim();
+                const password = document.getElementById('newAdminPass').value.trim();
 
-            const chanRes = await fetch('/admin-api/channels', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ key: sessionKey }) });
-            const channels = await chanRes.json();
-            const current = channels[id]?.settings?.custom_sounds || {};
-            current[name] = { url, cost, volume, duration };
-            await toggleCmd(id, 'custom_sounds', current);
-            loadChannels();
-        }
+                if (!username || !password) return alert("Kullanıcı adı ve şifre girmelisiniz!");
 
-        async function removeSound(id, name) {
-            if (!confirm("Bu sesi silmek istediğine emin misin?")) return;
-            const chanRes = await fetch('/admin-api/channels', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ key: sessionKey }) });
-            const channels = await chanRes.json();
-            const current = channels[id]?.settings?.custom_sounds || {};
-            delete current[name];
-            await toggleCmd(id, 'custom_sounds', current);
-            loadChannels();
-        }
+                const res = await fetch('/admin-api/create-admin', {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({ key: sessionKey, username, password })
+                });
+                const d = await res.json();
+                if (d.success) {
+                    alert("Yeni admin başarıyla eklendi.");
+                    document.getElementById('newAdminUser').value = "";
+                    document.getElementById('newAdminPass').value = "";
+                    loadAdmins();
+                } else {
+                    alert(d.error || "Admin eklenirken hata oluştu.");
+                }
+            }
 
-        async function resetUser(u) {
-            if (!confirm("Bakiyeyi 1000 yap?")) return;
-            await fetch('/admin-api/update-user', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ key: sessionKey, user: u, balance: 1000 }) });
-            loadUsers();
-        }
+            async function toggleCmd(channelId, cmd, val) {
+                const res = await fetch('/admin-api/toggle-command', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ key: sessionKey, channelId, command: cmd, value: val }) });
+                const d = await res.json();
+                if (d.success) {
+                    const t = document.getElementById('toast');
+                    t.style.display = 'block';
+                    setTimeout(() => t.style.display = 'none', 2000);
+                }
+            }
 
-        async function setRigShip() {
-            const user = document.getElementById('rigUser').value;
-            const target = document.getElementById('rigTarget').value;
-            const percent = document.getElementById('rigPercent').value;
-            await fetch('/admin-api/rig-ship', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ key: sessionKey, user, target, percent }) });
-            document.getElementById('rigUser').value = "";
-            document.getElementById('rigTarget').value = "";
-            loadActiveRigs();
-            alert("Rig Ayarlandı!");
-        }
+            async function deleteChannel(id) {
+                if (!confirm("Kanalı sildiğinizde tüm ayarlar kaybolur. Emin misiniz?")) return;
+                await fetch('/admin-api/delete-channel', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ key: sessionKey, channelId: id }) });
+                loadChannels();
+            }
 
-        async function setGamble(res) {
-            const user = document.getElementById('gambleUser').value;
-            if (!user) return alert("Kullanıcı gir!");
-            await fetch('/admin-api/rig-gamble', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ key: sessionKey, user, result: res }) });
-            document.getElementById('gambleUser').value = "";
-            loadActiveRigs();
-            alert("Gamble riglendi!");
-        }
+            async function uploadSoundFile(id) {
+                const inp = document.getElementById(`snd-file-${id}`);
+                if (!inp.files[0]) return;
+                const fd = new FormData();
+                fd.append('sound', inp.files[0]);
+                fd.append('key', sessionKey);
+                fd.append('channelId', id);
+                try {
+                    const res = await fetch('/admin-api/upload-sound', {
+                        method: 'POST',
+                        body: fd,
+                        headers: {
+                            'c-id': id,
+                            'Authorization': sessionKey
+                        }
+                    });
+                    const d = await res.json();
+                    if (d.url) {
+                        document.getElementById(`snd-url-${id}`).value = d.url;
+                        alert("Dosya yüklendi!");
+                    } else {
+                        alert("Yükleme hatası: " + (d.error || "Bilinmeyen hata"));
+                    }
+                } catch (e) {
+                    console.error(e);
+                    alert("Sunucuyla bağlantı kurulamadı!");
+                }
+            }
 
-        async function setRigStat() {
-            const user = document.getElementById('statUser').value;
-            const stat = document.getElementById('statType').value;
-            const percent = document.getElementById('statPercent').value;
-            if (!user || !percent) return alert("Eksik bilgi!");
-            await fetch('/admin-api/rig-stat', {
-                method: 'POST',
-                headers: { 'Content-Type': 'application/json' },
-                body: JSON.stringify({ key: sessionKey, user, stat, percent })
-            });
-            document.getElementById('statUser').value = "";
-            loadActiveRigs();
-            alert("İstatistik riglendi!");
-        }
+            async function addSound(id) {
+                const name = document.getElementById(`snd-name-${id}`).value.trim().toLowerCase();
+                const url = document.getElementById(`snd-url-${id}`).value.trim();
+                const cost = parseInt(document.getElementById(`snd-cost-${id}`).value) || 1000;
+                const volume = parseInt(document.getElementById(`snd-vol-${id}`).value) || 100;
+                const duration = parseInt(document.getElementById(`snd-dur-${id}`).value) || 0;
+                if (!name || !url) return alert("Eksik bilgi!");
 
-        async function loadActiveRigs() {
-            const res = await fetch('/admin-api/get-rigs', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ key: sessionKey }) });
-            const data = await res.json();
-            const container = document.getElementById('active-rigs-list');
-            container.innerHTML = "";
+                const chanRes = await fetch('/admin-api/channels', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ key: sessionKey }) });
+                const channels = await chanRes.json();
+                const current = channels[id]?.settings?.custom_sounds || {};
+                current[name] = { url, cost, volume, duration };
+                await toggleCmd(id, 'custom_sounds', current);
+                loadChannels();
+            }
 
-            let hasRig = false;
+            async function removeSound(id, name) {
+                if (!confirm("Bu sesi silmek istediğine emin misin?")) return;
+                const chanRes = await fetch('/admin-api/channels', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ key: sessionKey }) });
+                const channels = await chanRes.json();
+                const current = channels[id]?.settings?.custom_sounds || {};
+                delete current[name];
+                await toggleCmd(id, 'custom_sounds', current);
+                loadChannels();
+            }
 
-            // Ships
-            if (data.ships) {
-                Object.entries(data.ships).forEach(([user, info]) => {
-                    hasRig = true;
-                    container.innerHTML += `
+            async function resetUser(u) {
+                if (!confirm("Bakiyeyi 1000 yap?")) return;
+                await fetch('/admin-api/update-user', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ key: sessionKey, user: u, balance: 1000 }) });
+                loadUsers();
+            }
+
+            async function setRigShip() {
+                const user = document.getElementById('rigUser').value;
+                const target = document.getElementById('rigTarget').value;
+                const percent = document.getElementById('rigPercent').value;
+                await fetch('/admin-api/rig-ship', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ key: sessionKey, user, target, percent }) });
+                document.getElementById('rigUser').value = "";
+                document.getElementById('rigTarget').value = "";
+                loadActiveRigs();
+                alert("Rig Ayarlandı!");
+            }
+
+            async function setGamble(res) {
+                const user = document.getElementById('gambleUser').value;
+                if (!user) return alert("Kullanıcı gir!");
+                await fetch('/admin-api/rig-gamble', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ key: sessionKey, user, result: res }) });
+                document.getElementById('gambleUser').value = "";
+                loadActiveRigs();
+                alert("Gamble riglendi!");
+            }
+
+            async function setRigStat() {
+                const user = document.getElementById('statUser').value;
+                const stat = document.getElementById('statType').value;
+                const percent = document.getElementById('statPercent').value;
+                if (!user || !percent) return alert("Eksik bilgi!");
+                await fetch('/admin-api/rig-stat', {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({ key: sessionKey, user, stat, percent })
+                });
+                document.getElementById('statUser').value = "";
+                loadActiveRigs();
+                alert("İstatistik riglendi!");
+            }
+
+            async function loadActiveRigs() {
+                const res = await fetch('/admin-api/get-rigs', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ key: sessionKey }) });
+                const data = await res.json();
+                const container = document.getElementById('active-rigs-list');
+                container.innerHTML = "";
+
+                let hasRig = false;
+
+                // Ships
+                if (data.ships) {
+                    Object.entries(data.ships).forEach(([user, info]) => {
+                        hasRig = true;
+                        container.innerHTML += `
                             <div style="background:#000; padding:10px; border-radius:8px; border:1px solid #333; display:flex; justify-content:space-between; align-items:center;">
                                 <span style="font-size:0.8rem;">❤️ <b>${user}</b> -> ${info.target} (%${info.percent})</span>
                                 <button onclick="clearRig('ship', '${user}')" style="background:none; border:none; color:var(--danger); cursor:pointer;">✖</button>
                             </div>
                         `;
-                });
-            }
+                    });
+                }
 
-            // Gambles
-            if (data.gambles) {
-                Object.entries(data.gambles).forEach(([user, res]) => {
-                    hasRig = true;
-                    container.innerHTML += `
+                // Gambles
+                if (data.gambles) {
+                    Object.entries(data.gambles).forEach(([user, res]) => {
+                        hasRig = true;
+                        container.innerHTML += `
                             <div style="background:#000; padding:10px; border-radius:8px; border:1px solid #333; display:flex; justify-content:space-between; align-items:center;">
                                 <span style="font-size:0.8rem;">🎰 <b>${user}</b> -> ${res === 'win' ? '✅ KAZAN' : '❌ KAYBET'}</span>
                                 <button onclick="clearRig('gamble', '${user}')" style="background:none; border:none; color:var(--danger); cursor:pointer;">✖</button>
                             </div>
                         `;
-                });
-            }
+                    });
+                }
 
-            // Stats
-            if (data.stats) {
-                Object.entries(data.stats).forEach(([user, stats]) => {
-                    hasRig = true;
-                    Object.entries(stats).forEach(([stat, info]) => {
-                        container.innerHTML += `
+                // Stats
+                if (data.stats) {
+                    Object.entries(data.stats).forEach(([user, stats]) => {
+                        hasRig = true;
+                        Object.entries(stats).forEach(([stat, info]) => {
+                            container.innerHTML += `
                             <div style="background:#000; padding:10px; border-radius:8px; border:1px solid #333; display:flex; justify-content:space-between; align-items:center;">
                                 <span style="font-size:0.8rem;">📊 <b>${user}</b> -> ${stat} (%${info.percent})</span>
                                 <button onclick="clearRig('stat', '${user}', '${stat}')" style="background:none; border:none; color:var(--danger); cursor:pointer;">✖</button>
                             </div>
                         `;
+                        });
                     });
+                }
+
+                if (!hasRig) container.innerHTML = '<p style="color:#444; font-size:0.8rem;">Aktif rig bulunmuyor.</p>';
+            }
+
+            async function clearRig(type, user, stat) {
+                await fetch('/admin-api/clear-rig', {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({ key: sessionKey, type, user, stat })
                 });
+                loadActiveRigs();
             }
 
-            if (!hasRig) container.innerHTML = '<p style="color:#444; font-size:0.8rem;">Aktif rig bulunmuyor.</p>';
-        }
-
-        async function clearRig(type, user, stat) {
-            await fetch('/admin-api/clear-rig', {
-                method: 'POST',
-                headers: { 'Content-Type': 'application/json' },
-                body: JSON.stringify({ key: sessionKey, type, user, stat })
-            });
-            loadActiveRigs();
-        }
-
-        async function controlLottery(id, action) {
-            const cost = document.getElementById(`lot-cost-${id}`).value;
-            const pool = document.getElementById(`lot-pool-${id}`).value;
-            const res = await fetch('/admin-api/lottery', {
-                method: 'POST',
-                headers: { 'Content-Type': 'application/json' },
-                body: JSON.stringify({ key: sessionKey, channelId: id, action, cost, initialPool: pool })
-            });
-            const d = await res.json();
-            if (d.success) {
-                alert(action === 'start' ? "Piyango başlatıldı!" : "Piyango bitirildi!");
-            } else {
-                alert("Hata: " + d.error);
+            async function controlLottery(id, action) {
+                const cost = document.getElementById(`lot-cost-${id}`).value;
+                const pool = document.getElementById(`lot-pool-${id}`).value;
+                const res = await fetch('/admin-api/lottery', {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({ key: sessionKey, channelId: id, action, cost, initialPool: pool })
+                });
+                const d = await res.json();
+                if (d.success) {
+                    alert(action === 'start' ? "Piyango başlatıldı!" : "Piyango bitirildi!");
+                } else {
+                    alert("Hata: " + d.error);
+                }
             }
-        }
 
-        async function chatAction(act) {
-            const cid = prompt("Kanal ID Girin (veya boş bırakırsanız ilk kanalda dener):");
-            const finalId = cid || (document.querySelector('select#targetChannel option:nth-child(2)')?.value);
-            if (!finalId) return alert("Kanal bulunamadı.");
-            const res = await fetch('/admin-api/chat-action', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ key: sessionKey, action: act, channelId: finalId }) });
-            const d = await res.json();
-            alert(d.success ? "İşlem Başarılı" : "Hata: " + d.error);
-        }
+            async function chatAction(act) {
+                const cid = prompt("Kanal ID Girin (veya boş bırakırsanız ilk kanalda dener):");
+                const finalId = cid || (document.querySelector('select#targetChannel option:nth-child(2)')?.value);
+                if (!finalId) return alert("Kanal bulunamadı.");
+                const res = await fetch('/admin-api/chat-action', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ key: sessionKey, action: act, channelId: finalId }) });
+                const d = await res.json();
+                alert(d.success ? "İşlem Başarılı" : "Hata: " + d.error);
+            }
 
-        async function sendToChannel() {
-            const channelId = document.getElementById('targetChannel').value;
-            const message = document.getElementById('channelMsg').value;
-            if (!channelId || !message) return alert("Eksik bilgi!");
-            const res = await fetch('/admin-api/send-message', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ key: sessionKey, channelId, message }) });
-            const d = await res.json();
-            if (d.success) { alert("Mesaj gönderildi!"); document.getElementById('channelMsg').value = ""; }
-        }
+            async function sendToChannel() {
+                const channelId = document.getElementById('targetChannel').value;
+                const message = document.getElementById('channelMsg').value;
+                if (!channelId || !message) return alert("Eksik bilgi!");
+                const res = await fetch('/admin-api/send-message', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ key: sessionKey, channelId, message }) });
+                const d = await res.json();
+                if (d.success) { alert("Mesaj gönderildi!"); document.getElementById('channelMsg').value = ""; }
+            }
 
-        // STOCKS
-        async function loadStocks() {
-            const res = await fetch('/admin-api/stocks', {
-                method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ key: sessionKey })
-            });
-            const stocks = await res.json();
-            const container = document.getElementById('stock-list');
-            container.innerHTML = "";
+            // STOCKS
+            async function loadStocks() {
+                const res = await fetch('/admin-api/stocks', {
+                    method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ key: sessionKey })
+                });
+                const stocks = await res.json();
+                const container = document.getElementById('stock-list');
+                container.innerHTML = "";
 
-            Object.entries(stocks).forEach(([code, data]) => {
-                const tr = document.createElement('tr');
-                tr.innerHTML = `
+                Object.entries(stocks).forEach(([code, data]) => {
+                    const tr = document.createElement('tr');
+                    tr.innerHTML = `
                         <td><b>${code}</b></td>
                         <td><input type="text" value="${data.name || ''}" class="inp" style="margin:0;" id="st-name-${code}"></td>
                         <td><input type="number" value="${data.price}" class="inp" style="width:100px; margin:0;" id="st-price-${code}"></td>
@@ -2187,242 +2190,242 @@
                             <button class="btn btn-small btn-danger" style="width:auto; padding:5px 15px; display:inline-block;" onclick="deleteStock('${code}')">SİL</button>
                         </td>
                     `;
-                container.appendChild(tr);
-            });
-        }
-
-        async function updateStock(code) {
-            const name = document.getElementById(`st-name-${code}`).value;
-            const price = document.getElementById(`st-price-${code}`).value;
-            const trend = document.getElementById(`st-trend-${code}`).value;
-            const res = await fetch('/admin-api/stocks/update', {
-                method: 'POST', headers: { 'Content-Type': 'application/json' },
-                body: JSON.stringify({ key: sessionKey, code, name, price, trend })
-            });
-            if ((await res.json()).success) {
-                alert(`${code} güncellendi!`);
-                loadStocks();
-            }
-        }
-
-        async function setMarketCycle(cycle) {
-            const res = await fetch('/admin-api/stocks/cycle', {
-                method: 'POST', headers: { 'Content-Type': 'application/json' },
-                body: JSON.stringify({ key: sessionKey, cycle })
-            });
-            const d = await res.json();
-            if (d.success) showToast(d.message);
-            else alert(d.error);
-        }
-
-        async function addStock() {
-            const code = document.getElementById('newStockCode').value;
-            const name = document.getElementById('newStockName').value;
-            const price = document.getElementById('newStockPrice').value;
-            if (!code || !price) return alert("Eksik bilgi!");
-            const res = await fetch('/admin-api/stocks/add', {
-                method: 'POST', headers: { 'Content-Type': 'application/json' },
-                body: JSON.stringify({ key: sessionKey, code, name, price })
-            });
-            if ((await res.json()).success) {
-                document.getElementById('newStockCode').value = "";
-                document.getElementById('newStockName').value = "";
-                document.getElementById('newStockPrice').value = "";
-                loadStocks();
-            }
-        }
-
-        async function publishNews() {
-            const code = document.getElementById('newsCode').value;
-            const text = document.getElementById('newsText').value;
-            const type = document.getElementById('newsType').value;
-            const impact = document.getElementById('newsImpact').value;
-
-            if (!text) return alert("Haber metni girin!");
-
-            const res = await fetch('/admin-api/add-news', {
-                method: 'POST', headers: { 'Content-Type': 'application/json' },
-                body: JSON.stringify({ key: sessionKey, code, text, type, impact })
-            });
-            const d = await res.json();
-            if (d.success) {
-                alert("📢 Haber yayınlandı!");
-                document.getElementById('newsText').value = "";
-                loadStocks();
-            } else {
-                alert("Hata: " + d.error);
-            }
-        }
-
-        async function deleteStock(code) {
-            if (!confirm(`${code} hissesini silmek istediğine emin misin?`)) return;
-            const res = await fetch('/admin-api/stocks/delete', {
-                method: 'POST', headers: { 'Content-Type': 'application/json' },
-                body: JSON.stringify({ key: sessionKey, code })
-            });
-            if ((await res.json()).success) loadStocks();
-        }
-
-        // MEMORY
-        async function loadMemory() {
-            const res = await fetch('/admin-api/memory', {
-                method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ key: sessionKey })
-            });
-            const memory = await res.json();
-            const container = document.getElementById('memory-list');
-            container.innerHTML = "";
-
-            const entries = Object.values(memory).sort((a, b) => b.createdAt - a.createdAt);
-
-            if (entries.length === 0) {
-                container.innerHTML = '<tr><td colspan="3" style="text-align:center; color:var(--muted);">Henüz hafızada bilgi yok.</td></tr>';
-                return;
+                    container.appendChild(tr);
+                });
             }
 
-            entries.forEach(entry => {
-                const tr = document.createElement('tr');
-                tr.innerHTML = `
+            async function updateStock(code) {
+                const name = document.getElementById(`st-name-${code}`).value;
+                const price = document.getElementById(`st-price-${code}`).value;
+                const trend = document.getElementById(`st-trend-${code}`).value;
+                const res = await fetch('/admin-api/stocks/update', {
+                    method: 'POST', headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({ key: sessionKey, code, name, price, trend })
+                });
+                if ((await res.json()).success) {
+                    alert(`${code} güncellendi!`);
+                    loadStocks();
+                }
+            }
+
+            async function setMarketCycle(cycle) {
+                const res = await fetch('/admin-api/stocks/cycle', {
+                    method: 'POST', headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({ key: sessionKey, cycle })
+                });
+                const d = await res.json();
+                if (d.success) showToast(d.message);
+                else alert(d.error);
+            }
+
+            async function addStock() {
+                const code = document.getElementById('newStockCode').value;
+                const name = document.getElementById('newStockName').value;
+                const price = document.getElementById('newStockPrice').value;
+                if (!code || !price) return alert("Eksik bilgi!");
+                const res = await fetch('/admin-api/stocks/add', {
+                    method: 'POST', headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({ key: sessionKey, code, name, price })
+                });
+                if ((await res.json()).success) {
+                    document.getElementById('newStockCode').value = "";
+                    document.getElementById('newStockName').value = "";
+                    document.getElementById('newStockPrice').value = "";
+                    loadStocks();
+                }
+            }
+
+            async function publishNews() {
+                const code = document.getElementById('newsCode').value;
+                const text = document.getElementById('newsText').value;
+                const type = document.getElementById('newsType').value;
+                const impact = document.getElementById('newsImpact').value;
+
+                if (!text) return alert("Haber metni girin!");
+
+                const res = await fetch('/admin-api/add-news', {
+                    method: 'POST', headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({ key: sessionKey, code, text, type, impact })
+                });
+                const d = await res.json();
+                if (d.success) {
+                    alert("📢 Haber yayınlandı!");
+                    document.getElementById('newsText').value = "";
+                    loadStocks();
+                } else {
+                    alert("Hata: " + d.error);
+                }
+            }
+
+            async function deleteStock(code) {
+                if (!confirm(`${code} hissesini silmek istediğine emin misin?`)) return;
+                const res = await fetch('/admin-api/stocks/delete', {
+                    method: 'POST', headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({ key: sessionKey, code })
+                });
+                if ((await res.json()).success) loadStocks();
+            }
+
+            // MEMORY
+            async function loadMemory() {
+                const res = await fetch('/admin-api/memory', {
+                    method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ key: sessionKey })
+                });
+                const memory = await res.json();
+                const container = document.getElementById('memory-list');
+                container.innerHTML = "";
+
+                const entries = Object.values(memory).sort((a, b) => b.createdAt - a.createdAt);
+
+                if (entries.length === 0) {
+                    container.innerHTML = '<tr><td colspan="3" style="text-align:center; color:var(--muted);">Henüz hafızada bilgi yok.</td></tr>';
+                    return;
+                }
+
+                entries.forEach(entry => {
+                    const tr = document.createElement('tr');
+                    tr.innerHTML = `
                         <td style="font-size:0.95rem; line-height:1.4;">${entry.content}</td>
                         <td style="color:var(--muted); font-size:0.8rem;">${new Date(entry.createdAt).toLocaleString()}</td>
                         <td style="text-align:right">
                             <button class="btn btn-small btn-danger" style="width:auto; padding:5px 15px; display:inline-block;" onclick="deleteMemory('${entry.id}')">SİL</button>
                         </td>
                     `;
-                container.appendChild(tr);
-            });
-        }
-
-        async function addMemory() {
-            const content = document.getElementById('newMemoryContent').value;
-            if (!content) return alert("İçerik boş olamaz!");
-            const res = await fetch('/admin-api/memory/add', {
-                method: 'POST', headers: { 'Content-Type': 'application/json' },
-                body: JSON.stringify({ key: sessionKey, content })
-            });
-            if ((await res.json()).success) {
-                document.getElementById('newMemoryContent').value = "";
-                loadMemory();
-                showToast("Bilgi hafızaya kaydedildi! 🧠");
-            }
-        }
-
-        async function deleteMemory(id) {
-            if (!confirm("Bu bilgiyi hafızadan silmek istediğine emin misin?")) return;
-            const res = await fetch('/admin-api/memory/delete', {
-                method: 'POST', headers: { 'Content-Type': 'application/json' },
-                body: JSON.stringify({ key: sessionKey, id })
-            });
-            if ((await res.json()).success) loadMemory();
-        }
-
-        function showToast(msg) {
-            const t = document.getElementById('toast');
-            t.innerText = msg;
-            t.style.display = 'block';
-            setTimeout(() => t.style.display = 'none', 3000);
-        }
-
-        // Auto login if possible (not implemented here but sessionKey could be in localStorage)
-
-        async function resetMarketUsers() {
-            if (!confirm("⚠️ DİKKAT!\n\nBu işlem TÜM kullanıcıların:\n1. Bakiyesini 0 yapar.\n2. Tüm hisse senetlerini siler.\n\nBu işlem geri alınamaz. Emin misin?")) return;
-
-            // İkinci onay (Master işlemi olduğu için)
-            if (!confirm("🚨 SON UYARI: Market sıfırlanıyor. Devam edilsin mi?")) return;
-
-            try {
-                const res = await fetch('/api/market/reset-users', {
-                    method: 'POST',
-                    headers: { 'Content-Type': 'application/json' },
-                    body: JSON.stringify({ key: sessionKey }) // authAdmin middleware key bekler
+                    container.appendChild(tr);
                 });
+            }
 
-                const data = await res.json();
-                if (data.success) {
-                    alert(data.message);
-                    showToast(data.message);
-                } else {
-                    alert("Hata: " + data.error);
+            async function addMemory() {
+                const content = document.getElementById('newMemoryContent').value;
+                if (!content) return alert("İçerik boş olamaz!");
+                const res = await fetch('/admin-api/memory/add', {
+                    method: 'POST', headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({ key: sessionKey, content })
+                });
+                if ((await res.json()).success) {
+                    document.getElementById('newMemoryContent').value = "";
+                    loadMemory();
+                    showToast("Bilgi hafızaya kaydedildi! 🧠");
                 }
-            } catch (e) {
-                alert("Sunucu hatası!");
             }
-        }
-    </script>
-    <script>
-        // --- SECURITY: DISABLE F12 & RIGHT CLICK ---
-        document.addEventListener('contextmenu', event => event.preventDefault());
 
-        document.addEventListener('keydown', function (event) {
-            // F12
-            if (event.key === "F12" || event.keyCode === 123) {
-                event.preventDefault();
-                return false;
+            async function deleteMemory(id) {
+                if (!confirm("Bu bilgiyi hafızadan silmek istediğine emin misin?")) return;
+                const res = await fetch('/admin-api/memory/delete', {
+                    method: 'POST', headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({ key: sessionKey, id })
+                });
+                if ((await res.json()).success) loadMemory();
             }
-            // Ctrl+Shift+I (DevTools)
-            if (event.ctrlKey && event.shiftKey && (event.key === 'I' || event.key === 'i')) {
-                event.preventDefault();
-                return false;
-            }
-            // Ctrl+Shift+J (Console)
-            if (event.ctrlKey && event.shiftKey && (event.key === 'J' || event.key === 'j')) {
-                event.preventDefault();
-                return false;
-            }
-            // Ctrl+Shift+C (Element Inspector)
-            if (event.ctrlKey && event.shiftKey && (event.key === 'C' || event.key === 'c')) {
-                event.preventDefault();
-                return false;
-            }
-            // Ctrl+U (View Source)
-            if (event.ctrlKey && (event.key === 'U' || event.key === 'u')) {
-                event.preventDefault();
-                return false;
-            }
-        });
-    </script>
-    <script>
-        // --- MODERN ASSET MODAL & ASSIGNMENT ---
 
-        // Constants mimicking shop.js for consistency
-        const EMLAK_CITIES = [
-            "Adana", "Adıyaman", "Afyonkarahisar", "Ağrı", "Amasya", "Ankara", "Antalya", "Artvin", "Aydın", "Balıkesir",
-            "Bilecik", "Bingöl", "Bitlis", "Bolu", "Burdur", "Bursa", "Çanakkale", "Çankırı", "Çorum", "Denizli",
-            "Diyarbakır", "Edirne", "Elazığ", "Erzincan", "Erzurum", "Eskişehir", "Gaziantep", "Giresun", "Gümüşhane",
-            "Hakkari", "Hatay", "Isparta", "Mersin", "İstanbul", "İzmir", "Kars", "Kastamonu", "Kayseri", "Kırklareli",
-            "Kırşehir", "Kocaeli", "Konya", "Kütahya", "Malatya", "Manisa", "Kahramanmaraş", "Mardin", "Muğla", "Muş",
-            "Nevşehir", "Niğde", "Ordu", "Rize", "Sakarya", "Samsun", "Siirt", "Sinop", "Sivas", "Tekirdağ", "Tokat",
-            "Trabzon", "Tunceli", "Şanlıurfa", "Uşak", "Van", "Yozgat", "Zonguldak", "Aksaray", "Bayburt", "Karaman",
-            "Kırıkkale", "Batman", "Şırnak", "Bartın", "Ardahan", "Iğdır", "Yalova", "Karabük", "Kilis", "Osmaniye", "Düzce"
-        ];
-        const EMLAK_TYPES = [
-            { n: "Gecekondu", p: 15 }, { n: "Apartman Dairesi", p: 35 },
-            { n: "Lüks Daire", p: 75 }, { n: "Residence", p: 150 },
-            { n: "Villa", p: 300 }, { n: "Yalı", p: 750 },
-            { n: "Gökdelen", p: 2000 }, { n: "Ada", p: 5000 },
-            { n: "Küçük Dükkan", p: 50 }, { n: "Mağaza", p: 120 },
-            { n: "Süpermarket", p: 300 }, { n: "AVM", p: 1000 },
-            { n: "Holding", p: 3000 }
-        ];
+            function showToast(msg) {
+                const t = document.getElementById('toast');
+                t.innerText = msg;
+                t.style.display = 'block';
+                setTimeout(() => t.style.display = 'none', 3000);
+            }
 
-        function closeModal(modalId) {
-            document.getElementById(modalId).style.display = 'none';
-        }
+            // Auto login if possible (not implemented here but sessionKey could be in localStorage)
 
-        // Re-render Asset Modal with better UI
-        function openAssetModal(username) {
-            const user = rawUsers[username];
-            if (!user) return;
+            async function resetMarketUsers() {
+                if (!confirm("⚠️ DİKKAT!\n\nBu işlem TÜM kullanıcıların:\n1. Bakiyesini 0 yapar.\n2. Tüm hisse senetlerini siler.\n\nBu işlem geri alınamaz. Emin misin?")) return;
 
-            document.getElementById('asset-modal-title').innerHTML = `<span
+                // İkinci onay (Master işlemi olduğu için)
+                if (!confirm("🚨 SON UYARI: Market sıfırlanıyor. Devam edilsin mi?")) return;
+
+                try {
+                    const res = await fetch('/api/market/reset-users', {
+                        method: 'POST',
+                        headers: { 'Content-Type': 'application/json' },
+                        body: JSON.stringify({ key: sessionKey }) // authAdmin middleware key bekler
+                    });
+
+                    const data = await res.json();
+                    if (data.success) {
+                        alert(data.message);
+                        showToast(data.message);
+                    } else {
+                        alert("Hata: " + data.error);
+                    }
+                } catch (e) {
+                    alert("Sunucu hatası!");
+                }
+            }
+        </script>
+        <script>
+            // --- SECURITY: DISABLE F12 & RIGHT CLICK ---
+            document.addEventListener('contextmenu', event => event.preventDefault());
+
+            document.addEventListener('keydown', function (event) {
+                // F12
+                if (event.key === "F12" || event.keyCode === 123) {
+                    event.preventDefault();
+                    return false;
+                }
+                // Ctrl+Shift+I (DevTools)
+                if (event.ctrlKey && event.shiftKey && (event.key === 'I' || event.key === 'i')) {
+                    event.preventDefault();
+                    return false;
+                }
+                // Ctrl+Shift+J (Console)
+                if (event.ctrlKey && event.shiftKey && (event.key === 'J' || event.key === 'j')) {
+                    event.preventDefault();
+                    return false;
+                }
+                // Ctrl+Shift+C (Element Inspector)
+                if (event.ctrlKey && event.shiftKey && (event.key === 'C' || event.key === 'c')) {
+                    event.preventDefault();
+                    return false;
+                }
+                // Ctrl+U (View Source)
+                if (event.ctrlKey && (event.key === 'U' || event.key === 'u')) {
+                    event.preventDefault();
+                    return false;
+                }
+            });
+        </script>
+        <script>
+            // --- MODERN ASSET MODAL & ASSIGNMENT ---
+
+            // Constants mimicking shop.js for consistency
+            const EMLAK_CITIES = [
+                "Adana", "Adıyaman", "Afyonkarahisar", "Ağrı", "Amasya", "Ankara", "Antalya", "Artvin", "Aydın", "Balıkesir",
+                "Bilecik", "Bingöl", "Bitlis", "Bolu", "Burdur", "Bursa", "Çanakkale", "Çankırı", "Çorum", "Denizli",
+                "Diyarbakır", "Edirne", "Elazığ", "Erzincan", "Erzurum", "Eskişehir", "Gaziantep", "Giresun", "Gümüşhane",
+                "Hakkari", "Hatay", "Isparta", "Mersin", "İstanbul", "İzmir", "Kars", "Kastamonu", "Kayseri", "Kırklareli",
+                "Kırşehir", "Kocaeli", "Konya", "Kütahya", "Malatya", "Manisa", "Kahramanmaraş", "Mardin", "Muğla", "Muş",
+                "Nevşehir", "Niğde", "Ordu", "Rize", "Sakarya", "Samsun", "Siirt", "Sinop", "Sivas", "Tekirdağ", "Tokat",
+                "Trabzon", "Tunceli", "Şanlıurfa", "Uşak", "Van", "Yozgat", "Zonguldak", "Aksaray", "Bayburt", "Karaman",
+                "Kırıkkale", "Batman", "Şırnak", "Bartın", "Ardahan", "Iğdır", "Yalova", "Karabük", "Kilis", "Osmaniye", "Düzce"
+            ];
+            const EMLAK_TYPES = [
+                { n: "Gecekondu", p: 15 }, { n: "Apartman Dairesi", p: 35 },
+                { n: "Lüks Daire", p: 75 }, { n: "Residence", p: 150 },
+                { n: "Villa", p: 300 }, { n: "Yalı", p: 750 },
+                { n: "Gökdelen", p: 2000 }, { n: "Ada", p: 5000 },
+                { n: "Küçük Dükkan", p: 50 }, { n: "Mağaza", p: 120 },
+                { n: "Süpermarket", p: 300 }, { n: "AVM", p: 1000 },
+                { n: "Holding", p: 3000 }
+            ];
+
+            function closeModal(modalId) {
+                document.getElementById(modalId).style.display = 'none';
+            }
+
+            // Re-render Asset Modal with better UI
+            function openAssetModal(username) {
+                const user = rawUsers[username];
+                if (!user) return;
+
+                document.getElementById('asset-modal-title').innerHTML = `<span
             style="color:var(--primary);">@${username}</span> Varlıkları`;
-            const content = document.getElementById('asset-modal-content');
+                const content = document.getElementById('asset-modal-content');
 
-            const realEstateCount = user.properties ? (Array.isArray(user.properties) ? user.properties.length : Object.keys(user.properties).length) : 0;
-            const stocksCount = user.stocks ? Object.keys(user.stocks).length : 0;
-            const totalBalance = user.balance || 0;
+                const realEstateCount = user.properties ? (Array.isArray(user.properties) ? user.properties.length : Object.keys(user.properties).length) : 0;
+                const stocksCount = user.stocks ? Object.keys(user.stocks).length : 0;
+                const totalBalance = user.balance || 0;
 
-            let html = `
+                let html = `
         <div
             style="background:rgba(255,255,255,0.05); padding:15px; border-radius:12px; margin-bottom:20px; display:flex; align-items:center; justify-content:space-between;">
             <div>
@@ -2446,7 +2449,7 @@
                 <div style="flex:1; overflow-y:auto; padding:10px;">
                     <ul style="list-style:none;">
                         ${realEstateCount > 0 ?
-                    (Array.isArray(user.properties) ? user.properties : Object.values(user.properties)).map(p => `
+                        (Array.isArray(user.properties) ? user.properties : Object.values(user.properties)).map(p => `
                         <li style="margin-bottom:8px; padding:10px; background:#161616; border-radius:8px; border:1px solid #252525;">
                             <div style="display:flex; justify-content:space-between; margin-bottom:4px; align-items:center;">
                                 <div>
@@ -2458,7 +2461,7 @@
                             <div style="font-size:0.75rem; color:var(--primary);">Günlük Gelir: +${p.income} 💰</div>
                         </li>
                         `).join('')
-                    : '<li style="text-align:center; padding:20px; color:#444; font-size:0.8rem;">Mülk bulunmuyor.</li>'}
+                        : '<li style="text-align:center; padding:20px; color:#444; font-size:0.8rem;">Mülk bulunmuyor.</li>'}
                     </ul>
                 </div>
             </div>
@@ -2471,133 +2474,133 @@
                 <div style="flex:1; overflow-y:auto; padding:10px;">
                     <ul style="list-style:none;">
                         ${stocksCount > 0 ?
-                    Object.entries(user.stocks).map(([sym, qty]) => `
+                        Object.entries(user.stocks).map(([sym, qty]) => `
                         <li style="margin-bottom:8px; padding:10px; background:#161616; border-radius:8px; border:1px solid #252525; display:flex; justify-content:space-between; align-items:center;">
                             <span style="font-weight:700; color:#fff;">${sym}</span>
                             <span style="font-size:0.9rem; color:#f1c40f;">${qty} Adet</span>
                         </li>
                         `).join('')
-                    : '<li style="text-align:center; padding:20px; color:#444; font-size:0.8rem;">Hisse bulunmuyor.</li>'}
+                        : '<li style="text-align:center; padding:20px; color:#444; font-size:0.8rem;">Hisse bulunmuyor.</li>'}
                     </ul>
                 </div>
             </div>
         </div>
                     `;
 
-            content.innerHTML = html;
-            document.getElementById('assetModal').style.display = 'flex';
-        }
+                content.innerHTML = html;
+                document.getElementById('assetModal').style.display = 'flex';
+            }
 
-        // Re-render Assign Modal with full city list
-        function openAssetAssignModal(username) {
-            assignUserTarget = username;
-            document.getElementById('assign-modal-title').innerHTML = `Emlak Ata -> <span
+            // Re-render Assign Modal with full city list
+            function openAssetAssignModal(username) {
+                assignUserTarget = username;
+                document.getElementById('assign-modal-title').innerHTML = `Emlak Ata -> <span
                     style="color:var(--primary);">@${username}</span>`;
 
-            // Populate Cities
-            const citySelect = document.getElementById('assignCity');
-            citySelect.innerHTML = EMLAK_CITIES.map((c, i) => `<option value="${i}">${c}</option>`).join('');
+                // Populate Cities
+                const citySelect = document.getElementById('assignCity');
+                citySelect.innerHTML = EMLAK_CITIES.map((c, i) => `<option value="${i}">${c}</option>`).join('');
 
-            // Populate Types
-            const typeSelect = document.getElementById('assignPropType');
-            typeSelect.innerHTML = EMLAK_TYPES.map((t, i) => `<option value="${i}">${t.n} (Kira: ${t.p})</option>`).join('');
+                // Populate Types
+                const typeSelect = document.getElementById('assignPropType');
+                typeSelect.innerHTML = EMLAK_TYPES.map((t, i) => `<option value="${i}">${t.n} (Kira: ${t.p})</option>`).join('');
 
-            document.getElementById('assignModal').style.display = 'flex';
-        }
-
-        async function deleteUserProperty(user, index) {
-            if (!confirm(`${user} kullanıcısının bu mülkünü silmek istediğine emin misin?`)) return;
-            const res = await fetch('/admin-api/remove-property', {
-                method: 'POST',
-                headers: { 'Content-Type': 'application/json' },
-                body: JSON.stringify({ key: sessionKey, user, index })
-            });
-            const d = await res.json();
-            if (d.success) {
-                alert("Mülk silindi!");
-                await loadUsers(); // Reload user data
-                openAssetModal(user); // Re-open modal to refresh list
-            } else {
-                alert("Hata: " + d.error);
+                document.getElementById('assignModal').style.display = 'flex';
             }
-        }
 
-        async function submitPropertyAssignment() {
-            const cityIdx = document.getElementById('assignCity').value;
-            const typeIdx = document.getElementById('assignPropType').value;
-
-            if (!assignUserTarget) return;
-
-            const cityName = EMLAK_CITIES[cityIdx];
-            const propInfo = EMLAK_TYPES[typeIdx];
-
-            const res = await fetch('/admin-api/assign-property', {
-                method: 'POST',
-                headers: { 'Content-Type': 'application/json' },
-                body: JSON.stringify({
-                    key: sessionKey,
-                    user: assignUserTarget,
-                    cityName: cityName,
-                    propInfo: propInfo
-                })
-            });
-
-            const d = await res.json();
-            if (d.success) {
-                alert('Mülk atandı!');
-                closeModal('assignModal');
-                loadUsers();
-            } else {
-                alert('Hata: ' + d.error);
+            async function deleteUserProperty(user, index) {
+                if (!confirm(`${user} kullanıcısının bu mülkünü silmek istediğine emin misin?`)) return;
+                const res = await fetch('/admin-api/remove-property', {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({ key: sessionKey, user, index })
+                });
+                const d = await res.json();
+                if (d.success) {
+                    alert("Mülk silindi!");
+                    await loadUsers(); // Reload user data
+                    openAssetModal(user); // Re-open modal to refresh list
+                } else {
+                    alert("Hata: " + d.error);
+                }
             }
-        }
 
-        window.onload = () => {
-            const k = localStorage.getItem('adminKey');
-            if (k) {
-                sessionKey = k;
-                document.getElementById('login-screen').style.display = 'none';
-                document.getElementById('admin-panel').style.display = 'block';
-                showTab('dashboard');
-                loadActiveRigs();
+            async function submitPropertyAssignment() {
+                const cityIdx = document.getElementById('assignCity').value;
+                const typeIdx = document.getElementById('assignPropType').value;
+
+                if (!assignUserTarget) return;
+
+                const cityName = EMLAK_CITIES[cityIdx];
+                const propInfo = EMLAK_TYPES[typeIdx];
+
+                const res = await fetch('/admin-api/assign-property', {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({
+                        key: sessionKey,
+                        user: assignUserTarget,
+                        cityName: cityName,
+                        propInfo: propInfo
+                    })
+                });
+
+                const d = await res.json();
+                if (d.success) {
+                    alert('Mülk atandı!');
+                    closeModal('assignModal');
+                    loadUsers();
+                } else {
+                    alert('Hata: ' + d.error);
+                }
             }
-        };
-    </script>
 
-    <!-- UPDATED MODAL HTML -->
-    <div id="assetModal" class="login-box"
-        style="display:none; position:fixed; top:50%; left:50%; transform:translate(-50%, -50%); width:700px; height:500px; z-index:9999; text-align:left; padding:0; overflow:hidden; background:#0a0a0a; border:1px solid #333; box-shadow:0 0 50px rgba(0,0,0,0.8);">
-        <div
-            style="padding:20px; border-bottom:1px solid #222; background:#111; display:flex; justify-content:space-between; align-items:center;">
-            <h3 id="asset-modal-title" style="margin:0; font-size:1.2rem;">Varlıklar</h3>
-            <button onclick="closeModal('assetModal')"
-                style="background:none; border:none; color:#666; font-size:1.5rem; cursor:pointer;">&times;</button>
+            window.onload = () => {
+                const k = localStorage.getItem('adminKey');
+                if (k) {
+                    sessionKey = k;
+                    document.getElementById('login-screen').style.display = 'none';
+                    document.getElementById('admin-panel').style.display = 'block';
+                    showTab('dashboard');
+                    loadActiveRigs();
+                }
+            };
+        </script>
+
+        <!-- UPDATED MODAL HTML -->
+        <div id="assetModal" class="login-box"
+            style="display:none; position:fixed; top:50%; left:50%; transform:translate(-50%, -50%); width:700px; height:500px; z-index:9999; text-align:left; padding:0; overflow:hidden; background:#0a0a0a; border:1px solid #333; box-shadow:0 0 50px rgba(0,0,0,0.8);">
+            <div
+                style="padding:20px; border-bottom:1px solid #222; background:#111; display:flex; justify-content:space-between; align-items:center;">
+                <h3 id="asset-modal-title" style="margin:0; font-size:1.2rem;">Varlıklar</h3>
+                <button onclick="closeModal('assetModal')"
+                    style="background:none; border:none; color:#666; font-size:1.5rem; cursor:pointer;">&times;</button>
+            </div>
+            <div id="asset-modal-content" style="padding:20px;"></div>
         </div>
-        <div id="asset-modal-content" style="padding:20px;"></div>
-    </div>
 
-    <div id="assignModal" class="login-box"
-        style="display:none; position:fixed; top:50%; left:50%; transform:translate(-50%, -50%); width:450px; z-index:9999; text-align:left; padding:0; overflow:hidden; background:#0a0a0a; border:1px solid #333;">
-        <div
-            style="padding:20px; border-bottom:1px solid #222; background:#111; display:flex; justify-content:space-between; align-items:center;">
-            <h3 id="assign-modal-title" style="margin:0; font-size:1.1rem; color:#fff;">Emlak Ata</h3>
-            <button onclick="closeModal('assignModal')"
-                style="background:none; border:none; color:#666; font-size:1.5rem; cursor:pointer;">&times;</button>
-        </div>
-        <div style="padding:25px;">
-            <label style="color:#888; font-size:0.75rem; margin-bottom:5px; display:block;">ŞEHİR SEÇİNİZ</label>
-            <select id="assignCity" class="inp" style="margin-bottom:15px;"></select>
+        <div id="assignModal" class="login-box"
+            style="display:none; position:fixed; top:50%; left:50%; transform:translate(-50%, -50%); width:450px; z-index:9999; text-align:left; padding:0; overflow:hidden; background:#0a0a0a; border:1px solid #333;">
+            <div
+                style="padding:20px; border-bottom:1px solid #222; background:#111; display:flex; justify-content:space-between; align-items:center;">
+                <h3 id="assign-modal-title" style="margin:0; font-size:1.1rem; color:#fff;">Emlak Ata</h3>
+                <button onclick="closeModal('assignModal')"
+                    style="background:none; border:none; color:#666; font-size:1.5rem; cursor:pointer;">&times;</button>
+            </div>
+            <div style="padding:25px;">
+                <label style="color:#888; font-size:0.75rem; margin-bottom:5px; display:block;">ŞEHİR SEÇİNİZ</label>
+                <select id="assignCity" class="inp" style="margin-bottom:15px;"></select>
 
-            <label style="color:#888; font-size:0.75rem; margin-bottom:5px; display:block;">MÜLK TİPİ</label>
-            <select id="assignPropType" class="inp" style="margin-bottom:25px;"></select>
+                <label style="color:#888; font-size:0.75rem; margin-bottom:5px; display:block;">MÜLK TİPİ</label>
+                <select id="assignPropType" class="inp" style="margin-bottom:25px;"></select>
 
-            <div style="display:flex; gap:10px;">
-                <button class="btn" style="flex:1; background:var(--primary); color:#000; font-weight:700;"
-                    onclick="submitPropertyAssignment()">ONAYLA & ATA</button>
-                <button class="btn btn-danger" style="flex:1" onclick="closeModal('assignModal')">İPTAL</button>
+                <div style="display:flex; gap:10px;">
+                    <button class="btn" style="flex:1; background:var(--primary); color:#000; font-weight:700;"
+                        onclick="submitPropertyAssignment()">ONAYLA & ATA</button>
+                    <button class="btn btn-danger" style="flex:1" onclick="closeModal('assignModal')">İPTAL</button>
+                </div>
             </div>
         </div>
-    </div>
 </body>
 
 </html>

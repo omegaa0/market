@@ -1047,20 +1047,54 @@ function renderNews(newsData) {
     if (!container) return;
     container.innerHTML = "";
 
+    // Update date display
+    const dateDisplay = document.getElementById('news-date-display');
+    const lastUpdate = document.getElementById('news-last-update');
+    const now = new Date();
+    if (dateDisplay) {
+        dateDisplay.textContent = now.toLocaleDateString('tr-TR', {
+            day: 'numeric',
+            month: 'long',
+            year: 'numeric'
+        });
+    }
+    if (lastUpdate) {
+        lastUpdate.textContent = now.toLocaleTimeString('tr-TR', {
+            hour: '2-digit',
+            minute: '2-digit'
+        });
+    }
+
     // Sort by timestamp desc (newest first)
     const sorted = Object.values(newsData).sort((a, b) => b.timestamp - a.timestamp);
 
-    sorted.forEach(n => {
-        const timeStr = new Date(n.timestamp).toLocaleTimeString();
-        const color = n.type === 'GOOD' ? '#05ea6a' : '#ff4d4d';
-        const icon = n.type === 'GOOD' ? '🚀' : '📉';
+    if (sorted.length === 0) {
+        container.innerHTML = `
+            <div class="news-empty">
+                <i class="fas fa-newspaper"></i>
+                Henüz piyasa haberi yok...
+            </div>
+        `;
+        return;
+    }
+
+    sorted.forEach((n, index) => {
+        const newsDate = new Date(n.timestamp);
+        const timeStr = newsDate.toLocaleTimeString('tr-TR', { hour: '2-digit', minute: '2-digit' });
+        const isGood = n.type === 'GOOD';
+        const isBreaking = index === 0 && (Date.now() - n.timestamp < 300000); // Son 5 dk içindeki en yeni haber
 
         const div = document.createElement('div');
-        div.style = "padding: 8px; background: rgba(255,255,255,0.03); border-radius: 6px; border-left: 3px solid " + color + "; font-size: 0.85rem;";
+        div.className = `news-item${isBreaking ? ' breaking' : ''}`;
         div.innerHTML = `
-            <span style="color:#666; font-size:0.75rem; margin-right:5px;">${timeStr}</span>
-            <span style="color:${color}; font-weight:bold; margin-right:5px;">${icon}</span>
-            <span style="color:#eee;">${n.text}</span>
+            <div class="news-time">${timeStr}</div>
+            <div class="news-content">
+                <div class="news-indicator ${isGood ? 'good' : 'bad'}">
+                    <span class="news-indicator-dot"></span>
+                    ${isGood ? '📈 YÜKSELİŞ' : '📉 DÜŞÜŞ'}
+                </div>
+                <div class="news-headline">${n.text}</div>
+            </div>
         `;
         container.appendChild(div);
     });

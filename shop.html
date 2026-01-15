@@ -283,14 +283,24 @@
                 <div id="tab-borsa" class="tab-content hidden">
                     <h2 style="margin-bottom:20px;">📈 Küresel Borsa (Canlı)</h2>
 
-                    <!-- NEWS TICKER -->
-                    <div
-                        style="background: rgba(0,0,0,0.4); border-radius: 12px; padding: 15px; margin-bottom: 25px; border: 1px solid var(--glass-border);">
-                        <h4 style="color: var(--primary); margin-bottom: 10px; font-size: 0.9rem;">📢 Piyasa Haberleri
-                        </h4>
-                        <div id="news-ticker-container"
-                            style="max-height: 100px; overflow-y: auto; display: flex; flex-direction: column; gap: 8px;">
-                            <p style="color: #666; font-size: 0.8rem; font-style: italic;">Henüz haber yok...</p>
+                    <!-- 📰 NEWSPAPER STYLE NEWS SECTION -->
+                    <div class="news-section">
+                        <div class="news-header">
+                            <div class="news-masthead">
+                                <div class="news-logo">📰 BORSA <span>GAZETESİ</span></div>
+                                <span class="news-badge">CANLI</span>
+                            </div>
+                            <div class="news-date" id="news-date-display">--</div>
+                        </div>
+                        <div class="news-body" id="news-ticker-container">
+                            <div class="news-empty">
+                                <i class="fas fa-newspaper"></i>
+                                Henüz piyasa haberi yok...
+                            </div>
+                        </div>
+                        <div class="news-footer">
+                            <div class="news-ticker-label">Canlı Piyasa Akışı</div>
+                            <div>Son güncelleme: <span id="news-last-update">--:--</span></div>
                         </div>
                     </div>
 

@@ -887,8 +887,13 @@ async function updateGlobalStocks() {
             // const oldPrice = data.price || 100; // ALREADY DEFINED ABOVE
             const startPrice = baseData.price || 100;
 
-            let vol = (data.volatility || baseData.volatility) * effects.vol;
-            let drift = (data.drift || baseData.drift) + effects.drift + extraDrift;
+            // FIX: If stored volatility is 0 or too low, use baseData to ensure movement
+            let vol = data.volatility > 0.01 ? data.volatility : baseData.volatility;
+            let drift = data.drift !== undefined && data.drift !== 0 ? data.drift : baseData.drift;
+
+            // Apply market effects
+            vol = vol * effects.vol;
+            drift = drift + effects.drift + extraDrift;
 
             // Soft limits relative to startPrice (if available) or dynamic moving average
             // If renamed, startPrice is default 100, which breaks "drift" logic relative to 2500.
@@ -993,14 +998,38 @@ app.post('/admin-api/add-news', authAdmin, hasPerm('stocks'), async (req, res) =
         relatedStock: code || 'GLOBAL'
     });
 
-    // 2. Eğer spesifik bir hisse ise fiyatı güncelle
-    if (code && code !== 'GLOBAL' && impact) {
-        const stockRef = db.ref(`global_stocks/${code}`);
+    // 2. Hisse fiyatına etki uygula
+    // Eğer spesifik bir hisse kodu girilmişse o hisseyi etkile
+    // Impact sıfır veya belirtilmemişse, haber türüne göre otomatik %10-15 etki uygula
+    const cleanCode = code ? code.toUpperCase().trim() : '';
+
+    if (cleanCode && cleanCode !== 'GLOBAL') {
+        const stockRef = db.ref(`global_stocks/${cleanCode}`);
         const s = (await stockRef.once('value')).val();
         if (s) {
-            const multiplier = 1 + (parseInt(impact) / 100);
+            let effectiveImpact = parseInt(impact) || 0;
+
+            // Eğer impact 0 ise otomatik hesapla (haber türüne göre)
+            if (effectiveImpact === 0) {
+                // %10 ile %15 arasında rastgele etki
+                const randomImpact = 10 + Math.random() * 5;
+                effectiveImpact = type === 'GOOD' ? randomImpact : -randomImpact;
+            } else {
+                // Manuel girilen impact'ı haber türüne göre işaretle
+                effectiveImpact = type === 'GOOD' ? Math.abs(effectiveImpact) : -Math.abs(effectiveImpact);
+            }
+
+            const multiplier = 1 + (effectiveImpact / 100);
             const newPrice = Math.round(s.price * multiplier);
-            await stockRef.update({ price: newPrice, lastUpdate: Date.now() });
+            const trend = effectiveImpact > 0 ? 1 : -1;
+
+            await stockRef.update({
+                price: newPrice,
+                trend: trend,
+                lastUpdate: Date.now()
+            });
+
+            console.log(`📰 HABER ETKİSİ: ${cleanCode} fiyatı ${s.price} -> ${newPrice} (${effectiveImpact > 0 ? '+' : ''}${effectiveImpact.toFixed(1)}%)`);
         }
     }
 
