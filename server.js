@@ -1934,23 +1934,23 @@ function calculateBalanceTax(balance) {
     if (balance < 50000) return Math.floor(balance * 0.015);         // %1.5
     if (balance < 100000) return Math.floor(balance * 0.018);        // %1.8
 
-    // Orta bakiye kademeleri (250K+) - Zengin Vergisi Artırıldı
+    // Orta bakiye kademeleri (250K+) - Zengin Vergisi (Hafifletildi)
     if (balance < 250000) return Math.floor(balance * 0.02);         // %2.0
-    if (balance < 500000) return Math.floor(balance * 0.05);         // %5.0 (Artırıldı)
-    if (balance < 1000000) return Math.floor(balance * 0.06);        // %6.0 (Artırıldı)
+    if (balance < 500000) return Math.floor(balance * 0.03);         // %3.0 (5'ten inildi)
+    if (balance < 1000000) return Math.floor(balance * 0.04);        // %4.0 (6'dan inildi)
 
     // Yüksek bakiye kademeleri
-    if (balance < 2500000) return Math.floor(balance * 0.07);        // %7.0 (Artırıldı)
-    if (balance < 5000000) return Math.floor(balance * 0.08);        // %8.0 (Artırıldı)
-    if (balance < 10000000) return Math.floor(balance * 0.09);       // %9.0 (Artırıldı)
+    if (balance < 2500000) return Math.floor(balance * 0.05);        // %5.0 (7'den inildi)
+    if (balance < 5000000) return Math.floor(balance * 0.06);        // %6.0 (8'den inildi)
+    if (balance < 10000000) return Math.floor(balance * 0.07);       // %7.0 (9'dan inildi)
 
     // Çok yüksek bakiye kademeleri (Zenginler)
-    if (balance < 25000000) return Math.floor(balance * 0.10);       // %10.0 (Artırıldı)
-    if (balance < 100000000) return Math.floor(balance * 0.12);      // %12.0 (Artırıldı)
+    if (balance < 25000000) return Math.floor(balance * 0.08);       // %8.0 (10'dan inildi)
+    if (balance < 100000000) return Math.floor(balance * 0.10);      // %10.0 (12'den inildi)
 
     // Ultra zenginler
-    if (balance < 250000000) return Math.floor(balance * 0.14);      // %14.0 (Artırıldı)
-    return Math.floor(balance * 0.15);                                // %15.0 (Maksimum)
+    if (balance < 250000000) return Math.floor(balance * 0.12);      // %12.0 (14'ten inildi)
+    return Math.floor(balance * 0.13);                                // %13.0 (15'ten inildi - Maksimum)
 }
 
 function calculatePropertyTax(properties) {
@@ -2547,37 +2547,41 @@ app.post('/api/market/buy', verifySession, async (req, res) => {
 
                 try {
                     // ElevenLabs API Call
-                    const elevenKey = process.env.ELEVENLABS_API_KEY || "sk_73928..."; // Fallback placeholder
-                    const voiceId = elevenVoices[voice];
+                    const elevenKey = process.env.ELEVENLABS_API_KEY;
 
-                    if (process.env.ELEVENLABS_API_KEY) {
-                        const ttsResp = await axios.post(
-                            `https://api.elevenlabs.io/v1/text-to-speech/${voiceId}`,
-                            {
-                                text: text,
-                                model_id: "eleven_multilingual_v2",
-                                voice_settings: { stability: 0.5, similarity_boost: 0.75 }
-                            },
-                            {
-                                headers: {
-                                    'xi-api-key': elevenKey,
-                                    'Content-Type': 'application/json'
-                                },
-                                responseType: 'arraybuffer' // Binary data
-                            }
-                        );
-
-                        // Convert to Base64 to serve directly via Firebase (Not ideal for large files but OK for short TTS)
-                        const base64Audio = Buffer.from(ttsResp.data).toString('base64');
-                        audioUrl = `data:audio/mpeg;base64,${base64Audio}`;
-                    } else {
-                        console.log("ElevenLabs API Key Missing - Skipping generation");
+                    if (!elevenKey || elevenKey.includes('sk_73928')) {
+                        console.error("ElevenLabs API Key Missing or Default!");
+                        throw new Error("API Key Missing");
                     }
 
+                    const voiceId = elevenVoices[voice];
+
+                    const ttsResp = await axios.post(
+                        `https://api.elevenlabs.io/v1/text-to-speech/${voiceId}`,
+                        {
+                            text: text,
+                            model_id: "eleven_multilingual_v2",
+                            voice_settings: { stability: 0.5, similarity_boost: 0.75 }
+                        },
+                        {
+                            headers: {
+                                'xi-api-key': elevenKey,
+                                'Content-Type': 'application/json'
+                            },
+                            responseType: 'arraybuffer' // Binary data
+                        }
+                    );
+
+                    // Convert to Base64 to serve directly via Firebase (Not ideal for large files but OK for short TTS)
+                    const base64Audio = Buffer.from(ttsResp.data).toString('base64');
+                    audioUrl = `data:audio/mpeg;base64,${base64Audio}`;
                 } catch (err) {
                     console.error("ElevenLabs Error:", err.message);
+                    if (err.response) console.error("ElevenLabs Response:", err.response.data ? (err.response.data.toString() || 'binary') : 'no-data');
                     // Fallback to standard if error
                     isEleven = false;
+                    // Note: We don't return error to client to avoid blocking the purchase, 
+                    // but we fallback to standard TTS. The user receives standard TTS.
                 }
             }
 
@@ -5841,9 +5845,9 @@ EK TALİMAT: ${aiInst}`;
             const finalTax = Math.min(totalTax, maxTax);
 
             let details = [];
-            if (balanceTax > 0) details.push(`💰 Bakiye: ${balanceTax.toLocaleString()}`);
-            if (propertyTax > 0) details.push(`🏠 Emlak: ${propertyTax.toLocaleString()}`);
-            if (stockTax > 0) details.push(`📈 Borsa: ${stockTax.toLocaleString()}`);
+            if (balanceTax > 0) details.push(`💰 Nakit V.: ${balanceTax.toLocaleString()}`);
+            if (propertyTax > 0) details.push(`🏠 Emlak V.: ${propertyTax.toLocaleString()}`);
+            if (stockTax > 0) details.push(`📈 Borsa V.: ${stockTax.toLocaleString()}`);
 
             if (finalTax > 0) {
                 let msg = `💸 @${user}, Günlük Vergi Borcun: ${finalTax.toLocaleString()} 💰`;

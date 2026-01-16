@@ -2155,15 +2155,22 @@ async function loadEmlak() {
         resetBtn.onclick = async () => {
             const confirmed = await showConfirm("🚨 Emlak Sıfırlama", "Tüm şehirlerdeki mülkleri ve tüm kullanıcıların tapularını silmek istediğine emin misin? (Fiyatları güncellemek için gereklidir)");
             if (!confirmed) return;
+
+            // Ask for Admin Key
+            const adminKey = prompt("Lütfen Admin Anahtarını Girin:");
+            if (!adminKey) return;
+
             const res = await fetch('/api/emlak/reset', {
                 method: 'POST',
                 headers: { 'Content-Type': 'application/json' },
-                body: JSON.stringify({ requester: 'omegacyr' })
+                body: JSON.stringify({ key: adminKey })
             });
             const d = await res.json();
             if (d.success) {
                 showToast(d.message, "success");
                 setTimeout(() => location.reload(), 1500);
+            } else {
+                showToast(d.error || "Hata oluştu", "error");
             }
         };
         emlakTab.insertBefore(resetBtn, emlakTab.firstChild);
