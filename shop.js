@@ -280,11 +280,31 @@ async function loadDevlogs() {
     }
 }
 
+function toggleDevlog(show) {
+    const sidebar = document.getElementById('devlog-sidebar');
+    const toggleBtn = document.getElementById('devlog-toggle-btn');
+    if (!sidebar || !toggleBtn) return;
+
+    if (show) {
+        sidebar.classList.remove('collapsed');
+        toggleBtn.classList.add('hidden');
+        localStorage.setItem('devlog_visible', 'true');
+    } else {
+        sidebar.classList.add('collapsed');
+        toggleBtn.classList.remove('hidden');
+        localStorage.setItem('devlog_visible', 'false');
+    }
+}
+
 function init() {
     console.log("Market initialized");
     const savedUser = localStorage.getItem('aloskegang_user');
     renderFreeCommands();
     loadDevlogs(); // Duyuruları yükle
+
+    // Devlog gizleme durumunu kontrol et
+    const isDevlogVisible = localStorage.getItem('devlog_visible') !== 'false';
+    toggleDevlog(isDevlogVisible);
 
     if (savedUser) {
         login(savedUser);
@@ -1446,10 +1466,11 @@ async function loadProfile() {
                         <div class="val">${(() => {
             if (u.is_admin) return '🛡️ Yönetici';
             const badges = u.badges || [];
+            const roles = u.roles || [];
             const isSubscriber = badges.some(b => {
                 const badgeType = typeof b === 'string' ? b : (b.type || b.badge_type || '');
-                return ['subscriber', 'founder', 'vip', 'sub_gifter', 'og'].includes(badgeType.toLowerCase());
-            }) || u.is_subscriber === true || u.isSubscriber === true;
+                return ['subscriber', 'founder', 'vip', 'sub_gifter', 'og', 'moderator', 'broadcaster', 'abone'].includes(badgeType.toLowerCase());
+            }) || roles.some(r => ['subscriber', 'moderator', 'broadcaster', 'vip'].includes(r.toLowerCase())) || u.is_subscriber === true || u.isSubscriber === true;
             return isSubscriber ? '💎 Abone' : '👤 Takipçi';
         })()}</div>
                     </div>

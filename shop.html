@@ -156,10 +156,17 @@
     <div class="glow-bg"></div>
 
     <!-- DUYURULAR SIDEBAR (Sol Kısım) -->
+    <button id="devlog-toggle-btn" class="hidden" onclick="toggleDevlog(true)">
+        <i class="fas fa-chevron-right"></i>
+    </button>
+
     <div class="side-devlog left" id="devlog-sidebar">
         <div class="glass-panel">
-            <div class="devlog-header">
-                <h3><i class="fas fa-scroll"></i> Değişiklik Günlüğü</h3>
+            <div class="devlog-header" style="justify-content: space-between;">
+                <h3><i class="fas fa-scroll"></i> Günlük</h3>
+                <button class="devlog-close-btn" onclick="toggleDevlog(false)" title="Gizle">
+                    <i class="fas fa-times"></i>
+                </button>
             </div>
             <div id="devlog-content">
                 <div style="color:#666; font-size:0.8rem; text-align:center; padding:20px;">Yükleniyor...</div>
