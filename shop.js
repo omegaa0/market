@@ -246,28 +246,31 @@ async function loadDevlogs() {
     if (!container) return;
 
     try {
-        const snap = await db.ref('devlogs').orderByChild('timestamp').limitToLast(10).once('value');
-        const devlogs = snap.val();
+        const res = await fetch('/api/announcements');
+        const devlogs = await res.json();
 
-        if (!devlogs || Object.keys(devlogs).length === 0) {
+        if (!devlogs || devlogs.length === 0) {
             container.innerHTML = '<div style="color:#666; font-size:0.8rem;">Henüz duyuru yok.</div>';
             return;
         }
 
         container.innerHTML = '';
 
-        // Son 10 devlog (en yeni en üstte)
-        const sorted = Object.entries(devlogs).sort((a, b) => b[1].timestamp - a[1].timestamp);
-
-        sorted.forEach(([id, log]) => {
+        devlogs.slice(0, 10).forEach(log => {
             const date = new Date(log.timestamp);
             const dateStr = date.toLocaleDateString('tr-TR', { day: 'numeric', month: 'short' });
 
+            const typeClass = `badge-${log.type || 'info'}`;
             const item = document.createElement('div');
-            item.style.cssText = 'padding:12px; background:rgba(255,255,255,0.03); border-radius:10px; border-left:3px solid var(--primary);';
+            item.className = `announcement-item ${typeClass}`;
+            item.style.cssText = 'padding:12px; background:rgba(255,255,255,0.03); border-radius:10px; border-left:3px solid var(--primary); margin-bottom:8px;';
+
+            if (log.type === 'warning') item.style.borderLeftColor = "#ff9800";
+            if (log.type === 'breaking') item.style.borderLeftColor = "#f44336";
+
             item.innerHTML = `
                 <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:6px;">
-                    <span style="font-weight:700; color:var(--primary); font-size:0.75rem;">${log.type || 'GÜNCELLEME'}</span>
+                    <span style="font-weight:700; color:var(--primary); font-size:0.75rem;">${(log.type || 'info').toUpperCase()}</span>
                     <span style="color:#666; font-size:0.7rem;">${dateStr}</span>
                 </div>
                 <p style="margin:0; color:#ccc; font-size:0.85rem; line-height:1.4;">${log.text}</p>
@@ -1753,6 +1756,9 @@ async function loadGangs() {
 
                 const members = Object.entries(g.members || {});
                 document.getElementById('my-gang-count').innerText = members.length;
+                if (g.memberCount && g.memberCount !== members.length) {
+                    document.getElementById('my-gang-count').innerText = g.memberCount;
+                }
 
                 members.sort((a, b) => (b[1].rank === 'leader' ? 1 : 0) - (a[1].rank === 'leader' ? 1 : 0)); // Leader top
 
@@ -2067,6 +2073,7 @@ async function loadEmlak() {
 }
 
 // CAREER LOGIC
+
 async function loadCareer() {
     if (!currentUser) return;
     const grid = document.getElementById('career-grid');
@@ -2292,7 +2299,7 @@ function renderPropertyList(props, cityId, cityName) {
         }
 
         const isOwned = !!p.owner;
-        const isMine = p.owner && p.owner.toLowerCase() === currentUser;
+        const isMine = p.owner && p.owner.toLowerCase() === currentUser && (lastUserData?.properties || []).some(up => up.id === p.id);
 
         // Kart Stilleri
         item.style.background = isMine ? 'linear-gradient(135deg, rgba(255, 215, 0, 0.1), rgba(0,0,0,0.4))' : bgGradient;

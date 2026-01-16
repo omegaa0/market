@@ -1615,6 +1615,108 @@ app.post('/admin-api/stocks/cycle', authAdmin, hasPerm('stocks'), async (req, re
     }
 });
 
+// --- ANNOUNCEMENT SYSTEM (New) ---
+app.post('/admin-api/announcements/set', authAdmin, hasPerm('announcement'), async (req, res) => {
+    try {
+        const { text, type } = req.body;
+        if (!text) return res.status(400).json({ error: "Mesaj boş" });
+
+        const id = Date.now().toString();
+        await db.ref('announcements/' + id).set({
+            id,
+            text,
+            type: type || 'info',
+            timestamp: Date.now()
+        });
+        res.json({ success: true });
+    } catch (e) {
+        res.status(500).json({ error: e.message });
+    }
+});
+
+app.post('/admin-api/announcements/delete', authAdmin, hasPerm('announcement'), async (req, res) => {
+    try {
+        const { id } = req.body;
+        if (!id) return res.status(400).json({ error: "ID eksik" });
+        await db.ref('announcements/' + id).remove();
+        res.json({ success: true });
+    } catch (e) {
+        res.status(500).json({ error: e.message });
+    }
+});
+
+app.get('/api/announcements', async (req, res) => {
+    try {
+        const snap = await db.ref('announcements').limitToLast(15).once('value');
+        const data = snap.val() || {};
+        const sorted = Object.values(data).sort((a, b) => b.timestamp - a.timestamp);
+        res.json(sorted);
+    } catch (e) {
+        res.json([]);
+    }
+});
+
+// Sync older devlog to announcements name for compatibility if needed
+app.get('/api/devlog', async (req, res) => {
+    const snap = await db.ref('announcements').limitToLast(10).once('value');
+    const data = snap.val() || {};
+    res.json(Object.values(data).map(d => ({ version: "DUYURU", date: new Date(d.timestamp).toLocaleDateString(), text: d.text })));
+});
+
+app.post('/admin-api/remove-property', async (req, res) => {
+    try {
+        const { username, propertyId } = req.body;
+        if (!username || !propertyId) return res.json({ success: false, error: "Eksik veri" });
+
+        const cleanUser = username.toLowerCase();
+        const userRef = db.ref('users/' + cleanUser);
+
+        // 1. Remove from user profile
+        const userSnap = await userRef.once('value');
+        const userData = userSnap.val();
+        if (!userData || !userData.properties) return res.json({ success: false, error: "Mülk bulunamadı" });
+
+        const updatedProps = userData.properties.filter(p => p.id !== propertyId);
+        await userRef.child('properties').set(updatedProps);
+
+        // 2. Sync with global market
+        const marketRef = db.ref('real_estate_market');
+        const marketSnap = await marketRef.once('value');
+        const marketData = marketSnap.val();
+
+        if (marketData) {
+            let found = false;
+            for (const cityId in marketData) {
+                const props = marketData[cityId];
+                if (Array.isArray(props)) {
+                    const idx = props.findIndex(p => p.id === propertyId);
+                    if (idx !== -1) {
+                        delete props[idx].owner;
+                        delete props[idx].ownerName;
+                        delete props[idx].purchaseTime;
+                        found = true;
+                    }
+                } else if (typeof props === 'object') {
+                    for (const pid in props) {
+                        if (props[pid].id === propertyId) {
+                            delete props[pid].owner;
+                            delete props[pid].ownerName;
+                            delete props[pid].purchaseTime;
+                            found = true;
+                        }
+                    }
+                }
+                if (found) break;
+            }
+            if (found) await marketRef.set(marketData);
+        }
+
+        res.json({ success: true, message: "Mülk başarıyla kaldırıldı." });
+    } catch (e) {
+        res.json({ success: false, error: e.message });
+    }
+});
+
 // HARİTA PROXY (Bağlantı Sorunlarını Aşmak İçin)
 app.get('/api/map/turkey', (req, res) => {
     const mapPath = path.join(__dirname, 'turkey_map_local.svg');
@@ -7506,7 +7608,13 @@ app.post('/api/gang/kick', async (req, res) => {
         await gangRef.child('members').child(cleanTarget).remove();
         await db.ref('users/' + cleanTarget).child('gang').remove();
 
+        // UPDATE MEMBER COUNT explicitly
+        const currentMembersSnap = await gangRef.child('members').once('value');
+        const cnt = currentMembersSnap.numChildren();
+        await gangRef.child('memberCount').set(cnt);
+
         res.json({ success: true, message: "Kullanıcı çeteden atıldı." });
+
     } catch (e) {
         res.json({ success: false, error: e.message });
     }
@@ -7555,8 +7663,15 @@ app.post('/api/gang/leave', async (req, res) => {
             // REGULAR LEAVE
             await gangRef.child('members').child(cleanUser).remove();
             await userRef.child('gang').remove();
+
+            // UPDATE MEMBER COUNT explicitly
+            const currentMembersSnap = await gangRef.child('members').once('value');
+            const cnt = currentMembersSnap.numChildren();
+            await gangRef.child('memberCount').set(cnt);
+
             return res.json({ success: true, message: "Çeteden ayrıldın." });
         }
+
 
     } catch (e) {
         res.json({ success: false, error: e.message });

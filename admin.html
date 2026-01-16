@@ -725,17 +725,65 @@
             </div>
         </div>
 
-        <!-- GLOBAL -->
+        <!-- GLOBAL (DUYURULAR) -->
         <div id="global" class="section">
-            <div class="card" style="max-width: 600px; margin: 0 auto;">
-                <h3>📢 Tekli Kanal Duyurusu</h3>
-                <label style="font-size: 0.8rem; color: var(--muted);">Hedef Kanal:</label>
-                <select id="targetChannel" class="inp" style="margin-top: 5px; text-align-last: center;"></select>
-                <label style="font-size: 0.8rem; color: var(--muted);">Mesajınız:</label>
-                <textarea id="channelMsg" class="inp"
-                    style="height:120px; resize:none; margin-top: 5px; text-align: left; padding: 10px;"
-                    placeholder="Yazmaya başla..."></textarea>
-                <button class="btn" onclick="sendToChannel()">🚀 MESAJI GÖNDER</button>
+            <div style="display:grid; grid-template-columns: 1fr 1fr; gap:20px;">
+                <div class="card">
+                    <h3>📢 Tekli Kanal Duyurusu</h3>
+                    <p style="font-size:0.75rem; color:var(--muted); margin-bottom:15px;">Botun o kanalda mesaj
+                        yazmasını sağlar.</p>
+                    <label style="font-size: 0.8rem; color: var(--muted);">Hedef Kanal:</label>
+                    <select id="targetChannel" class="inp" style="margin-top: 5px; text-align-last: center;"></select>
+                    <label style="font-size: 0.8rem; color: var(--muted);">Mesajınız:</label>
+                    <textarea id="channelMsg" class="inp"
+                        style="height:100px; resize:none; margin-top: 5px; text-align: left; padding: 10px;"
+                        placeholder="Kanal sohbetine gönderilecek mesaj..."></textarea>
+                    <button class="btn" onclick="sendToChannel()">🚀 KANALA GÖNDER</button>
+                </div>
+
+                <div class="card">
+                    <h3>🌐 Global Market Duyurusu</h3>
+                    <p style="font-size:0.75rem; color:var(--muted); margin-bottom:15px;">Market sayfasındaki sol
+                        panelde görünür.</p>
+                    <label style="font-size: 0.8rem; color: var(--muted);">Duyuru Metni:</label>
+                    <textarea id="globalAnnText" class="inp"
+                        style="height:100px; resize:none; margin-top: 5px; text-align: left; padding: 10px;"
+                        placeholder="Örn: Yeni güncelleme yayınlandı!"></textarea>
+
+                    <div style="display:flex; gap:10px; margin-bottom:15px;">
+                        <div style="flex:1;">
+                            <label style="font-size: 0.7rem; color: var(--muted);">Tür</label>
+                            <select id="globalAnnType" class="inp" style="height:35px; margin-top:5px;">
+                                <option value="info">ℹ️ Bilgi (Yeşil)</option>
+                                <option value="warning">⚠️ Uyarı (Sarı)</option>
+                                <option value="danger">🚨 Kritik (Kırmızı)</option>
+                                <option value="update">🚀 Güncelleme (Mavi)</option>
+                            </select>
+                        </div>
+                    </div>
+                    <button class="btn" onclick="publishGlobalAnnouncement()">📢 YAYINLA</button>
+                </div>
+            </div>
+
+            <div class="card" style="margin-top:20px;">
+                <h3>📜 Aktif Duyurular</h3>
+                <div class="table-container">
+                    <table>
+                        <thead>
+                            <tr>
+                                <th>Metin</th>
+                                <th>Tür</th>
+                                <th>Tarih</th>
+                                <th style="text-align:right">İşlem</th>
+                            </tr>
+                        </thead>
+                        <tbody id="admin-ann-list">
+                            <tr>
+                                <td colspan="4" align="center">Yükleniyor...</td>
+                            </tr>
+                        </tbody>
+                    </table>
+                </div>
             </div>
         </div>
 
@@ -911,7 +959,20 @@
                             onclick="publishNews()">YAYINLA</button>
                     </div>
                 </div>
+                <!-- Haber Şablonları -->
+                <div style="display:flex; gap:10px; margin-top:15px;">
+                    <span style="color:#666; font-size:0.8rem; align-self:center;">📈 Şablonlar:</span>
+                    <button class="btn btn-small" style="width:auto; padding:5px 12px; background:#1a3a1a; color:#0f0;"
+                        onclick="fillNewsTemplate('tavan')">🚀 TAVAN</button>
+                    <button class="btn btn-small" style="width:auto; padding:5px 12px; background:#3a1a1a; color:#f00;"
+                        onclick="fillNewsTemplate('cokus')">📉 ÇÖKÜŞ</button>
+                    <button class="btn btn-small" style="width:auto; padding:5px 12px; background:#1a1a3a; color:#0af;"
+                        onclick="fillNewsTemplate('balina')">🐋 BALİNA</button>
+                    <button class="btn btn-small" style="width:auto; padding:5px 12px; background:#222; color:#ccc;"
+                        onclick="fillNewsTemplate('stabil')">⚖️ STABİL</button>
+                </div>
             </div>
+
         </div>
 
         <!-- BALANCE MODAL -->
@@ -1151,9 +1212,12 @@
                     loadAdminQuests();
                 } else if (id === 'stocks') {
                     loadStocks();
+                } else if (id === 'global') {
+                    loadAnnouncements();
                 } else {
                     if (logInterval) { clearInterval(logInterval); logInterval = null; }
                 }
+
             }
 
             function showSubTab(channelId, section, event) {
@@ -2181,6 +2245,56 @@
                 if (d.success) { alert("Mesaj gönderildi!"); document.getElementById('channelMsg').value = ""; }
             }
 
+            // GLOBAL ANNOUNCEMENTS
+            async function publishGlobalAnnouncement() {
+                const text = document.getElementById('globalAnnText').value;
+                const type = document.getElementById('globalAnnType').value;
+                if (!text) return alert("Duyuru metni boş olamaz!");
+
+                const res = await fetch('/admin-api/announcements/set', {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({ key: sessionKey, text, type })
+                });
+
+                if ((await res.json()).success) {
+                    alert("📢 Global duyuru yayınlandı!");
+                    document.getElementById('globalAnnText').value = "";
+                    loadAnnouncements();
+                }
+            }
+
+            async function loadAnnouncements() {
+                const res = await fetch('/api/announcements');
+                const list = await res.json();
+                const container = document.getElementById('admin-ann-list');
+                container.innerHTML = list.length > 0 ? "" : '<tr><td colspan="4" align="center">Henüz duyuru yok.</td></tr>';
+
+                list.forEach(a => {
+                    const tr = document.createElement('tr');
+                    tr.innerHTML = `
+                        <td>${a.text}</td>
+                        <td><span class="badge-${a.type}">${a.type.toUpperCase()}</span></td>
+                        <td><small>${new Date(a.timestamp).toLocaleString()}</small></td>
+                        <td align="right">
+                            <button class="btn btn-small btn-danger" onclick="deleteAnnouncement('${a.id}')">SİL</button>
+                        </td>
+                    `;
+                    container.appendChild(tr);
+                });
+            }
+
+            async function deleteAnnouncement(id) {
+                if (!confirm("Bu duyuruyu silmek istediğine emin misin?")) return;
+                const res = await fetch('/admin-api/announcements/delete', {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({ key: sessionKey, id })
+                });
+                if ((await res.json()).success) loadAnnouncements();
+            }
+
+
             // STOCKS
             async function loadStocks() {
                 const res = await fetch('/admin-api/stocks', {
@@ -2256,7 +2370,12 @@
                 const code = document.getElementById('newsCode').value;
                 const text = document.getElementById('newsText').value;
                 const type = document.getElementById('newsType').value;
-                const impact = document.getElementById('newsImpact').value;
+                // Parse label to numeric if needed, or just send what's there
+                let impact = document.getElementById('newsImpact').value;
+                if (impact === 'high') impact = 45;
+                if (impact === 'medium') impact = 25;
+                if (impact === 'low') impact = 10;
+                if (impact === 'negative') impact = 40;
 
                 if (!text) return alert("Haber metni girin!");
 
@@ -2273,6 +2392,26 @@
                     alert("Hata: " + d.error);
                 }
             }
+
+            function fillNewsTemplate(template) {
+                const textInp = document.getElementById('newsText');
+                const typeSel = document.getElementById('newsType');
+                const impactSel = document.getElementById('newsImpact');
+
+                const templates = {
+                    'tavan': { text: 'Piyasalarda görülmemiş talep! Fiyatlar tavan yapıyor!', type: 'GOOD', impact: 45 },
+                    'cokus': { text: 'Panik satışı başladı! Yatırımcılar kaçıyor!', type: 'BAD', impact: 45 },
+                    'stabil': { text: 'Piyasa dengeleniyor, volatilite azaldı.', type: 'GOOD', impact: 5 },
+                    'balina': { text: 'Dev bir balina alıma geçti, hareketlilik bekleniyor.', type: 'GOOD', impact: 25 }
+                };
+
+                if (templates[template]) {
+                    textInp.value = templates[template].text;
+                    typeSel.value = templates[template].type;
+                    impactSel.value = templates[template].impact;
+                }
+            }
+
 
             async function deleteStock(code) {
                 const confirmed = await showAdminConfirm(`${code} hissesini silmek istediğine emin misin?`, "📉 Hisse Sil");

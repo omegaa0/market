@@ -155,9 +155,9 @@
 <body>
     <div class="glow-bg"></div>
 
-    <!-- DEVLOG SIDEBAR (Sol Kısım - Admin panelden yönetilir) -->
+    <!-- DUYURULAR SIDEBAR (Sol Kısım) -->
     <div class="side-devlog left" id="devlog-sidebar"
-        style="position:fixed; left:20px; top:50%; transform:translateY(-50%); width:280px; max-height:70vh; overflow-y:auto; z-index:100; display:none;">
+        style="position:fixed; left:40px; top:50%; transform:translateY(-50%); width:320px; max-height:85vh; overflow-y:auto; z-index:100; display:block;">
         <div class="glass-panel"
             style="padding:20px; background:rgba(10,10,10,0.9); border:1px solid rgba(255,255,255,0.1);">
             <h3
@@ -250,454 +250,438 @@
             <button class="tab-btn" onclick="switchTab('profile')">👤 Profilim</button>
         </nav>
 
-        <div class="shop-layout" style="display: flex; gap: 30px; align-items: flex-start; margin-top: 30px;">
-            <!-- LEFT SIDEBAR: DEVLOG -->
-            <aside class="sidebar glass-panel" id="main-devlog-sidebar"
-                style="position:sticky; top:20px; width: 350px; padding: 25px; flex-shrink: 0; text-align: left; background: rgba(15, 15, 20, 0.95); border: 1px solid rgba(0, 255, 136, 0.2); box-shadow: 0 0 20px rgba(0,0,0,0.5);">
-                <h3
-                    style="margin-bottom: 20px; font-size: 1.4rem; padding-bottom: 10px; display:flex; align-items:center; gap:10px; border-bottom: 1px solid rgba(255,255,255,0.1); color: #fff; text-shadow: 0 0 10px rgba(0,255,136,0.5);">
-                    <i class="fas fa-bullhorn" style="color:var(--primary); font-size: 1.2rem;"></i> DUYURULAR
-                </h3>
+        <!-- Announcements Moved to Fixed Sidebar (Line 159) -->
+        <div style="flex:1;">
 
-                <div id="devlog-list"
-                    style="display:flex; flex-direction:column; gap:15px; max-height: 80vh; overflow-y: auto; padding-right: 5px;">
-                    <div style="color:#666; font-size:0.8rem;">Yükleniyor...</div>
-                </div>
-            </aside>
-
-            <!-- RIGHT CONTENT: MARKET ITEMS -->
-            <div style="flex:1;">
-                <!-- MARKET TAB -->
-                <div id="tab-market" class="tab-content hidden">
-                    <div id="no-channel-msg" class="glass-panel hidden"
-                        style="position:static; transform:none; width:100%; margin-top:0;">
-                        <h3>⚠️ Kanal Bağlantısı Yok</h3>
-                        <p>Market ürünlerini görmek için önce bir Kick kanalında aktif olmalısın (mesaj yazmalısın).</p>
-                    </div>
-
-                    <div class="market-grid" id="market-items">
-                        <!-- Dinamik olarak dolacak -->
-                    </div>
+            <!-- MARKET TAB -->
+            <div id="tab-market" class="tab-content hidden">
+                <div id="no-channel-msg" class="glass-panel hidden"
+                    style="position:static; transform:none; width:100%; margin-top:0;">
+                    <h3>⚠️ Kanal Bağlantısı Yok</h3>
+                    <p>Market ürünlerini görmek için önce bir Kick kanalında aktif olmalısın (mesaj yazmalısın).</p>
                 </div>
 
-                <div id="tab-leaderboard" class="tab-content hidden">
-                    <h2 style="margin-bottom:20px;">🏆 En Zenginler (Top 10)</h2>
-                    <div style="display:flex; justify-content:center; gap:10px; margin-bottom:20px;">
-                        <button class="primary-btn active" style="width:auto; padding:8px 20px; font-size:0.8rem;"
-                            onclick="switchLB('global')">🌏 GLOBAL</button>
-                        <button class="primary-btn" style="width:auto; padding:8px 20px; font-size:0.8rem;"
-                            onclick="switchLB('channel')">📺 KANAL</button>
-                    </div>
-                    <div id="leaderboard-container" class="leaderboard-list">
-                        <!-- JS fills -->
-                    </div>
+                <div class="market-grid" id="market-items">
+                    <!-- Dinamik olarak dolacak -->
                 </div>
+            </div>
 
-                <!-- BORSA TAB -->
-                <div id="tab-borsa" class="tab-content hidden">
-                    <h2 style="margin-bottom:20px;">📈 Küresel Borsa (Canlı)</h2>
+            <div id="tab-leaderboard" class="tab-content hidden">
+                <h2 style="margin-bottom:20px;">🏆 En Zenginler (Top 10)</h2>
+                <div style="display:flex; justify-content:center; gap:10px; margin-bottom:20px;">
+                    <button class="primary-btn active" style="width:auto; padding:8px 20px; font-size:0.8rem;"
+                        onclick="switchLB('global')">🌏 GLOBAL</button>
+                    <button class="primary-btn" style="width:auto; padding:8px 20px; font-size:0.8rem;"
+                        onclick="switchLB('channel')">📺 KANAL</button>
+                </div>
+                <div id="leaderboard-container" class="leaderboard-list">
+                    <!-- JS fills -->
+                </div>
+            </div>
 
-                    <!-- HESAPLAYICI KALDIRILDI (Canlı Hesaplama Kartlarda) -->
+            <!-- BORSA TAB -->
+            <div id="tab-borsa" class="tab-content hidden">
+                <h2 style="margin-bottom:20px;">📈 Küresel Borsa (Canlı)</h2>
 
-                    <!-- 📰 NEWSPAPER STYLE NEWS SECTION -->
-                    <div class="news-section">
-                        <div class="news-header">
-                            <div class="news-masthead">
-                                <div class="news-logo">📰 BORSA <span>GAZETESİ</span></div>
-                                <span class="news-badge">CANLI</span>
-                            </div>
-                            <div class="news-date" id="news-date-display">--</div>
+                <!-- HESAPLAYICI KALDIRILDI (Canlı Hesaplama Kartlarda) -->
+
+                <!-- 📰 NEWSPAPER STYLE NEWS SECTION -->
+                <div class="news-section">
+                    <div class="news-header">
+                        <div class="news-masthead">
+                            <div class="news-logo">📰 BORSA <span>GAZETESİ</span></div>
+                            <span class="news-badge">CANLI</span>
                         </div>
-                        <div class="news-body" id="news-ticker-container">
-                            <div class="news-empty">
-                                <i class="fas fa-newspaper"></i>
-                                Henüz piyasa haberi yok...
-                            </div>
-                        </div>
-                        <div class="news-footer">
-                            <div class="news-ticker-label">Canlı Piyasa Akışı</div>
-                            <div>Son güncelleme: <span id="news-last-update">--:--</span></div>
+                        <div class="news-date" id="news-date-display">--</div>
+                    </div>
+                    <div class="news-body" id="news-ticker-container">
+                        <div class="news-empty">
+                            <i class="fas fa-newspaper"></i>
+                            Henüz piyasa haberi yok...
                         </div>
                     </div>
-
-                    <p style="color:var(--text-dim); margin-bottom:20px; font-size:0.9rem;">Hisselerin fiyatları
-                        saniyelik olarak güncellenir. Tüm kanallarda ortaktır.</p>
-                    <div id="borsa-items" class="market-grid">
-                        <!-- JS fills -->
+                    <div class="news-footer">
+                        <div class="news-ticker-label">Canlı Piyasa Akışı</div>
+                        <div>Son güncelleme: <span id="news-last-update">--:--</span></div>
                     </div>
                 </div>
 
+                <p style="color:var(--text-dim); margin-bottom:20px; font-size:0.9rem;">Hisselerin fiyatları
+                    saniyelik olarak güncellenir. Tüm kanallarda ortaktır.</p>
+                <div id="borsa-items" class="market-grid">
+                    <!-- JS fills -->
+                </div>
+            </div>
 
 
-                <!-- EMLAK TAB -->
-                <div id="tab-emlak" class="tab-content hidden">
-                    <div style="display:flex; justify-content:space-between; align-items:flex-end; margin-bottom:20px;">
-                        <div>
-                            <h2 style="margin:0;">🏠 Türkiye Gayrimenkul Borsası</h2>
-                            <p style="color:var(--text-dim); margin-top:8px; font-size:0.9rem; max-width:600px;">
-                                <b>Konutlar</b> ile pasif kira geliri elde et, <b>Dükkanlar</b> ile ticaret yap veya
-                                <b>Araziler</b> alarak geleceğin sanayi devlerini kur.
-                            </p>
-                        </div>
+
+            <!-- EMLAK TAB -->
+            <div id="tab-emlak" class="tab-content hidden">
+                <div style="display:flex; justify-content:space-between; align-items:flex-end; margin-bottom:20px;">
+                    <div>
+                        <h2 style="margin:0;">🏠 Türkiye Gayrimenkul Borsası</h2>
+                        <p style="color:var(--text-dim); margin-top:8px; font-size:0.9rem; max-width:600px;">
+                            <b>Konutlar</b> ile pasif kira geliri elde et, <b>Dükkanlar</b> ile ticaret yap veya
+                            <b>Araziler</b> alarak geleceğin sanayi devlerini kur.
+                        </p>
                     </div>
+                </div>
 
-                    <div class="emlak-container"
-                        style="display: grid; grid-template-columns: 1.5fr 1fr; gap: 25px; margin-top:20px; align-items: flex-start;">
-                        <!-- Harita Alanı (Sticky) -->
-                        <div class="map-wrapper glass-panel"
-                            style="position:sticky; top:20px; padding: 20px; overflow: hidden; min-height: 500px; display: flex; align-items: center; justify-content: center; border-radius: 20px;">
+                <div class="emlak-container"
+                    style="display: grid; grid-template-columns: 1.5fr 1fr; gap: 25px; margin-top:20px; align-items: flex-start;">
+                    <!-- Harita Alanı (Sticky) -->
+                    <div class="map-wrapper glass-panel"
+                        style="position:sticky; top:20px; padding: 20px; overflow: hidden; min-height: 500px; display: flex; align-items: center; justify-content: center; border-radius: 20px;">
 
-                            <div id="turkey-map"
-                                style="width: 100%; max-width: 850px; aspect-ratio: 1000 / 450; position: relative; margin: 0 auto; z-index: 1; border-radius: 12px; display: flex; align-items: center; justify-content: center; background: rgba(255,255,255,0.02); padding: 0; overflow: hidden;">
-                                <!-- Harita Proxy Kullanımı (Bağlantı Sorunları İçin) -->
-                                <img src="/api/map/turkey" alt="Turkey Map"
-                                    style="width: 100%; height: 100%; object-fit: fill; display: block; filter: brightness(0) invert(1) drop-shadow(0 0 5px rgba(255,255,255,0.5)); opacity: 0.9; transform: scale(2.1); transform-origin: center;">
-                                <div id="map-overlay"
-                                    style="position:absolute; top:0; left:0; width:100%; height:100%; pointer-events: auto; transform: scale(0.96, 0.82); transform-origin: center;">
-                                    <!-- İnteraktif Şehir Noktaları -->
-                                </div>
-                            </div>
-
-                            <!-- Şehir Bilgi Kartı -->
-                            <div id="city-info-toast"
-                                style="position:absolute; bottom:30px; left:30px; background: rgba(0,0,0,0.8); color: #fff; padding: 12px 24px; border-radius: 16px; border: 1px solid rgba(255,255,255,0.1); font-weight: 800; font-size: 1.1rem; pointer-events: none; display:none; backdrop-filter: blur(20px); box-shadow: 0 10px 30px rgba(0,0,0,0.5); z-index: 100; transition: 0.3s; transform: translateY(0);">
-                                <i class="fas fa-location-dot" style="color:var(--primary);"></i> <span
-                                    style="margin-left:10px; letter-spacing: 1px;">Şehir</span>
+                        <div id="turkey-map"
+                            style="width: 100%; max-width: 850px; aspect-ratio: 1000 / 450; position: relative; margin: 0 auto; z-index: 1; border-radius: 12px; display: flex; align-items: center; justify-content: center; background: rgba(255,255,255,0.02); padding: 0; overflow: hidden;">
+                            <!-- Harita Proxy Kullanımı (Bağlantı Sorunları İçin) -->
+                            <img src="/api/map/turkey" alt="Turkey Map"
+                                style="width: 100%; height: 100%; object-fit: fill; display: block; filter: brightness(0) invert(1) drop-shadow(0 0 5px rgba(255,255,255,0.5)); opacity: 0.9; transform: scale(2.1); transform-origin: center;">
+                            <div id="map-overlay"
+                                style="position:absolute; top:0; left:0; width:100%; height:100%; pointer-events: auto; transform: scale(0.96, 0.82); transform-origin: center;">
+                                <!-- İnteraktif Şehir Noktaları -->
                             </div>
                         </div>
 
-                        <!-- Mülk Listesi -->
-                        <div class="property-panel glass-panel"
-                            style="padding: 25px; background: rgba(10,10,10,0.7); min-height: 500px; border-radius: 24px; border: 1px solid rgba(255,255,255,0.05); display: flex; flex-direction: column;">
-                            <div id="selected-city-header" style="margin-bottom: 20px;">
-                                <div
-                                    style="display:flex; justify-content:space-between; align-items:center; flex-wrap:wrap; gap:10px;">
-                                    <div>
-                                        <h2 id="city-title"
-                                            style="color: var(--primary); margin: 0; font-size: 1.8rem; font-weight: 900; text-shadow: 0 0 20px rgba(0,255,136,0.3);">
-                                            Şehir Seçin</h2>
-                                        <p style="color: #666; font-size: 0.9rem; margin-top: 5px;">Haritadan bir şehre
-                                            tıklayarak satılık mülkleri görün.</p>
-                                    </div>
-
-                                    <!-- Filtreler -->
-                                    <div id="property-filters"
-                                        style="display:flex; gap:10px; background:rgba(0,0,0,0.5); padding:5px; border-radius:12px; display:none;">
-                                        <button class="filter-btn active" onclick="filterProperties('all', this)"
-                                            style="border:none; background:transparent; color:#fff; padding:8px 15px; border-radius:8px; cursor:pointer; font-weight:bold; font-size:0.8rem; transition:0.2s;">HEPSİ</button>
-                                        <button class="filter-btn" onclick="filterProperties('residence', this)"
-                                            style="border:none; background:transparent; color:#aaa; padding:8px 15px; border-radius:8px; cursor:pointer; font-weight:bold; font-size:0.8rem; transition:0.2s;">KONUT</button>
-                                        <button class="filter-btn" onclick="filterProperties('shop', this)"
-                                            style="border:none; background:transparent; color:#aaa; padding:8px 15px; border-radius:8px; cursor:pointer; font-weight:bold; font-size:0.8rem; transition:0.2s;">DÜKKAN</button>
-                                        <button class="filter-btn" onclick="filterProperties('land', this)"
-                                            style="border:none; background:transparent; color:#aaa; padding:8px 15px; border-radius:8px; cursor:pointer; font-weight:bold; font-size:0.8rem; transition:0.2s;">ARAZİ</button>
-                                    </div>
-                                </div>
-                            </div>
-                            <div id="city-properties-list"
-                                style="flex: 1; display: flex; flex-direction: column; gap: 15px; overflow-y: auto; padding-right: 5px;">
-                                <!-- Mülkler JS ile buraya gelecek -->
-                                <div
-                                    style="display:flex; flex-direction:column; align-items:center; justify-content:center; height:100%; opacity:0.3;">
-                                    <i class="fas fa-city" style="font-size: 4rem; margin-bottom: 20px;"></i>
-                                    <p>Henüz şehir seçilmedi.</p>
-                                </div>
-                            </div>
+                        <!-- Şehir Bilgi Kartı -->
+                        <div id="city-info-toast"
+                            style="position:absolute; bottom:30px; left:30px; background: rgba(0,0,0,0.8); color: #fff; padding: 12px 24px; border-radius: 16px; border: 1px solid rgba(255,255,255,0.1); font-weight: 800; font-size: 1.1rem; pointer-events: none; display:none; backdrop-filter: blur(20px); box-shadow: 0 10px 30px rgba(0,0,0,0.5); z-index: 100; transition: 0.3s; transform: translateY(0);">
+                            <i class="fas fa-location-dot" style="color:var(--primary);"></i> <span
+                                style="margin-left:10px; letter-spacing: 1px;">Şehir</span>
                         </div>
                     </div>
-                </div>
 
-                <!-- QUESTS TAB -->
-                <div id="tab-quests" class="tab-content hidden">
-                    <h2 style="margin-bottom:20px;">🎯 Günlük Görevler</h2>
-                    <div id="quests-container">
-                        <!-- JS fills -->
-                    </div>
-                </div>
-
-                <!-- CAREER TAB -->
-                <div id="tab-career" class="tab-content hidden">
-                    <h2 style="margin-bottom:10px;">💼 Kariyer & Meslekler</h2>
-                    <p style="color:var(--text-dim); margin-bottom:20px; font-size:0.9rem;">
-                        İşe başlamak için diploman (eğitim seviyen) yetmeli ve gerekli meslek eşyasını satın almalısın.
-                    </p>
-                    <div id="career-grid" class="market-grid">
-                        <!-- JS fills -->
-                    </div>
-                </div>
-
-                <!-- GANGS TAB -->
-                <div id="tab-gangs" class="tab-content hidden">
-                    <h2 class="sect-title" style="font-size: 1.8rem; margin-bottom: 25px;">
-                        <i class="fas fa-skull-crossbones"></i> Çete Bölgesi
-                    </h2>
-
-                    <!-- GANG LOBBY (Not in a gang) -->
-                    <div id="gang-lobby" class="hidden">
-                        <div class="gang-card"
-                            style="text-align: center; max-width: 600px; margin: 0 auto; padding: 40px;">
-                            <div class="item-icon">🚩</div>
-                            <h3 style="font-size: 1.8rem; margin-bottom: 10px;">Kendi Ekibini Kur</h3>
-                            <p>Sokaklara hakim olmak için kendi çeteni kur ve üyeleri topla.</p>
-
+                    <!-- Mülk Listesi -->
+                    <div class="property-panel glass-panel"
+                        style="padding: 25px; background: rgba(10,10,10,0.7); min-height: 500px; border-radius: 24px; border: 1px solid rgba(255,255,255,0.05); display: flex; flex-direction: column;">
+                        <div id="selected-city-header" style="margin-bottom: 20px;">
                             <div
-                                style="display: flex; flex-direction: column; gap: 15px; margin-top: 25px; max-width: 400px; margin-left: auto; margin-right: auto;">
-                                <input type="text" id="gang-name-input" placeholder="Çete Adı (Örn: İstanbul Tigers)"
-                                    class="borsa-input"
-                                    style="font-size: 1rem !important; padding: 12px !important; margin:0;">
-                                <input type="text" id="gang-tag-input" placeholder="Çete Etiketi (3-4 Harf)"
-                                    maxlength="4" class="borsa-input"
-                                    style="font-size: 1rem !important; padding: 12px !important; margin:0; text-transform:uppercase;">
-
-                                <div style="text-align: left;">
-                                    <label
-                                        style="font-size: 0.75rem; color: #888; margin-bottom: 8px; display: block; margin-left: 5px;">ÜS
-                                        BÖLGESİ SEÇ</label>
-                                    <select id="gang-city-input" class="borsa-input"
-                                        style="text-align: left; padding-left: 15px !important; margin:0; height: 50px; background:rgba(0,0,0,0.3) !important;">
-                                        <option value="">Şehir Seçin...</option>
-                                    </select>
-                                </div>
-
-                                <button onclick="createGang()" class="primary-btn" style="margin-top: 10px;">
-                                    🏴 Çeteyi Kur (1.000.000 💰)
-                                </button>
-                            </div>
-                        </div>
-
-                        <div style="max-width: 600px; margin: 40px auto 0;">
-                            <h4 class="sect-title">
-                                <i class="fas fa-list-ul"></i> Katılabileceğin Çeteler
-                            </h4>
-                            <div id="public-gang-list" style="display: grid; grid-template-columns: 1fr; gap: 15px;">
-                                <div style="color:#666; font-size:0.9rem; text-align:center; padding:30px;">
-                                    Yükleniyor...</div>
-                            </div>
-                        </div>
-                    </div>
-
-                    <!-- GANG DASHBOARD (In a gang) -->
-                    <div id="gang-dashboard" class="hidden">
-                        <div class="gang-card">
-                            <div class="gang-header">
+                                style="display:flex; justify-content:space-between; align-items:center; flex-wrap:wrap; gap:10px;">
                                 <div>
-                                    <h2 style="margin:0; font-size:1.8rem; display:flex; align-items:center; gap:12px;">
-                                        <span id="my-gang-tag" class="gang-tag-pill">TAG</span>
-                                        <span id="my-gang-name">Çete Adı</span>
-                                    </h2>
-                                    <div style="color:#888; font-size:0.85rem; margin-top:8px;">
-                                        👑 Lider: <span id="my-gang-leader"
-                                            style="color:var(--primary); font-weight:700;">...</span>
-                                    </div>
+                                    <h2 id="city-title"
+                                        style="color: var(--primary); margin: 0; font-size: 1.8rem; font-weight: 900; text-shadow: 0 0 20px rgba(0,255,136,0.3);">
+                                        Şehir Seçin</h2>
+                                    <p style="color: #666; font-size: 0.9rem; margin-top: 5px;">Haritadan bir şehre
+                                        tıklayarak satılık mülkleri görün.</p>
                                 </div>
-                                <div style="text-align: right;">
-                                    <div style="font-size:0.7rem; color:#888; margin-bottom:4px; font-weight:700;">ÇETE
-                                        KASASI</div>
-                                    <div id="my-gang-balance"
-                                        style="font-size:1.6rem; font-weight:800; color:var(--primary); text-shadow: 0 0 15px rgba(5,234,106,0.3);">
-                                        0 💰</div>
-                                </div>
-                            </div>
 
-                            <div class="gang-stat-grid">
-                                <div class="stat-box"
-                                    style="background:rgba(255,255,255,0.03); border:1px solid rgba(255,255,255,0.05);">
-                                    <label>Üye Sayısı</label>
-                                    <div id="my-gang-count" class="val">0</div>
+                                <!-- Filtreler -->
+                                <div id="property-filters"
+                                    style="display:flex; gap:10px; background:rgba(0,0,0,0.5); padding:5px; border-radius:12px; display:none;">
+                                    <button class="filter-btn active" onclick="filterProperties('all', this)"
+                                        style="border:none; background:transparent; color:#fff; padding:8px 15px; border-radius:8px; cursor:pointer; font-weight:bold; font-size:0.8rem; transition:0.2s;">HEPSİ</button>
+                                    <button class="filter-btn" onclick="filterProperties('residence', this)"
+                                        style="border:none; background:transparent; color:#aaa; padding:8px 15px; border-radius:8px; cursor:pointer; font-weight:bold; font-size:0.8rem; transition:0.2s;">KONUT</button>
+                                    <button class="filter-btn" onclick="filterProperties('shop', this)"
+                                        style="border:none; background:transparent; color:#aaa; padding:8px 15px; border-radius:8px; cursor:pointer; font-weight:bold; font-size:0.8rem; transition:0.2s;">DÜKKAN</button>
+                                    <button class="filter-btn" onclick="filterProperties('land', this)"
+                                        style="border:none; background:transparent; color:#aaa; padding:8px 15px; border-radius:8px; cursor:pointer; font-weight:bold; font-size:0.8rem; transition:0.2s;">ARAZİ</button>
                                 </div>
-                                <div class="stat-box"
-                                    style="background:rgba(255,255,255,0.03); border:1px solid rgba(255,255,255,0.05);">
-                                    <label>Sokak Gücü</label>
-                                    <div class="val" style="color:#666; font-size:0.9rem;">Yakında...</div>
-                                </div>
-                            </div>
-
-                            <div style="margin-top:30px; display:flex; gap:15px;">
-                                <button onclick="openDonateModal()" class="primary-btn" style="flex:1;">💰 KASAYA BAĞIŞ
-                                    YAP</button>
-                                <button onclick="leaveGang()" class="logout-btn"
-                                    style="flex:0.3; height: 50px;">Ayrıl</button>
                             </div>
                         </div>
-
-                        <!-- PENDING REQUESTS (Visible to Leader/Officer) -->
-                        <div id="gang-requests-section" class="hidden" style="margin-top:30px;">
-                            <h4 class="sect-title" style="color:var(--primary);"><i class="fas fa-id-badge"></i> Katılım
-                                İstekleri</h4>
-                            <div id="gang-requests-list" style="display: grid; grid-template-columns: 1fr; gap: 10px;">
-                                <!-- Dynamic -->
-                            </div>
-                        </div>
-
-                        <div style="margin-top:40px;">
-                            <h4 class="sect-title"><i class="fas fa-users-viewfinder"></i> Çete Kadrosu</h4>
-                            <div id="gang-members-list" style="display: grid; grid-template-columns: 1fr; gap: 10px;">
-                                <!-- Dynamic Rows -->
+                        <div id="city-properties-list"
+                            style="flex: 1; display: flex; flex-direction: column; gap: 15px; overflow-y: auto; padding-right: 5px;">
+                            <!-- Mülkler JS ile buraya gelecek -->
+                            <div
+                                style="display:flex; flex-direction:column; align-items:center; justify-content:center; height:100%; opacity:0.3;">
+                                <i class="fas fa-city" style="font-size: 4rem; margin-bottom: 20px;"></i>
+                                <p>Henüz şehir seçilmedi.</p>
                             </div>
                         </div>
                     </div>
-
-                    <div style="margin-top: 50px; border-top: 1px solid rgba(255,255,255,0.1); padding-top: 30px;">
-                        <h4 class="sect-title"><i class="fas fa-users"></i> Diğer Çeteler</h4>
-                        <div id="public-gang-list-dashboard"
-                            style="display: grid; grid-template-columns: 1fr 1fr; gap: 15px;">
-                            <!-- JS fills -->
-                        </div>
-                    </div>
-                </div>
-
-                <!-- COMMANDS TAB -->
-                <div id="tab-commands" class="tab-content hidden">
-                    <h2 style="margin-bottom:10px;">📜 Tüm Bot Komutları</h2>
-                    <p style="color:var(--text-dim); margin-bottom:20px; font-size:0.9rem;">
-                        Sohbette kullanabileceğin tüm komutların listesi. Bazı komutlar abonelere özeldir.
-                    </p>
-                    <div id="commands-grid" class="market-grid"
-                        style="grid-template-columns: repeat(auto-fit, minmax(280px, 1fr));">
-                        <!-- JS fills -->
-                    </div>
-                </div>
-
-                <!-- STATS TAB -->
-                <div id="tab-stats" class="tab-content hidden">
-                    <h2 style="margin-bottom:20px;">📊 Canlı Topluluk İstatistikleri</h2>
-                    <div id="stats-container" class="market-grid"
-                        style="grid-template-columns: repeat(auto-fit, minmax(300px, 1fr));">
-                        <!-- JS fills -->
-                    </div>
-                </div>
-
-                <!-- PROFILE TAB -->
-                <div id="tab-profile" class="tab-content hidden">
-                    <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:20px;">
-                        <h2 style="margin:0;">👤 Oyuncu Profili</h2>
-                        <button class="primary-btn" onclick="showCustomizationMarket()"
-                            style="width:auto; padding:10px 20px; background:linear-gradient(45deg, #ff00ff, #00ffff); color:white; border:none;">✨
-                            Profili Özelleştir</button>
-                    </div>
-                    <div id="profile-card" class="glass-panel"
-                        style="position:static; transform:none; width:100%; text-align:left; transition: all 0.5s ease;">
-                        <!-- JS fills -->
-                    </div>
                 </div>
             </div>
-        </div>
 
-        <!-- TTS MODAL -->
-        <div id="tts-modal" class="hidden"
-            style="position:fixed; top:0; left:0; width:100%; height:100%; background:rgba(0,0,0,0.85); z-index:10000; display:flex; align-items:center; justify-content:center; backdrop-filter:blur(10px);">
-            <div class="glass-panel" style="width:100%; max-width:500px; padding:30px; position:relative;">
-                <button onclick="closeTTSModal()"
-                    style="position:absolute; top:20px; right:20px; background:none; border:none; color:#666; cursor:pointer; font-size:1.5rem;">&times;</button>
-                <h2 style="margin-bottom:20px; color:var(--primary);">🎙️ TTS Mesajı Gönder</h2>
-
-                <label
-                    style="display:block; margin-bottom:10px; font-weight:600; font-size:0.9rem; color:#aaa;">Mesajınız
-                    (Maks 500 Karakter)</label>
-                <textarea id="tts-input" maxlength="500" placeholder="Yayında okunacak mesajı yazın..."
-                    style="width:100%; height:120px; background:rgba(255,255,255,0.05); border:1px solid var(--glass-border); border-radius:12px; padding:15px; color:white; font-family:inherit; resize:none; font-size:1rem; margin-bottom:20px;"></textarea>
-
-                <label style="display:block; margin-bottom:10px; font-weight:600; font-size:0.9rem; color:#aaa;">Ses
-                    Seçimi</label>
-                <select id="tts-voice-select"
-                    style="width:100%; background:rgba(255,255,255,0.05); border:1px solid var(--glass-border); border-radius:12px; padding:12px; color:white; font-size:1rem; margin-bottom:30px; cursor:pointer;">
-                    <option value="standart">Standart</option>
-                    <option disabled style="background:#333; color:#aaa;">--- ElevenLabs (Yapay Zeka) ---</option>
-                    <option value="aleyna">Selin 👩</option>
-                    <option value="riza">Mert 👮‍♂️</option>
-                    <option value="czn">Burak 😺</option>
-                    <option value="polat">Emre 🕶️</option>
-                    <option value="ezel">Kenan 🎭</option>
-                    <option value="azeri">Aygün 🇦🇿</option>
-                </select>
-
-                <div style="display:flex; gap:15px;">
-                    <button onclick="closeTTSModal()" class="secondary-btn" style="flex:1;">İptal</button>
-                    <button id="confirm-tts-buy" class="primary-btn" style="flex:2;">Bakiye Harca & Gönder</button>
+            <!-- QUESTS TAB -->
+            <div id="tab-quests" class="tab-content hidden">
+                <h2 style="margin-bottom:20px;">🎯 Günlük Görevler</h2>
+                <div id="quests-container">
+                    <!-- JS fills -->
                 </div>
             </div>
-        </div>
 
-        <!-- GANG DONATE MODAL -->
-        <div id="gang-donate-modal" class="hidden"
-            style="position:fixed; top:0; left:0; width:100%; height:100%; background:rgba(0,0,0,0.85); z-index:10001; display:flex; align-items:center; justify-content:center; backdrop-filter:blur(10px);">
-            <div class="glass-panel" style="width:100%; max-width:400px; padding:30px; position:relative;">
-                <button onclick="closeGangDonateModal()"
-                    style="position:absolute; top:20px; right:20px; background:none; border:none; color:#666; cursor:pointer; font-size:1.5rem;">&times;</button>
-                <h2 style="margin-bottom:20px; color:var(--primary);">💰 Kasaya Bağış Yap</h2>
-
-                <p style="margin-bottom:15px; font-size:0.9rem; color:#aaa;">Çete kasasına bağışlayacağınız tutarı
-                    girin. Bu para geri alınamaz.</p>
-
-                <label style="display:block; margin-bottom:10px; font-weight:600; font-size:0.8rem; color:#ccc;">BAĞIŞ
-                    MİKTARI</label>
-                <input type="number" id="gang-donate-input" placeholder="Miktar girin..."
-                    style="width:100%; background:rgba(255,255,255,0.05); border:1px solid var(--glass-border); border-radius:12px; padding:15px; color:white; font-size:1.1rem; margin-bottom:25px;">
-
-                <div style="display:flex; gap:15px;">
-                    <button onclick="closeGangDonateModal()" class="secondary-btn" style="flex:1;">İptal</button>
-                    <button onclick="confirmGangDonate()" class="primary-btn" style="flex:2;">💰 Bağışla</button>
-                </div>
-            </div>
-        </div>
-
-        <!-- GENERIC INPUT MODAL -->
-        <div id="input-modal" class="hidden"
-            style="position:fixed; top:0; left:0; width:100%; height:100%; background:rgba(0,0,0,0.85); z-index:11000; display:flex; align-items:center; justify-content:center; backdrop-filter:blur(10px);">
-            <div class="glass-panel"
-                style="width:100%; max-width:450px; padding:30px; position:relative; animation: slideUp 0.3s cubic-bezier(0.18, 0.89, 0.32, 1.28);">
-                <h2 id="input-modal-title" style="margin-bottom:10px; color:var(--primary); font-size:1.5rem;">Giriş
-                    Yapın</h2>
-                <p id="input-modal-desc" style="color:#aaa; font-size:0.9rem; margin-bottom:20px;">Lütfen istenilen
-                    bilgiyi kutucuğa girin.</p>
-
-                <input type="text" id="input-modal-value"
-                    style="width:100%; padding:15px; background:rgba(255,255,255,0.05); border:1px solid var(--glass-border); border-radius:12px; color:white; font-size:1.1rem; margin-bottom:25px;"
-                    placeholder="...">
-
-                <div style="display:flex; gap:15px;">
-                    <button id="input-modal-cancel" class="secondary-btn" style="flex:1;">İptal</button>
-                    <button id="input-modal-confirm" class="primary-btn" style="flex:2;">Onayla</button>
-                </div>
-            </div>
-        </div>
-
-        <!-- GENERIC ALERT MODAL -->
-        <div id="alert-modal" class="hidden"
-            style="position:fixed; top:0; left:0; width:100%; height:100%; background:rgba(0,0,0,0.85); z-index:12000; display:flex; align-items:center; justify-content:center; backdrop-filter:blur(10px);">
-            <div class="glass-panel"
-                style="width:100%; max-width:400px; padding:30px; position:relative; text-align:center; animation: bounceIn 0.4s cubic-bezier(0.18, 0.89, 0.32, 1.28);">
-                <i class="fas fa-exclamation-circle"
-                    style="font-size:3rem; color:var(--primary); margin-bottom:20px; display:block;"></i>
-                <h3 id="alert-modal-title" style="margin-bottom:10px; font-size:1.4rem;">Dikkat</h3>
-                <p id="alert-modal-message" style="color:#ccc; font-size:1rem; margin-bottom:25px; line-height:1.5;">...
+            <!-- CAREER TAB -->
+            <div id="tab-career" class="tab-content hidden">
+                <h2 style="margin-bottom:10px;">💼 Kariyer & Meslekler</h2>
+                <p style="color:var(--text-dim); margin-bottom:20px; font-size:0.9rem;">
+                    İşe başlamak için diploman (eğitim seviyen) yetmeli ve gerekli meslek eşyasını satın almalısın.
                 </p>
-                <button id="alert-modal-btn" class="primary-btn" style="width:100%;">TAMAM</button>
+                <div id="career-grid" class="market-grid">
+                    <!-- JS fills -->
+                </div>
             </div>
-        </div>
 
-        <!-- GENERIC CONFIRM MODAL -->
-        <div id="confirm-modal" class="hidden"
-            style="position:fixed; top:0; left:0; width:100%; height:100%; background:rgba(0,0,0,0.85); z-index:12000; display:flex; align-items:center; justify-content:center; backdrop-filter:blur(10px);">
-            <div class="glass-panel"
-                style="width:100%; max-width:400px; padding:30px; position:relative; text-align:center; animation: bounceIn 0.4s cubic-bezier(0.18, 0.89, 0.32, 1.28);">
-                <i class="fas fa-question-circle"
-                    style="font-size:3rem; color:var(--primary); margin-bottom:20px; display:block;"></i>
-                <h3 id="confirm-modal-title" style="margin-bottom:10px; font-size:1.4rem;">Onay</h3>
-                <p id="confirm-modal-message" style="color:#ccc; font-size:1rem; margin-bottom:25px; line-height:1.5;">
-                    ...
+            <!-- GANGS TAB -->
+            <div id="tab-gangs" class="tab-content hidden">
+                <h2 class="sect-title" style="font-size: 1.8rem; margin-bottom: 25px;">
+                    <i class="fas fa-skull-crossbones"></i> Çete Bölgesi
+                </h2>
+
+                <!-- GANG LOBBY (Not in a gang) -->
+                <div id="gang-lobby" class="hidden">
+                    <div class="gang-card" style="text-align: center; max-width: 600px; margin: 0 auto; padding: 40px;">
+                        <div class="item-icon">🚩</div>
+                        <h3 style="font-size: 1.8rem; margin-bottom: 10px;">Kendi Ekibini Kur</h3>
+                        <p>Sokaklara hakim olmak için kendi çeteni kur ve üyeleri topla.</p>
+
+                        <div
+                            style="display: flex; flex-direction: column; gap: 15px; margin-top: 25px; max-width: 400px; margin-left: auto; margin-right: auto;">
+                            <input type="text" id="gang-name-input" placeholder="Çete Adı (Örn: İstanbul Tigers)"
+                                class="borsa-input"
+                                style="font-size: 1rem !important; padding: 12px !important; margin:0;">
+                            <input type="text" id="gang-tag-input" placeholder="Çete Etiketi (3-4 Harf)" maxlength="4"
+                                class="borsa-input"
+                                style="font-size: 1rem !important; padding: 12px !important; margin:0; text-transform:uppercase;">
+
+                            <div style="text-align: left;">
+                                <label
+                                    style="font-size: 0.75rem; color: #888; margin-bottom: 8px; display: block; margin-left: 5px;">ÜS
+                                    BÖLGESİ SEÇ</label>
+                                <select id="gang-city-input" class="borsa-input"
+                                    style="text-align: left; padding-left: 15px !important; margin:0; height: 50px; background:rgba(0,0,0,0.3) !important;">
+                                    <option value="">Şehir Seçin...</option>
+                                </select>
+                            </div>
+
+                            <button onclick="createGang()" class="primary-btn" style="margin-top: 10px;">
+                                🏴 Çeteyi Kur (1.000.000 💰)
+                            </button>
+                        </div>
+                    </div>
+
+                    <div style="max-width: 600px; margin: 40px auto 0;">
+                        <h4 class="sect-title">
+                            <i class="fas fa-list-ul"></i> Katılabileceğin Çeteler
+                        </h4>
+                        <div id="public-gang-list" style="display: grid; grid-template-columns: 1fr; gap: 15px;">
+                            <div style="color:#666; font-size:0.9rem; text-align:center; padding:30px;">
+                                Yükleniyor...</div>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- GANG DASHBOARD (In a gang) -->
+                <div id="gang-dashboard" class="hidden">
+                    <div class="gang-card">
+                        <div class="gang-header">
+                            <div>
+                                <h2 style="margin:0; font-size:1.8rem; display:flex; align-items:center; gap:12px;">
+                                    <span id="my-gang-tag" class="gang-tag-pill">TAG</span>
+                                    <span id="my-gang-name">Çete Adı</span>
+                                </h2>
+                                <div style="color:#888; font-size:0.85rem; margin-top:8px;">
+                                    👑 Lider: <span id="my-gang-leader"
+                                        style="color:var(--primary); font-weight:700;">...</span>
+                                </div>
+                            </div>
+                            <div style="text-align: right;">
+                                <div style="font-size:0.7rem; color:#888; margin-bottom:4px; font-weight:700;">ÇETE
+                                    KASASI</div>
+                                <div id="my-gang-balance"
+                                    style="font-size:1.6rem; font-weight:800; color:var(--primary); text-shadow: 0 0 15px rgba(5,234,106,0.3);">
+                                    0 💰</div>
+                            </div>
+                        </div>
+
+                        <div class="gang-stat-grid">
+                            <div class="stat-box"
+                                style="background:rgba(255,255,255,0.03); border:1px solid rgba(255,255,255,0.05);">
+                                <label>Üye Sayısı</label>
+                                <div id="my-gang-count" class="val">0</div>
+                            </div>
+                            <div class="stat-box"
+                                style="background:rgba(255,255,255,0.03); border:1px solid rgba(255,255,255,0.05);">
+                                <label>Sokak Gücü</label>
+                                <div class="val" style="color:#666; font-size:0.9rem;">Yakında...</div>
+                            </div>
+                        </div>
+
+                        <div style="margin-top:30px; display:flex; gap:15px;">
+                            <button onclick="openDonateModal()" class="primary-btn" style="flex:1;">💰 KASAYA BAĞIŞ
+                                YAP</button>
+                            <button onclick="leaveGang()" class="logout-btn"
+                                style="flex:0.3; height: 50px;">Ayrıl</button>
+                        </div>
+                    </div>
+
+                    <!-- PENDING REQUESTS (Visible to Leader/Officer) -->
+                    <div id="gang-requests-section" class="hidden" style="margin-top:30px;">
+                        <h4 class="sect-title" style="color:var(--primary);"><i class="fas fa-id-badge"></i> Katılım
+                            İstekleri</h4>
+                        <div id="gang-requests-list" style="display: grid; grid-template-columns: 1fr; gap: 10px;">
+                            <!-- Dynamic -->
+                        </div>
+                    </div>
+
+                    <div style="margin-top:40px;">
+                        <h4 class="sect-title"><i class="fas fa-users-viewfinder"></i> Çete Kadrosu</h4>
+                        <div id="gang-members-list" style="display: grid; grid-template-columns: 1fr; gap: 10px;">
+                            <!-- Dynamic Rows -->
+                        </div>
+                    </div>
+                </div>
+
+                <div style="margin-top: 50px; border-top: 1px solid rgba(255,255,255,0.1); padding-top: 30px;">
+                    <h4 class="sect-title"><i class="fas fa-users"></i> Diğer Çeteler</h4>
+                    <div id="public-gang-list-dashboard"
+                        style="display: grid; grid-template-columns: 1fr 1fr; gap: 15px;">
+                        <!-- JS fills -->
+                    </div>
+                </div>
+            </div>
+
+            <!-- COMMANDS TAB -->
+            <div id="tab-commands" class="tab-content hidden">
+                <h2 style="margin-bottom:10px;">📜 Tüm Bot Komutları</h2>
+                <p style="color:var(--text-dim); margin-bottom:20px; font-size:0.9rem;">
+                    Sohbette kullanabileceğin tüm komutların listesi. Bazı komutlar abonelere özeldir.
                 </p>
-                <div style="display:flex; gap:15px;">
-                    <button id="confirm-modal-cancel" class="secondary-btn" style="flex:1;">İPTAL</button>
-                    <button id="confirm-modal-yes" class="primary-btn" style="flex:1;">EVET</button>
+                <div id="commands-grid" class="market-grid"
+                    style="grid-template-columns: repeat(auto-fit, minmax(280px, 1fr));">
+                    <!-- JS fills -->
+                </div>
+            </div>
+
+            <!-- STATS TAB -->
+            <div id="tab-stats" class="tab-content hidden">
+                <h2 style="margin-bottom:20px;">📊 Canlı Topluluk İstatistikleri</h2>
+                <div id="stats-container" class="market-grid"
+                    style="grid-template-columns: repeat(auto-fit, minmax(300px, 1fr));">
+                    <!-- JS fills -->
+                </div>
+            </div>
+
+            <!-- PROFILE TAB -->
+            <div id="tab-profile" class="tab-content hidden">
+                <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:20px;">
+                    <h2 style="margin:0;">👤 Oyuncu Profili</h2>
+                    <button class="primary-btn" onclick="showCustomizationMarket()"
+                        style="width:auto; padding:10px 20px; background:linear-gradient(45deg, #ff00ff, #00ffff); color:white; border:none;">✨
+                        Profili Özelleştir</button>
+                </div>
+                <div id="profile-card" class="glass-panel"
+                    style="position:static; transform:none; width:100%; text-align:left; transition: all 0.5s ease;">
+                    <!-- JS fills -->
                 </div>
             </div>
         </div>
+    </div>
 
-        <div id="toast" class="toast hidden"></div>
-        <script src="https://www.gstatic.com/firebasejs/9.22.1/firebase-app-compat.js"></script>
-        <script src="https://www.gstatic.com/firebasejs/9.22.1/firebase-database-compat.js"></script>
-        <script src="shop.js"></script>
+    <!-- TTS MODAL -->
+    <div id="tts-modal" class="hidden"
+        style="position:fixed; top:0; left:0; width:100%; height:100%; background:rgba(0,0,0,0.85); z-index:10000; display:flex; align-items:center; justify-content:center; backdrop-filter:blur(10px);">
+        <div class="glass-panel" style="width:100%; max-width:500px; padding:30px; position:relative;">
+            <button onclick="closeTTSModal()"
+                style="position:absolute; top:20px; right:20px; background:none; border:none; color:#666; cursor:pointer; font-size:1.5rem;">&times;</button>
+            <h2 style="margin-bottom:20px; color:var(--primary);">🎙️ TTS Mesajı Gönder</h2>
+
+            <label style="display:block; margin-bottom:10px; font-weight:600; font-size:0.9rem; color:#aaa;">Mesajınız
+                (Maks 500 Karakter)</label>
+            <textarea id="tts-input" maxlength="500" placeholder="Yayında okunacak mesajı yazın..."
+                style="width:100%; height:120px; background:rgba(255,255,255,0.05); border:1px solid var(--glass-border); border-radius:12px; padding:15px; color:white; font-family:inherit; resize:none; font-size:1rem; margin-bottom:20px;"></textarea>
+
+            <label style="display:block; margin-bottom:10px; font-weight:600; font-size:0.9rem; color:#aaa;">Ses
+                Seçimi</label>
+            <select id="tts-voice-select"
+                style="width:100%; background:rgba(255,255,255,0.05); border:1px solid var(--glass-border); border-radius:12px; padding:12px; color:white; font-size:1rem; margin-bottom:30px; cursor:pointer;">
+                <option value="standart">Standart</option>
+                <option disabled style="background:#333; color:#aaa;">--- ElevenLabs (Yapay Zeka) ---</option>
+                <option value="aleyna">Selin 👩</option>
+                <option value="riza">Mert 👮‍♂️</option>
+                <option value="czn">Burak 😺</option>
+                <option value="polat">Emre 🕶️</option>
+                <option value="ezel">Kenan 🎭</option>
+                <option value="azeri">Aygün 🇦🇿</option>
+            </select>
+
+            <div style="display:flex; gap:15px;">
+                <button onclick="closeTTSModal()" class="secondary-btn" style="flex:1;">İptal</button>
+                <button id="confirm-tts-buy" class="primary-btn" style="flex:2;">Bakiye Harca & Gönder</button>
+            </div>
+        </div>
+    </div>
+
+    <!-- GANG DONATE MODAL -->
+    <div id="gang-donate-modal" class="hidden"
+        style="position:fixed; top:0; left:0; width:100%; height:100%; background:rgba(0,0,0,0.85); z-index:10001; display:flex; align-items:center; justify-content:center; backdrop-filter:blur(10px);">
+        <div class="glass-panel" style="width:100%; max-width:400px; padding:30px; position:relative;">
+            <button onclick="closeGangDonateModal()"
+                style="position:absolute; top:20px; right:20px; background:none; border:none; color:#666; cursor:pointer; font-size:1.5rem;">&times;</button>
+            <h2 style="margin-bottom:20px; color:var(--primary);">💰 Kasaya Bağış Yap</h2>
+
+            <p style="margin-bottom:15px; font-size:0.9rem; color:#aaa;">Çete kasasına bağışlayacağınız tutarı
+                girin. Bu para geri alınamaz.</p>
+
+            <label style="display:block; margin-bottom:10px; font-weight:600; font-size:0.8rem; color:#ccc;">BAĞIŞ
+                MİKTARI</label>
+            <input type="number" id="gang-donate-input" placeholder="Miktar girin..."
+                style="width:100%; background:rgba(255,255,255,0.05); border:1px solid var(--glass-border); border-radius:12px; padding:15px; color:white; font-size:1.1rem; margin-bottom:25px;">
+
+            <div style="display:flex; gap:15px;">
+                <button onclick="closeGangDonateModal()" class="secondary-btn" style="flex:1;">İptal</button>
+                <button onclick="confirmGangDonate()" class="primary-btn" style="flex:2;">💰 Bağışla</button>
+            </div>
+        </div>
+    </div>
+
+    <!-- GENERIC INPUT MODAL -->
+    <div id="input-modal" class="hidden"
+        style="position:fixed; top:0; left:0; width:100%; height:100%; background:rgba(0,0,0,0.85); z-index:11000; display:flex; align-items:center; justify-content:center; backdrop-filter:blur(10px);">
+        <div class="glass-panel"
+            style="width:100%; max-width:450px; padding:30px; position:relative; animation: slideUp 0.3s cubic-bezier(0.18, 0.89, 0.32, 1.28);">
+            <h2 id="input-modal-title" style="margin-bottom:10px; color:var(--primary); font-size:1.5rem;">Giriş
+                Yapın</h2>
+            <p id="input-modal-desc" style="color:#aaa; font-size:0.9rem; margin-bottom:20px;">Lütfen istenilen
+                bilgiyi kutucuğa girin.</p>
+
+            <input type="text" id="input-modal-value"
+                style="width:100%; padding:15px; background:rgba(255,255,255,0.05); border:1px solid var(--glass-border); border-radius:12px; color:white; font-size:1.1rem; margin-bottom:25px;"
+                placeholder="...">
+
+            <div style="display:flex; gap:15px;">
+                <button id="input-modal-cancel" class="secondary-btn" style="flex:1;">İptal</button>
+                <button id="input-modal-confirm" class="primary-btn" style="flex:2;">Onayla</button>
+            </div>
+        </div>
+    </div>
+
+    <!-- GENERIC ALERT MODAL -->
+    <div id="alert-modal" class="hidden"
+        style="position:fixed; top:0; left:0; width:100%; height:100%; background:rgba(0,0,0,0.85); z-index:12000; display:flex; align-items:center; justify-content:center; backdrop-filter:blur(10px);">
+        <div class="glass-panel"
+            style="width:100%; max-width:400px; padding:30px; position:relative; text-align:center; animation: bounceIn 0.4s cubic-bezier(0.18, 0.89, 0.32, 1.28);">
+            <i class="fas fa-exclamation-circle"
+                style="font-size:3rem; color:var(--primary); margin-bottom:20px; display:block;"></i>
+            <h3 id="alert-modal-title" style="margin-bottom:10px; font-size:1.4rem;">Dikkat</h3>
+            <p id="alert-modal-message" style="color:#ccc; font-size:1rem; margin-bottom:25px; line-height:1.5;">...
+            </p>
+            <button id="alert-modal-btn" class="primary-btn" style="width:100%;">TAMAM</button>
+        </div>
+    </div>
+
+    <!-- GENERIC CONFIRM MODAL -->
+    <div id="confirm-modal" class="hidden"
+        style="position:fixed; top:0; left:0; width:100%; height:100%; background:rgba(0,0,0,0.85); z-index:12000; display:flex; align-items:center; justify-content:center; backdrop-filter:blur(10px);">
+        <div class="glass-panel"
+            style="width:100%; max-width:400px; padding:30px; position:relative; text-align:center; animation: bounceIn 0.4s cubic-bezier(0.18, 0.89, 0.32, 1.28);">
+            <i class="fas fa-question-circle"
+                style="font-size:3rem; color:var(--primary); margin-bottom:20px; display:block;"></i>
+            <h3 id="confirm-modal-title" style="margin-bottom:10px; font-size:1.4rem;">Onay</h3>
+            <p id="confirm-modal-message" style="color:#ccc; font-size:1rem; margin-bottom:25px; line-height:1.5;">
+                ...
+            </p>
+            <div style="display:flex; gap:15px;">
+                <button id="confirm-modal-cancel" class="secondary-btn" style="flex:1;">İPTAL</button>
+                <button id="confirm-modal-yes" class="primary-btn" style="flex:1;">EVET</button>
+            </div>
+        </div>
+    </div>
+
+    <div id="toast" class="toast hidden"></div>
+    <script src="https://www.gstatic.com/firebasejs/9.22.1/firebase-app-compat.js"></script>
+    <script src="https://www.gstatic.com/firebasejs/9.22.1/firebase-database-compat.js"></script>
+    <script src="shop.js"></script>
 </body>
 
 </html>
