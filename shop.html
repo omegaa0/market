@@ -155,14 +155,24 @@
 <body>
     <div class="glow-bg"></div>
 
-    <!-- SIDE GIFS -->
-    <div class="side-gif left">
-        <img src="https://media.giphy.com/media/3o7TKMGpxPucV0G3S0/giphy.gif" alt="side-gif"
-            referrerpolicy="no-referrer">
+    <!-- DEVLOG SIDEBAR (Sol Kısım - Admin panelden yönetilir) -->
+    <div class="side-devlog left" id="devlog-sidebar"
+        style="position:fixed; left:20px; top:50%; transform:translateY(-50%); width:280px; max-height:70vh; overflow-y:auto; z-index:100; display:none;">
+        <div class="glass-panel"
+            style="padding:20px; background:rgba(10,10,10,0.9); border:1px solid rgba(255,255,255,0.1);">
+            <h3
+                style="color:var(--primary); margin-bottom:15px; font-size:1rem; display:flex; align-items:center; gap:8px;">
+                <i class="fas fa-scroll"></i> Değişiklik Günlüğü
+            </h3>
+            <div id="devlog-content" style="display:flex; flex-direction:column; gap:12px; font-size:0.85rem;">
+                <!-- Firebase'den dolacak -->
+                <div style="color:#666; font-size:0.8rem;">Yükleniyor...</div>
+            </div>
+        </div>
     </div>
-    <div class="side-gif right">
-        <img src="https://media.giphy.com/media/3o7TKMGpxPucV0G3S0/giphy.gif" alt="side-gif"
-            referrerpolicy="no-referrer">
+
+    <div class="side-gif right" style="display:none;">
+        <!-- Sağ taraf kaldırıldı -->
     </div>
 
     <!-- AUTH SECTION -->
@@ -235,19 +245,21 @@
                     style="background:var(--primary); color:black; font-size:0.6rem; padding:2px 5px; border-radius:4px; margin-left:5px; font-weight:800;">YENİ</span></button>
             <!-- Arena Removed -->
             <button class="tab-btn" onclick="switchTab('quests')">🎯 Görevler</button>
+            <button class="tab-btn" onclick="switchTab('commands')">📜 Komutlar</button>
             <button class="tab-btn" onclick="switchTab('stats')">📊 İstatistikler</button>
             <button class="tab-btn" onclick="switchTab('profile')">👤 Profilim</button>
         </nav>
 
         <div class="shop-layout" style="display: flex; gap: 30px; align-items: flex-start; margin-top: 30px;">
-            <!-- LEFT SIDEBAR: FREE COMMANDS -->
-            <aside class="sidebar glass-panel"
+            <!-- LEFT SIDEBAR: DEVLOG -->
+            <aside class="sidebar glass-panel" id="main-devlog-sidebar"
                 style="position:static; transform:none; width: 280px; padding: 25px; flex-shrink: 0; text-align: left;">
                 <h3
-                    style="margin-bottom: 20px; font-size: 1.1rem; /* border-bottom: 1px solid var(--glass-border); */ padding-bottom: 10px;">
-                    📜 Tüm Komutlar</h3>
-                <div id="free-commands" style="display:flex; flex-direction:column; gap:12px;">
-                    <!-- JS will fill -->
+                    style="margin-bottom: 20px; font-size: 1.1rem; padding-bottom: 10px; display:flex; align-items:center; gap:8px;">
+                    <i class="fas fa-bullhorn" style="color:var(--primary);"></i> Duyurular
+                </h3>
+                <div id="devlog-list" style="display:flex; flex-direction:column; gap:12px;">
+                    <div style="color:#666; font-size:0.8rem;">Yükleniyor...</div>
                 </div>
             </aside>
 
@@ -282,6 +294,32 @@
                 <!-- BORSA TAB -->
                 <div id="tab-borsa" class="tab-content hidden">
                     <h2 style="margin-bottom:20px;">📈 Küresel Borsa (Canlı)</h2>
+
+                    <!-- 🧮 HESAPLAYICI (Yeni) -->
+                    <div class="glass-panel"
+                        style="margin-bottom:20px; padding:20px; display:flex; align-items:center; gap:20px; flex-wrap:wrap; background:rgba(255,255,255,0.03);">
+                        <div style="flex:1; min-width:200px;">
+                            <h3 style="color:var(--primary); margin-bottom:5px; font-size:1rem;">🧮 Borsa Hesaplayıcı
+                            </h3>
+                            <p style="color:#aaa; font-size:0.8rem;">İşlem yapmadan önce maliyet ve kazancını hesapla.
+                            </p>
+                        </div>
+                        <div style="display:flex; gap:10px; align-items:center; flex:2; flex-wrap:wrap;">
+                            <input type="text" id="shopCalcCode" placeholder="Hisse Kodu (Örn: AAPL)"
+                                class="borsa-input" style="width:140px; margin:0; text-transform:uppercase;"
+                                oninput="calculateShopStock()">
+                            <input type="number" id="shopCalcAmount" placeholder="Adet" class="borsa-input"
+                                style="width:100px; margin:0;" oninput="calculateShopStock()">
+                        </div>
+                        <div
+                            style="display:flex; flex-direction:column; align-items:flex-end; min-width:150px; background:rgba(0,0,0,0.3); padding:10px; border-radius:10px;">
+                            <div style="font-size:0.75rem; color:#888;">ALIŞ MALİYETİ</div>
+                            <div id="shopCalcBuy" style="font-size:1rem; font-weight:800; color:white;">0 💰</div>
+                            <div style="font-size:0.75rem; color:#888; margin-top:5px;">SATIŞ (NET)</div>
+                            <div id="shopCalcSell" style="font-size:1rem; font-weight:800; color:var(--primary);">0 💰
+                            </div>
+                        </div>
+                    </div>
 
                     <!-- 📰 NEWSPAPER STYLE NEWS SECTION -->
                     <div class="news-section">
@@ -519,6 +557,18 @@
                                 <!-- Dynamic Rows -->
                             </div>
                         </div>
+                    </div>
+                </div>
+
+                <!-- COMMANDS TAB -->
+                <div id="tab-commands" class="tab-content hidden">
+                    <h2 style="margin-bottom:10px;">📜 Tüm Bot Komutları</h2>
+                    <p style="color:var(--text-dim); margin-bottom:20px; font-size:0.9rem;">
+                        Sohbette kullanabileceğin tüm komutların listesi. Bazı komutlar abonelere özeldir.
+                    </p>
+                    <div id="commands-grid" class="market-grid"
+                        style="grid-template-columns: repeat(auto-fit, minmax(280px, 1fr));">
+                        <!-- JS fills -->
                     </div>
                 </div>
 

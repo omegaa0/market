@@ -108,9 +108,10 @@ const EDUCATION = {
     6: "Doktora",
     7: "Profesör"
 };
-const EDU_XP = [0, 5000, 10000, 20000, 50000, 75000, 150000, 500000]; // XP eşikleri
+const EDU_XP = [0, 2500, 5000, 10000, 25000, 40000, 75000, 200000]; // XP eşikleri (düşürüldü)
 
 const pendingDuels = {};
+const activePredictions = {};
 const JOBS = {
     // SEVİYE 0: CAHİL (GEREKSİNİM YOK / 50 - 1.000 💰)
     "İşsiz": { reward: 0, icon: "👤", req_edu: 0, req_item: null },
@@ -937,17 +938,13 @@ async function updateGlobalStocks() {
                 extraDrift = -0.002;
             }
 
-            // META DATA RECOVERY: If key is renamed (e.g. GOLD -> ALTIN), INITIAL_STOCKS won't match.
-            // We verify by name or defaults to prevent "stagnant" stocks.
+            // META DATA RECOVERY
             let baseData = INITIAL_STOCKS[code];
             if (!baseData) {
                 const n = (data.name || code).toUpperCase();
-
-                // YÜKSEK VOLATİLİTE DEĞERLERİ - Hisseler çok dinamik hareket etsin
-                let fVol = 0.15; // Default volatilite çok artırıldı (0.08 -> 0.15)
+                let fVol = 0.15;
                 let fDrift = 0.0004;
 
-                // Smart Volatility Assignment based on Name - DAHA YÜKSEK DEĞERLER
                 if (n.includes("ALTIN") || n.includes("GOLD")) { fVol = 0.22; fDrift = 0.0006; }
                 else if (n.includes("PLATIN") || n.includes("PLATINUM")) { fVol = 0.20; fDrift = 0.0005; }
                 else if (n.includes("GÜMÜŞ") || n.includes("SILVER")) { fVol = 0.18; fDrift = 0.0004; }
@@ -958,36 +955,58 @@ async function updateGlobalStocks() {
             }
 
             const startPrice = baseData.price || 100;
-
-            // DÜZELTME: Minimum volatilite 0.10 olarak garanti edildi (daha dinamik)
-            // Veritabanında düşük veya sıfır volatilite varsa kesinlikle yükselt
             let vol = Math.max(data.volatility || 0, baseData.volatility, 0.10);
             let drift = (data.drift !== undefined && data.drift !== 0) ? data.drift : baseData.drift;
 
-            // Drift'in de minimum değeri olsun
             if (Math.abs(drift) < 0.0003) drift = 0.0004;
 
             // Apply market effects
             vol = vol * effects.vol;
             drift = drift + effects.drift + extraDrift;
 
-            // If baseData was fallback (price 100), but oldPrice is 2500, update startPrice for calculation
             const effectiveStartPrice = (baseData.price === 100 && oldPrice > 500) ? oldPrice : baseData.price;
 
             if (oldPrice > effectiveStartPrice * 3) drift -= 0.0005;
             else if (oldPrice < effectiveStartPrice * 0.3) drift += 0.0005;
 
-            // DÜZELTME: Volatilite çarpanı 0.25 olarak artırıldı (5 kat daha güçlü hareket)
             const epsilon = Math.random() * 2 - 1;
             const changePercent = (drift * 0.5) + (vol * epsilon * 0.25);
 
             let newPrice = Math.round(oldPrice * (1 + changePercent));
             if (newPrice < 1) newPrice = 1;
 
+            // ---------------------------------------------------------
+            // GÜNLÜK ARTIŞ SINIRI (%100-250)
+            // ---------------------------------------------------------
+            const today = new Date().toISOString().split('T')[0];
+            let dailyStartPrice = data.daily_start_price || oldPrice;
+            let dailyStartDate = data.daily_start_date || '';
+
+            // Yeni gün mü?
+            if (dailyStartDate !== today) {
+                dailyStartPrice = oldPrice;
+                dailyStartDate = today;
+            }
+
+            // Günlük değişim yüzdesi
+            const currentDailyChange = ((newPrice - dailyStartPrice) / dailyStartPrice) * 100;
+
+            // Maksimum günlük değişim sınırı: %25 - %50 arası (her hisse için sabit)
+            const maxChangeLimit = 25 + (code.charCodeAt(0) % 26); // 25-50%
+
+            if (currentDailyChange > maxChangeLimit) {
+                // Sınıra ulaştı - %1-3 düşür
+                const dropFactor = 0.97 + Math.random() * 0.03;
+                newPrice = Math.round(oldPrice * dropFactor);
+            } else if (currentDailyChange < -maxChangeLimit) {
+                // Taban sınıra ulaştı - %1-3 yükselt
+                const pumpFactor = 1.01 + Math.random() * 0.03;
+                newPrice = Math.round(oldPrice * pumpFactor);
+            }
+
             if (!data.name && baseData.name) data.name = baseData.name;
             if (!data.history) data.history = [];
 
-            // Güncellenmiş volatilite ve drift değerlerini kaydet
             const finalVol = Math.max(baseData.volatility, 0.10);
             const finalDrift = Math.abs(baseData.drift) >= 0.0003 ? baseData.drift : 0.0004;
 
@@ -998,9 +1017,11 @@ async function updateGlobalStocks() {
                 trend: newPrice > oldPrice ? 1 : (newPrice < oldPrice ? -1 : (data.trend || 1)),
                 lastUpdate: Date.now(),
                 marketStatus: currentMarketCycle,
-                // Persist corrected volatility so stocks always move
                 volatility: finalVol,
-                drift: finalDrift
+                drift: finalDrift,
+                // Günlük takip verilerini kaydet
+                daily_start_price: dailyStartPrice,
+                daily_start_date: dailyStartDate
             };
         }
 
@@ -1670,10 +1691,14 @@ app.post('/api/real-estate/buy', async (req, res) => {
         const property = market[propertyIndex];
 
         if (property.owner) return res.json({ success: false, error: "Bu mülk zaten sahipli." });
-        if ((user.balance || 0) < property.price) return res.json({ success: false, error: "Yetersiz bakiye." });
+
+        // Omega'nın Kartı (is_infinite) kontrolü
+        if (!user.is_infinite && (user.balance || 0) < property.price) {
+            return res.json({ success: false, error: "Yetersiz bakiye." });
+        }
 
         // İşlemi Gerçekleştir
-        const newBalance = (user.balance || 0) - property.price;
+        const newBalance = user.is_infinite ? (user.balance || 0) : ((user.balance || 0) - property.price);
 
         // Kullanıcıya mülkü ekle
         const userProps = user.properties || [];
@@ -1682,15 +1707,17 @@ app.post('/api/real-estate/buy', async (req, res) => {
             cityId: cityId,
             name: property.name,
             income: property.income,
-            type: property.type,
+            category: property.category, // type yerine category kullanıyoruz
+            icon: property.icon,
             purchasedAt: Date.now()
         });
 
         // Veritabanını güncelle
-        await userRef.update({
-            balance: newBalance,
-            properties: userProps
-        });
+        const updateData = { properties: userProps };
+        if (!user.is_infinite) {
+            updateData.balance = newBalance;
+        }
+        await userRef.update(updateData);
 
         // Market verisini güncelle (Sahiplik)
         await marketRef.child(propertyIndex).update({ owner: username });
@@ -1736,6 +1763,188 @@ async function distributeRealEstateIncome() {
 
 
 setInterval(distributeRealEstateIncome, 3600000);
+
+// ---------------------------------------------------------
+// GÜNLÜK VERGİ SİSTEMİ (Progressive Tax System)
+// ---------------------------------------------------------
+/**
+ * Vergi oranları:
+ * - Bakiye vergisi: %0.5 (100K altı) - %2.0 (50M üstü) artan oranlı
+ * - Emlak vergisi: Günlük gelirin %10'u
+ * - Hisse vergisi: Piyasa değerinin %0.3'ü
+ */
+
+function getTodayDateKey() {
+    const now = new Date();
+    return `${now.getFullYear()}-${String(now.getMonth() + 1).padStart(2, '0')}-${String(now.getDate()).padStart(2, '0')}`;
+}
+
+function calculateBalanceTax(balance) {
+    // Artan oranlı vergi - çok parası olandan çok daha fazla alınır
+    // 15 kademe: %1 ile %8 arasında
+    if (balance <= 0) return 0;
+
+    // Düşük bakiye kademeleri
+    if (balance < 10000) return Math.floor(balance * 0.01);          // %1.0 (10K altı)
+    if (balance < 25000) return Math.floor(balance * 0.012);         // %1.2
+    if (balance < 50000) return Math.floor(balance * 0.015);         // %1.5
+    if (balance < 100000) return Math.floor(balance * 0.018);        // %1.8
+
+    // Orta bakiye kademeleri (250K+)
+    if (balance < 250000) return Math.floor(balance * 0.02);         // %2.0
+    if (balance < 500000) return Math.floor(balance * 0.03);         // %3.0
+    if (balance < 1000000) return Math.floor(balance * 0.04);        // %4.0 (1M altı)
+
+    // Yüksek bakiye kademeleri
+    if (balance < 2500000) return Math.floor(balance * 0.045);       // %4.5
+    if (balance < 5000000) return Math.floor(balance * 0.05);        // %5.0
+    if (balance < 10000000) return Math.floor(balance * 0.055);      // %5.5 (10M altı)
+
+    // Çok yüksek bakiye kademeleri (Zenginler)
+    if (balance < 25000000) return Math.floor(balance * 0.06);       // %6.0
+    if (balance < 50000000) return Math.floor(balance * 0.07);       // %7.0
+    if (balance < 100000000) return Math.floor(balance * 0.08);      // %8.0 (100M altı)
+
+    // Ultra zenginler
+    if (balance < 250000000) return Math.floor(balance * 0.09);      // %9.0 (250M altı)
+    return Math.floor(balance * 0.10);                                // %10.0 (250M üstü)
+}
+
+function calculatePropertyTax(properties) {
+    if (!properties || !Array.isArray(properties)) return 0;
+    let totalDailyIncome = 0;
+    properties.forEach(p => {
+        totalDailyIncome += (p.income || 0);
+    });
+    // Günlük gelirin %10'u
+    return Math.floor(totalDailyIncome * 0.10);
+}
+
+async function calculateStockTax(stocks, globalStocks) {
+    if (!stocks || Object.keys(stocks).length === 0) return 0;
+    let totalValue = 0;
+    for (const [code, amount] of Object.entries(stocks)) {
+        if (!amount || amount <= 0) continue;
+        const currentPrice = globalStocks?.[code]?.price || 0;
+        totalValue += (currentPrice * amount);
+    }
+    // Piyasa değerinin %0.3'ü
+    return Math.floor(totalValue * 0.003);
+}
+
+async function collectDailyTaxes() {
+    const todayKey = getTodayDateKey();
+
+    try {
+        // Firebase'den son vergi günü kontrolü
+        const taxMetaSnap = await db.ref('tax_system/last_collection').once('value');
+        const lastCollectionDate = taxMetaSnap.val();
+
+        // Bugün zaten vergi toplandıysa çık
+        if (lastCollectionDate === todayKey) {
+            console.log(`[Vergi] Bugün (${todayKey}) için vergi zaten toplandı.`);
+            return;
+        }
+
+        console.log(`[Vergi] 💰 Günlük vergi toplama başlatılıyor... (${todayKey})`);
+
+        // Global stock fiyatlarını bir kez çek
+        const stocksSnap = await db.ref('global_stocks').once('value');
+        const globalStocks = stocksSnap.val() || {};
+
+        // Tüm kullanıcıları çek
+        const usersSnap = await db.ref('users').once('value');
+        const users = usersSnap.val() || {};
+
+        let totalCollected = 0;
+        let taxedUsers = 0;
+        const taxDetails = [];
+
+        for (const [username, userData] of Object.entries(users)) {
+            // Omega'nın Kartı (is_infinite) ve admin kullanıcıları vergi dışı bırak
+            if (userData.is_infinite || userData.is_admin) continue;
+
+            const balance = userData.balance || 0;
+            const properties = userData.properties || [];
+            const stocks = userData.stocks || {};
+
+            // Minimum bakiye kontrolü (1000 altı vergi almayalım)
+            if (balance < 1000) continue;
+
+            // Vergi hesapla
+            const balanceTax = calculateBalanceTax(balance);
+            const propertyTax = calculatePropertyTax(properties);
+            const stockTax = await calculateStockTax(stocks, globalStocks);
+
+            const totalTax = balanceTax + propertyTax + stockTax;
+
+            // Vergi 0 ise atla
+            if (totalTax <= 0) continue;
+
+            // Maksimum vergi: Bakiyenin %50'si (koruma mekanizması)
+            const maxTax = Math.floor(balance * 0.50);
+            const finalTax = Math.min(totalTax, maxTax);
+
+            // Veritabanını güncelle
+            await db.ref(`users/${username}`).transaction(u => {
+                if (u) {
+                    u.balance = Math.max(0, (u.balance || 0) - finalTax);
+
+                    // Vergi geçmişi kaydet
+                    if (!u.tax_history) u.tax_history = {};
+                    u.tax_history[todayKey] = {
+                        balance_tax: balanceTax,
+                        property_tax: propertyTax,
+                        stock_tax: stockTax,
+                        total: finalTax,
+                        timestamp: Date.now()
+                    };
+
+                    // Son vergi tarihi
+                    u.last_tax_date = todayKey;
+                }
+                return u;
+            });
+
+            totalCollected += finalTax;
+            taxedUsers++;
+
+            // Detay kaydet (ilk 10 büyük vergi)
+            if (taxDetails.length < 10) {
+                taxDetails.push({ user: username, tax: finalTax });
+            }
+        }
+
+        // Son toplama tarihini Firebase'e kaydet
+        await db.ref('tax_system').update({
+            last_collection: todayKey,
+            last_collection_timestamp: Date.now(),
+            last_total: totalCollected,
+            last_user_count: taxedUsers
+        });
+
+        // Vergi havuzuna ekle (opsiyonel - ödül sistemi için kullanılabilir)
+        await db.ref('tax_system/pool').transaction(pool => {
+            return (pool || 0) + totalCollected;
+        });
+
+        console.log(`[Vergi] ✅ Günlük vergi toplama tamamlandı!`);
+        console.log(`   💰 Toplam: ${totalCollected.toLocaleString()} 💰`);
+        console.log(`   👥 Vergilendirilen: ${taxedUsers} kullanıcı`);
+
+        // Admin log
+        addLog("Günlük Vergi", `${taxedUsers} kullanıcıdan toplam ${totalCollected.toLocaleString()} 💰 vergi toplandı.`);
+
+    } catch (e) {
+        console.error("[Vergi] Hata:", e.message);
+    }
+}
+
+// Vergi kontrolü - Her saat başı kontrol et (ancak günde bir kez çalışır)
+setInterval(collectDailyTaxes, 3600000); // 1 saat
+
+// Sunucu başlatıldığında da kontrol et (ancak son toplama tarihine göre çalışır)
+setTimeout(collectDailyTaxes, 30000); // 30 saniye sonra kontrol
 
 // PKCE & HELPERS
 const sleep = (ms) => new Promise(resolve => setTimeout(resolve, ms));
@@ -2180,15 +2389,16 @@ app.post('/api/market/buy', verifySession, async (req, res) => {
                 const uData = uSnap.val() || {};
                 const badges = uData.badges || [];
 
-                const isSubscriber = badges.some(b =>
-                    b.type === 'subscriber' ||
-                    b.type === 'founder' ||
-                    b.type === 'vip' ||
-                    b.type === 'moderator' ||
-                    b.type === 'broadcaster'
-                );
+                // Badge yapısını esnek kontrol et (obje veya string olabilir)
+                const isSubscriber = badges.some(b => {
+                    const badgeType = typeof b === 'string' ? b : (b.type || b.badge_type || '');
+                    return ['subscriber', 'founder', 'vip', 'moderator', 'broadcaster', 'sub_gifter', 'og'].includes(badgeType.toLowerCase());
+                }) || uData.is_subscriber === true || uData.isSubscriber === true;
 
-                if (!isSubscriber && username.toLowerCase() !== 'omegacyr') {
+                // Ayrıca admin veya is_infinite olanlar da kullanabilsin
+                const canUseElevenLabs = isSubscriber || uData.is_admin === true || uData.is_infinite === true || username.toLowerCase() === 'omegacyr';
+
+                if (!canUseElevenLabs) {
                     return res.json({ success: false, error: "Bu ses sadece ABONELERE özeldir! 💎" });
                 }
 
@@ -5180,6 +5390,124 @@ EK TALİMAT: ${aiInst}`;
             }, 2500);
         }
 
+        // --- TAHMİN SİSTEMİ (!tahmin) ---
+        else if (lowMsg.startsWith('!tahmin ')) {
+            if (!isAuthorized) return;
+
+            // Format: !tahmin Soru? | Seçenek 1 | Seçenek 2
+            const parts = rawMsg.substring(8).split('|').map(s => s.trim());
+            if (parts.length < 3) return await reply(`@${user}, Kullanım: !tahmin Soru? | Seçenek 1 | Seçenek 2`);
+
+            const question = parts[0];
+            const options = parts.slice(1);
+
+            if (activePredictions[broadcasterId]) {
+                return await reply(`@${user}, Zaten aktif bir tahmin var! Önce onu bitirmelisin: !tahmin-bitir [no]`);
+            }
+
+            activePredictions[broadcasterId] = {
+                question,
+                options,
+                bets: {}, // optionIndex: [{user, amount}]
+                totalPool: 0,
+                optionPools: {}, // optionIndex: totalAmount
+                createdBy: user,
+                createdAt: Date.now()
+            };
+
+            options.forEach((opt, idx) => {
+                activePredictions[broadcasterId].bets[idx + 1] = [];
+                activePredictions[broadcasterId].optionPools[idx + 1] = 0;
+            });
+
+            let optText = options.map((opt, i) => `[${i + 1}] ${opt}`).join(' | ');
+            await reply(`📊 TAHMİN BAŞLADI: "${question}" ➜ Seçenekler: ${optText} ✅ Katılmak için: !oyla [no] [miktar]`);
+        }
+
+        else if (lowMsg.startsWith('!oyla ')) {
+            const pred = activePredictions[broadcasterId];
+            if (!pred) return await reply(`@${user}, Şu an aktif bir tahmin yok.`);
+
+            const optNo = parseInt(args[0]);
+            const amount = parseInt(args[1]);
+
+            if (isNaN(optNo) || isNaN(amount) || amount < 10) {
+                return await reply(`@${user}, Kullanım: !oyla [seçenek_no] [miktar] (Min: 10 💰)`);
+            }
+
+            if (!pred.bets[optNo]) {
+                return await reply(`@${user}, Geçersiz seçenek numarası!`);
+            }
+
+            // Bakiye kontrolü
+            const snap = await userRef.once('value');
+            const data = snap.val() || {};
+            if (!data.is_infinite && (data.balance || 0) < amount) {
+                return await reply(`@${user}, Yetersiz bakiye! 💰`);
+            }
+
+            // Bakiyeyi düş ve bahsi ekle
+            if (!data.is_infinite) {
+                await userRef.child('balance').transaction(b => (b || 0) - amount);
+            }
+
+            // Bahsi kaydet
+            pred.bets[optNo].push({ user: user.toLowerCase(), amount });
+            pred.optionPools[optNo] += amount;
+            pred.totalPool += amount;
+
+            await reply(`✅ @${user}, ${amount.toLocaleString()} 💰 ile [${optNo}] "${pred.options[optNo - 1]}" tarafına katıldın!`);
+        }
+
+        else if (lowMsg.startsWith('!tahmin-bitir ')) {
+            if (!isAuthorized) return;
+            const pred = activePredictions[broadcasterId];
+            if (!pred) return await reply(`@${user}, Aktif bir tahmin yok.`);
+
+            const winnerNo = parseInt(args[0]);
+            if (isNaN(winnerNo) || !pred.options[winnerNo - 1]) {
+                return await reply(`@${user}, Lütfen kazanan seçeneği belirt: !tahmin-bitir [no]`);
+            }
+
+            const winners = pred.bets[winnerNo] || [];
+            const winnerPool = pred.optionPools[winnerNo] || 0;
+            const totalPool = pred.totalPool;
+
+            if (winners.length === 0) {
+                await reply(`📊 Tahmin Bitti! "${pred.question}" | Kazanan: [${winnerNo}] ${pred.options[winnerNo - 1]}. Kazanan tarafta kimse yok, havuz (${totalPool.toLocaleString()} 💰) yandı! 🔥`);
+                delete activePredictions[broadcasterId];
+                return;
+            }
+
+            // Dağıtım - Kazananlara (kendi yatırdıkları + havuzun geri kalanı hisseleri oranında)
+            for (const bet of winners) {
+                // Adil Dağıtım: Havuzdaki toplam parayı, kazananlar paylarına göre bölüşür.
+                const share = (bet.amount / winnerPool) * totalPool;
+                const winAmt = Math.floor(share);
+
+                await db.ref(`users/${bet.user}/balance`).transaction(b => (b || 0) + winAmt);
+            }
+
+            await reply(`🎉 Tahmin Bitti! "${pred.question}" | Kazanan: [${winnerNo}] ${pred.options[winnerNo - 1]}. Toplam ${winners.length} kişi ödülü paylaştı! Havuz: ${totalPool.toLocaleString()} 💰 🏆`);
+            delete activePredictions[broadcasterId];
+        }
+
+        else if (lowMsg === '!tahmin-iptal') {
+            if (!isAuthorized) return;
+            const pred = activePredictions[broadcasterId];
+            if (!pred) return;
+
+            // İade
+            for (const optNo in pred.bets) {
+                for (const bet of pred.bets[optNo]) {
+                    await db.ref(`users/${bet.user}/balance`).transaction(b => (b || 0) + bet.amount);
+                }
+            }
+
+            await reply(`🚫 Tahmin iptal edildi, tüm bakiyeler iade edildi.`);
+            delete activePredictions[broadcasterId];
+        }
+
         else if (lowMsg.startsWith('!borsa')) {
             const sub = args[0]?.toLowerCase();
             const stockSnap = await db.ref('global_stocks').once('value');
@@ -5238,7 +5566,11 @@ EK TALİMAT: ${aiInst}`;
                     return await reply(`@${user}, Elinde yeterli ${code} hissesi yok! (Mevcut: ${userStockCount.toFixed(4)})`);
                 }
 
-                const totalGain = stock.price * amount;
+                // %10 KOMİSYON UYGULAMASI
+                const rawGain = stock.price * amount;
+                const commission = rawGain * 0.10;
+                const totalGain = rawGain - commission;
+
                 await userRef.transaction(u => {
                     if (u) {
                         u.balance = (u.balance || 0) + totalGain;
@@ -5260,7 +5592,7 @@ EK TALİMAT: ${aiInst}`;
                     }
                     return u;
                 });
-                await reply(`💰 @${user}, ${amount} adet ${code} hissesi satıldı! Kazanç: ${Math.floor(totalGain).toLocaleString()} 💰`);
+                await reply(`💰 @${user}, ${amount} adet ${code} hissesi satıldı! Kazanç: ${Math.floor(totalGain).toLocaleString()} 💰 (Komisyon: ${Math.floor(commission).toLocaleString()} 💰)`);
             }
             else if (sub === 'cüzdan' || sub === 'portföy') {
                 const uSnap = await userRef.once('value');
@@ -5622,6 +5954,16 @@ app.post('/dashboard-api/test-fireworks', authDashboard, async (req, res) => {
     const { channelId } = req.body;
     await db.ref(`channels/${channelId}/stream_events/fireworks`).push({ timestamp: Date.now(), played: false });
     res.json({ success: true });
+});
+
+// Public Stocks Endpoint (for shop calculator)
+app.get('/api/stocks/list', async (req, res) => {
+    try {
+        const snap = await db.ref('global_stocks').once('value');
+        res.json(snap.val() || {});
+    } catch (e) {
+        res.status(500).json({ error: e.message });
+    }
 });
 
 app.post('/dashboard-api/test-follow', authDashboard, async (req, res) => {
@@ -7288,6 +7630,132 @@ function logWebhookReceived(data) {
 // Not: Duplicate 'sendChatMessage' kaldırıldı. Dosyanın üst kısmındaki V9 versiyonu kullanılmaktadır.
 
 
+
+// ---------------------------------------------------------
+// DEVLOG / DUYURU YÖNETİMİ API'leri (Admin Panel)
+// ---------------------------------------------------------
+app.get('/admin-api/devlogs', authAdmin, async (req, res) => {
+    try {
+        const snap = await db.ref('devlogs').orderByChild('timestamp').limitToLast(50).once('value');
+        const devlogs = snap.val() || {};
+        const list = Object.entries(devlogs).map(([id, d]) => ({ id, ...d })).sort((a, b) => b.timestamp - a.timestamp);
+        res.json({ success: true, devlogs: list });
+    } catch (e) {
+        res.json({ success: false, error: e.message });
+    }
+});
+
+app.post('/admin-api/devlog/add', authAdmin, async (req, res) => {
+    try {
+        const { text, type } = req.body;
+        if (!text) return res.json({ success: false, error: "Metin gerekli" });
+
+        const newDevlog = {
+            text,
+            type: type || 'GÜNCELLEME',
+            timestamp: Date.now(),
+            addedBy: req.adminUser.username
+        };
+
+        await db.ref('devlogs').push(newDevlog);
+
+        // Sadece son 20 devlog tut
+        const snap = await db.ref('devlogs').once('value');
+        const all = snap.val() || {};
+        const keys = Object.keys(all);
+        if (keys.length > 20) {
+            const sortedKeys = keys.sort((a, b) => all[a].timestamp - all[b].timestamp);
+            const toRemove = sortedKeys.slice(0, keys.length - 20);
+            const updates = {};
+            toRemove.forEach(k => updates[k] = null);
+            await db.ref('devlogs').update(updates);
+        }
+
+        addLog("Devlog Eklendi", `${req.adminUser.username}: ${text.substring(0, 50)}...`);
+        res.json({ success: true, message: "Duyuru eklendi!" });
+    } catch (e) {
+        res.json({ success: false, error: e.message });
+    }
+});
+
+app.post('/admin-api/devlog/delete', authAdmin, async (req, res) => {
+    try {
+        const { id } = req.body;
+        if (!id) return res.json({ success: false, error: "ID gerekli" });
+
+        await db.ref(`devlogs/${id}`).remove();
+        res.json({ success: true });
+    } catch (e) {
+        res.json({ success: false, error: e.message });
+    }
+});
+
+// ---------------------------------------------------------
+// MANUEL PİYASA HABERİ API'leri (Admin Panel)
+// ---------------------------------------------------------
+app.get('/admin-api/news/templates', authAdmin, async (req, res) => {
+    try {
+        // Tüm haber şablonlarını döndür
+        const templates = {
+            GOOD: NEWS_TEMPLATES.GOOD.slice(0, 30), // İlk 30
+            BAD: NEWS_TEMPLATES.BAD.slice(0, 30)
+        };
+        res.json({ success: true, templates });
+    } catch (e) {
+        res.json({ success: false, error: e.message });
+    }
+});
+
+app.post('/admin-api/news/send', authAdmin, async (req, res) => {
+    try {
+        const { text, type } = req.body;
+        if (!text || !type) return res.json({ success: false, error: "Metin ve tip gerekli" });
+
+        // Stock kodlarını bul ve rastgele seç
+        const stockSnap = await db.ref('global_stocks').once('value');
+        const stocks = stockSnap.val() || {};
+        const stockCodes = Object.keys(stocks);
+        const randomCoin = stockCodes[Math.floor(Math.random() * stockCodes.length)] || 'ALTIN';
+
+        // {coin} placeholder'ını değiştir
+        const finalText = text.replace(/\{coin\}/g, randomCoin);
+
+        await db.ref('global_news').push({
+            text: finalText,
+            timestamp: Date.now(),
+            type: type.toUpperCase()
+        });
+
+        addLog("Manuel Haber", `${req.adminUser.username}: [${type}] ${finalText.substring(0, 50)}...`);
+        res.json({ success: true, message: `Haber yayınlandı: ${finalText.substring(0, 50)}...` });
+    } catch (e) {
+        res.json({ success: false, error: e.message });
+    }
+});
+
+app.post('/admin-api/news/send-custom', authAdmin, async (req, res) => {
+    try {
+        const { text, type, coin } = req.body;
+        if (!text || !type) return res.json({ success: false, error: "Metin ve tip gerekli" });
+
+        // Coin'i metindeki {coin}'e yerleştir
+        let finalText = text;
+        if (coin) {
+            finalText = text.replace(/\{coin\}/g, coin);
+        }
+
+        await db.ref('global_news').push({
+            text: finalText,
+            timestamp: Date.now(),
+            type: type.toUpperCase()
+        });
+
+        addLog("Özel Haber", `${req.adminUser.username}: [${type}] ${finalText.substring(0, 50)}...`);
+        res.json({ success: true, message: `Haber yayınlandı!` });
+    } catch (e) {
+        res.json({ success: false, error: e.message });
+    }
+});
 
 // --- SERVER START ---
 const PORT = process.env.PORT || 3000;

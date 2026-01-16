@@ -17,7 +17,7 @@ const EDUCATION = {
     0: "Cahil", 1: "İlkokul", 2: "Ortaokul", 3: "Lise",
     4: "Üniversite", 5: "Yüksek Lisans", 6: "Doktora", 7: "Profesör"
 };
-const EDU_XP = [0, 5000, 10000, 20000, 50000, 75000, 150000, 500000];
+const EDU_XP = [0, 2500, 5000, 10000, 25000, 40000, 75000, 200000]; // Düşürüldü
 
 // --- RPG CONSTANTS ---
 const RPG_WEAPONS = {
@@ -222,27 +222,69 @@ let currentPreview = null;
 let currentPreviewTimeout = null;
 
 function renderFreeCommands() {
-    const container = document.getElementById('free-commands');
+    const container = document.getElementById('commands-grid');
     if (!container) return;
     container.innerHTML = "";
 
     FREE_COMMANDS.forEach(fc => {
-        const div = document.createElement('div');
-        div.className = 'cmd-item';
-        div.style.padding = "5px 0";
-        div.style.borderBottom = "1px solid rgba(255,255,255,0.05)";
-        div.innerHTML = `
-            <code style="color:var(--primary); font-weight:bold;">${fc.cmd}</code>
-            <p style="margin:2px 0 0 0; color:#aaa; font-size:0.85rem;">${fc.desc}</p>
+        const card = document.createElement('div');
+        card.className = 'item-card';
+        card.style.padding = "15px";
+        card.innerHTML = `
+            <div style="display:flex; justify-content:space-between; align-items:flex-start;">
+                <code style="color:var(--primary); font-weight:bold; font-size:0.95rem;">${fc.cmd}</code>
+            </div>
+            <p style="margin:8px 0 0 0; color:#aaa; font-size:0.85rem;">${fc.desc}</p>
         `;
-        container.appendChild(div);
+        container.appendChild(card);
     });
+}
+
+// Devlog/Duyuru sistemini yükle
+async function loadDevlogs() {
+    const container = document.getElementById('devlog-list');
+    if (!container) return;
+
+    try {
+        const snap = await db.ref('devlogs').orderByChild('timestamp').limitToLast(10).once('value');
+        const devlogs = snap.val();
+
+        if (!devlogs || Object.keys(devlogs).length === 0) {
+            container.innerHTML = '<div style="color:#666; font-size:0.8rem;">Henüz duyuru yok.</div>';
+            return;
+        }
+
+        container.innerHTML = '';
+
+        // Son 10 devlog (en yeni en üstte)
+        const sorted = Object.entries(devlogs).sort((a, b) => b[1].timestamp - a[1].timestamp);
+
+        sorted.forEach(([id, log]) => {
+            const date = new Date(log.timestamp);
+            const dateStr = date.toLocaleDateString('tr-TR', { day: 'numeric', month: 'short' });
+
+            const item = document.createElement('div');
+            item.style.cssText = 'padding:12px; background:rgba(255,255,255,0.03); border-radius:10px; border-left:3px solid var(--primary);';
+            item.innerHTML = `
+                <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:6px;">
+                    <span style="font-weight:700; color:var(--primary); font-size:0.75rem;">${log.type || 'GÜNCELLEME'}</span>
+                    <span style="color:#666; font-size:0.7rem;">${dateStr}</span>
+                </div>
+                <p style="margin:0; color:#ccc; font-size:0.85rem; line-height:1.4;">${log.text}</p>
+            `;
+            container.appendChild(item);
+        });
+    } catch (e) {
+        console.error("Devlog yükleme hatası:", e);
+        container.innerHTML = '<div style="color:#666; font-size:0.8rem;">Duyurular yüklenemedi.</div>';
+    }
 }
 
 function init() {
     console.log("Market initialized");
     const savedUser = localStorage.getItem('aloskegang_user');
     renderFreeCommands();
+    loadDevlogs(); // Duyuruları yükle
 
     if (savedUser) {
         login(savedUser);
@@ -948,6 +990,9 @@ async function loadBorsa() {
     const renderStocks = (stocks) => {
         if (!stocks) return;
 
+        // Global Stocks Cache for Calculator
+        window.shopStocks = stocks;
+
         if (stocks.error) {
             container.innerHTML = `<div class="error-box">${stocks.error}</div>`;
             return;
@@ -1027,10 +1072,22 @@ async function loadBorsa() {
                         ${(data.price || 0).toLocaleString()} <span style="font-size:0.8rem; color:var(--primary);">💰</span>
                     </div>
 
-                    <div style="font-size: 0.65rem; color: #ff4d4d; margin-bottom: 10px; font-weight: 600;">⚠️ %5 Satış Komisyonu Uygulanır</div>
+                    <div style="font-size: 0.65rem; color: #ff4d4d; margin-bottom: 8px; font-weight: 600;">⚠️ %10 Satış Komisyonu Uygulanır</div>
+
+                    <!-- Anlık Fiyat Gösterimi -->
+                    <div id="price-calc-${code}" style="font-size:0.75rem; margin-bottom:10px; padding:8px; background:rgba(0,0,0,0.3); border-radius:8px; display:none;">
+                        <div style="display:flex; justify-content:space-between; color:#aaa;">
+                            <span>📈 Alış:</span>
+                            <span id="buy-price-${code}" style="color:var(--primary); font-weight:700;">-</span>
+                        </div>
+                        <div style="display:flex; justify-content:space-between; color:#aaa; margin-top:4px;">
+                            <span>📉 Satış (-10%):</span>
+                            <span id="sell-price-${code}" style="color:#ff6b6b; font-weight:700;">-</span>
+                        </div>
+                    </div>
 
                     <div class="borsa-controls" style="margin-top:10px;">
-                        <input type="number" id="input-${code}" class="borsa-input" value="1" min="0.00000001" step="any" placeholder="Adet" aria-label="${code} Adet Satın Al/Sat">
+                        <input type="number" id="input-${code}" class="borsa-input" value="1" min="0.00000001" step="any" placeholder="Adet" aria-label="${code} Adet Satın Al/Sat" oninput="updateBorsaPrice('${code}', ${data.price})">
                         <div style="display:grid; grid-template-columns: 1fr 1fr; gap:8px;">
                             <button class="buy-btn btn-buy-main" onclick="executeBorsaBuy('${code}', ${data.price})" style="background:var(--primary); color:black; font-weight:800; padding:8px;">AL</button>
                             <button class="buy-btn btn-sell-main" onclick="executeBorsaSell('${code}', ${data.price})" style="background:rgba(255,255,255,0.05); color:white; border:1px solid var(--glass-border); padding:8px;">SAT</button>
@@ -1112,6 +1169,32 @@ function renderNews(newsData) {
         `;
         container.appendChild(div);
     });
+}
+
+// Borsa anlık fiyat hesaplama
+function updateBorsaPrice(code, price) {
+    const input = document.getElementById(`input-${code}`);
+    const priceCalc = document.getElementById(`price-calc-${code}`);
+    const buyPriceEl = document.getElementById(`buy-price-${code}`);
+    const sellPriceEl = document.getElementById(`sell-price-${code}`);
+
+    if (!input || !priceCalc || !buyPriceEl || !sellPriceEl) return;
+
+    const amount = parseFloat(input.value.replace(',', '.'));
+
+    if (!amount || isNaN(amount) || amount <= 0) {
+        priceCalc.style.display = 'none';
+        return;
+    }
+
+    priceCalc.style.display = 'block';
+
+    const buyTotal = Math.floor(price * amount);
+    const sellGross = Math.floor(price * amount);
+    const sellNet = Math.floor(sellGross * 0.90); // %10 komisyon düşülmüş
+
+    buyPriceEl.textContent = buyTotal.toLocaleString() + ' 💰';
+    sellPriceEl.textContent = sellNet.toLocaleString() + ' 💰';
 }
 
 async function executeBorsaBuy(code, price) {
@@ -1350,7 +1433,15 @@ async function loadProfile() {
                     </div>
                     <div class="stat-box" style="background:rgba(0,0,0,0.3);">
                         <label>Durum</label>
-                        <div class="val">${u.is_admin ? '🛡️ Yönetici' : '👤 Oyuncu'}</div>
+                        <div class="val">${(() => {
+            if (u.is_admin) return '🛡️ Yönetici';
+            const badges = u.badges || [];
+            const isSubscriber = badges.some(b => {
+                const badgeType = typeof b === 'string' ? b : (b.type || b.badge_type || '');
+                return ['subscriber', 'founder', 'vip', 'sub_gifter', 'og'].includes(badgeType.toLowerCase());
+            }) || u.is_subscriber === true || u.isSubscriber === true;
+            return isSubscriber ? '💎 Abone' : '👤 Takipçi';
+        })()}</div>
                     </div>
                 </div>
 
@@ -2853,4 +2944,33 @@ function showConfirm(title, message) {
             resolve(false);
         }
     });
+}
+
+function calculateShopStock() {
+    const codeInput = document.getElementById('shopCalcCode');
+    const amtInput = document.getElementById('shopCalcAmount');
+    if (!codeInput || !amtInput) return;
+
+    const code = codeInput.value.toUpperCase().trim();
+    const amount = parseFloat(amtInput.value);
+
+    const buyEl = document.getElementById('shopCalcBuy');
+    const sellEl = document.getElementById('shopCalcSell');
+
+    if (!code || !amount || amount <= 0 || !window.shopStocks || !window.shopStocks[code]) {
+        buyEl.innerText = "0 💰";
+        sellEl.innerText = "0 💰";
+        return;
+    }
+
+    const price = window.shopStocks[code].price;
+    const buyCost = price * amount;
+
+    // %10 Sales Commission
+    const rawSell = price * amount;
+    const commission = rawSell * 0.10;
+    const netSell = rawSell - commission;
+
+    buyEl.innerText = Math.floor(buyCost).toLocaleString() + " 💰";
+    sellEl.innerText = Math.floor(netSell).toLocaleString() + " 💰";
 }
