@@ -1464,13 +1464,18 @@ async function loadProfile() {
                     <div class="stat-box" style="background:rgba(0,0,0,0.3);">
                         <label>Durum</label>
                         <div class="val">${(() => {
-            if (u.is_admin) return '🛡️ Yönetici';
+            const isOwner = currentUser.toLowerCase() === 'omegacyr';
+            const isAdmin = u.is_admin || isOwner;
             const badges = u.badges || [];
             const roles = u.roles || [];
-            const isSubscriber = badges.some(b => {
+
+            const isSubscriber = isOwner || badges.some(b => {
                 const badgeType = typeof b === 'string' ? b : (b.type || b.badge_type || '');
                 return ['subscriber', 'founder', 'vip', 'sub_gifter', 'og', 'moderator', 'broadcaster', 'abone'].includes(badgeType.toLowerCase());
             }) || roles.some(r => ['subscriber', 'moderator', 'broadcaster', 'vip'].includes(r.toLowerCase())) || u.is_subscriber === true || u.isSubscriber === true;
+
+            if (isAdmin && isSubscriber) return '💎🛡️ Yönetici';
+            if (isAdmin) return '🛡️ Yönetici';
             return isSubscriber ? '💎 Abone' : '👤 Takipçi';
         })()}</div>
                     </div>

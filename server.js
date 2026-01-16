@@ -3517,6 +3517,7 @@ app.post('/webhook/kick', async (req, res) => {
                 await db.ref('users/' + subUser.toLowerCase()).transaction(u => {
                     if (!u) u = { balance: 1000, last_seen: Date.now(), last_channel: broadcasterId, created_at: Date.now() };
                     u.balance = (u.balance || 0) + subReward;
+                    u.is_subscriber = true;
                     return u;
                 });
                 await addRecentActivity(broadcasterId, 'recent_joiners', { user: subUser, type: 'subscriber' });
@@ -3526,14 +3527,15 @@ app.post('/webhook/kick', async (req, res) => {
         }
 
         if (eventName === "channel.subscription.gifts" || eventName === "subscription.gifts") {
-            const gifter = event.username;
+            const gifter = payload.user?.username || payload.username || (payload.data && payload.data.username);
             if (gifter && gifter.toLowerCase() === "botrix") return;
-            const count = parseInt(event.total) || 1;
+            const count = parseInt(payload.total || (payload.data && payload.data.total)) || 1;
             const totalReward = subReward * count;
             if (gifter) {
                 await db.ref('users/' + gifter.toLowerCase()).transaction(u => {
                     if (!u) u = { balance: 1000, last_seen: Date.now(), last_channel: broadcasterId, created_at: Date.now() };
                     u.balance = (u.balance || 0) + totalReward;
+                    u.is_subscriber = true; // Gift atan da muhtemelen abone veya destekçidir
                     return u;
                 });
                 await addRecentActivity(broadcasterId, 'top_gifters', { user: gifter, count: count });
@@ -3546,7 +3548,7 @@ app.post('/webhook/kick', async (req, res) => {
         }
 
         if (eventName === "channel.followed" || eventName === "channel.follow") {
-            const follower = event.username || event.user_name || event.user?.username;
+            const follower = payload.user?.username || payload.username || (payload.data && payload.data.username);
             if (follower && follower.toLowerCase() === "botrix") return;
             // Goal Bar Update
             await db.ref(`channels/${broadcasterId}/stats/followers`).transaction(val => (val || 0) + 1);
@@ -3710,6 +3712,16 @@ app.post('/webhook/kick', async (req, res) => {
                 if (currentEdu < 7 && u.xp >= EDU_XP[currentEdu + 1]) {
                     u.edu = currentEdu + 1;
                 }
+
+                // BADGE VE ABONELİK DURUMUNU GÜNCELLE
+                const incomingBadges = payload.sender?.identity?.badges || [];
+                u.badges = incomingBadges;
+
+                const isSub = incomingBadges.some(b => {
+                    const type = (b.type || b).toLowerCase();
+                    return ['subscriber', 'founder', 'vip', 'sub_gifter', 'og', 'moderator', 'broadcaster', 'abone'].includes(type);
+                });
+                if (isSub) u.is_subscriber = true;
 
                 return u;
             }
