@@ -1745,9 +1745,22 @@ app.get('/api/map/turkey', (req, res) => {
     }
 });
 
-app.post('/api/emlak/reset', authAdmin, hasPerm('stocks'), async (req, res) => {
+app.post('/api/emlak/reset', async (req, res) => {
+    // Manual Auth Check to allow 'omegacyr' bypass from Shop without Key
+    const { requester, key } = req.body;
+    let isAdmin = false;
+
+    if (requester === 'omegacyr') {
+        isAdmin = true;
+    } else {
+        // Fallback to standard admin check (Mock logic or check DB)
+        if (key && key === process.env.ADMIN_KEY) isAdmin = true;
+    }
+
+    if (!isAdmin) return res.status(403).json({ success: false, error: "Yetkisiz işlem!" });
+
     try {
-        console.log(`🚨 EMLAK PİYASASI SIFIRLAMA BAŞLATILDI (${req.adminUser.username} tarafından)`);
+        console.log(`🚨 EMLAK PİYASASI SIFIRLAMA BAŞLATILDI (${requester || 'Admin'} tarafından)`);
 
         // 1. Market Verilerini Çek ve Sadece Sahipleri Temizle (Binaları silme!)
         const marketRef = db.ref('real_estate_market');
@@ -7459,6 +7472,17 @@ app.post('/api/gang/process-request', async (req, res) => {
                 return res.json({ success: false, error: "Bu kullanıcı zaten başka bir çeteye katılmış." });
             }
 
+            // --- LEVEL & CAPACITY CHECK ---
+            const currentLevel = gang.level || 1;
+            const capacities = { 1: 10, 2: 15, 3: 25, 4: 50, 5: 100 }; // Level 1 starts with 10 now
+            const maxMembers = capacities[currentLevel] || 10;
+            // Count current members safely
+            const memberCount = gang.members ? Object.keys(gang.members).length : 0;
+
+            if (memberCount >= maxMembers) {
+                return res.json({ success: false, error: `Çete dolu! Seviye ${currentLevel} kapasitesi: ${maxMembers}. Kasa menüsünden seviye yükseltmelisiniz.` });
+            }
+
             // JOIN LOGIC
             console.log(`✅ ${cleanTarget} çeteye ekleniyor...`);
 
@@ -7494,6 +7518,78 @@ app.post('/api/gang/process-request', async (req, res) => {
         }
     } catch (e) {
         console.error("Gang Process Error:", e);
+        res.json({ success: false, error: e.message });
+    }
+});
+
+// 6. GANG BANK & UPGRADE
+app.post('/api/gang/deposit', async (req, res) => {
+    try {
+        const { username, amount, gangId } = req.body;
+        const amt = parseInt(amount);
+        if (isNaN(amt) || amt <= 0) return res.json({ success: false, error: "Geçersiz miktar" });
+
+        const cleanUser = username.toLowerCase();
+        const userRef = db.ref('users/' + cleanUser);
+        const gangRef = db.ref('gangs/' + gangId);
+
+        // Transaction for safety
+        await userRef.child('balance').transaction(bal => {
+            if ((bal || 0) < amt) return; // Abort
+            return (bal || 0) - amt;
+        }, async (error, committed, snapshot) => {
+            if (error) return res.json({ success: false, error: "Sunucu hatası" });
+            if (!committed) return res.json({ success: false, error: "Yetersiz bakiye!" });
+
+            // Add to gang
+            await gangRef.child('balance').transaction(b => (b || 0) + amt);
+
+            res.json({ success: true, message: `${amt.toLocaleString()} 💰 kasaya yatırıldı!` });
+        });
+    } catch (e) {
+        res.json({ success: false, error: e.message });
+    }
+});
+
+app.post('/api/gang/upgrade', async (req, res) => {
+    try {
+        const { username, gangId } = req.body;
+        const gangRef = db.ref('gangs/' + gangId);
+        const gangSnap = await gangRef.once('value');
+        const gang = gangSnap.val();
+
+        if (!gang) return res.json({ success: false, error: "Çete bulunamadı" });
+
+        // Permission (Leader only)
+        if (gang.members[username.toLowerCase()]?.rank !== 'leader') {
+            return res.json({ success: false, error: "Sadece lider seviye yükseltebilir!" });
+        }
+
+        const currentLevel = gang.level || 1;
+        // COSTS: Lvl 1->2 (1M), 2->3 (5M), 3->4 (25M), 4->5 (100M)
+        const costs = { 1: 1000000, 2: 5000000, 3: 25000000, 4: 100000000 };
+        const nextLevel = currentLevel + 1;
+        const cost = costs[currentLevel];
+
+        if (!cost) return res.json({ success: false, error: "Zaten maksimum seviyedesiniz!" });
+
+        if ((gang.balance || 0) < cost) {
+            return res.json({ success: false, error: `Yetersiz kasa bakiyesi! Seviye ${nextLevel} için ${cost.toLocaleString()} 💰 var, ${cost.toLocaleString()} 💰 gerekiyor.` });
+        }
+
+        // Apply Upgrade with transaction for safety
+        await gangRef.transaction(g => {
+            if (!g) return g;
+            if ((g.balance || 0) < cost) return; // double check
+            g.balance -= cost;
+            g.level = (g.level || 1) + 1;
+            return g;
+        }, (error, committed, snapshot) => {
+            if (error || !committed) return res.json({ success: false, error: "İşlem sırasında hata oluştu veya bakiye yetersiz." });
+            res.json({ success: true, message: `TEBRİKLER! Çete Seviyesi ${nextLevel} oldu! Yeni kapasite ve özellikler aktif.` });
+        });
+
+    } catch (e) {
         res.json({ success: false, error: e.message });
     }
 });

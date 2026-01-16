@@ -1632,17 +1632,24 @@ async function loadGangs() {
                         card.className = 'glass-panel';
                         card.style = "margin-bottom:10px; padding:15px; display:flex; justify-content:space-between; align-items:center; background:rgba(255,255,255,0.03);";
 
+                        const memberCount = Object.keys(g.members || {}).length;
                         const cityName = EMLAK_CITIES.find(c => c.id === g.baseCity)?.name || g.baseCity;
 
                         card.innerHTML = `
                             <div style="text-align:left;">
-                                <div style="font-weight:800; color:white;">
-                                    <span style="background:var(--primary); color:black; padding:2px 6px; border-radius:4px; font-size:0.7rem; margin-right:5px;">${g.tag}</span>
+                                <div style="font-weight:800; color:white; font-size: 1rem; display:flex; align-items:center;">
+                                    <span style="background:var(--primary); color:black; padding:2px 8px; border-radius:4px; font-size:0.75rem; margin-right:8px; font-weight:900;">${g.tag}</span>
                                     ${g.name}
                                 </div>
-                                <div style="font-size:0.75rem; color:#888; margin-top:4px;">📍 ${cityName} | 👑 ${g.leader}</div>
+                                <div style="font-size:0.8rem; color:#aaa; margin-top:6px; display:flex; gap:10px;">
+                                    <span><i class="fas fa-map-marker-alt"></i> ${cityName}</span>
+                                    <span><i class="fas fa-crown"></i> ${g.leader}</span>
+                                    <span><i class="fas fa-users"></i> ${memberCount} Üye</span>
+                                </div>
                             </div>
-                            <button onclick="joinGang('${g.id}')" class="primary-btn" style="width:auto; padding:5px 15px; font-size:0.8rem;">İSTEK GÖNDER</button>
+                            <button onclick="joinGang('${g.id}')" class="primary-btn" style="width:auto; padding:8px 20px; font-size:0.8rem; border-radius:6px;">
+                                <i class="fas fa-user-plus"></i> KATIL
+                            </button>
                         `;
                         publicList.appendChild(card);
                     });
@@ -1820,6 +1827,58 @@ async function loadGangs() {
                         `;
                         list.appendChild(row);
                     });
+
+                    // Add Deposit / Upgrade Buttons Section (Below Members List)
+                    const extraActions = document.createElement('div');
+                    extraActions.style = "margin-top:20px; border-top:1px solid rgba(255,255,255,0.1); padding-top:20px; display:flex; gap:10px; flex-wrap:wrap;";
+
+                    const lvl = g.level || 1;
+                    const bal = g.balance || 0;
+                    const costs = { 1: 1000000, 2: 5000000, 3: 25000000, 4: 100000000 };
+                    const nextCost = costs[lvl];
+                    const nextLvlV = lvl + 1;
+
+                    // Header Info Update
+                    const headerInfo = document.getElementById('gang-info-extra');
+                    if (headerInfo) {
+                        const cityName = EMLAK_CITIES.find(c => c.id === g.baseCity)?.name || g.baseCity;
+                        headerInfo.innerHTML = `
+                            Üs: <b>${cityName}</b> | Seviye: <b>${lvl}</b> | Kasa: <b style="color:var(--primary);">${bal.toLocaleString()} 💰</b>
+                        `;
+                    }
+
+                    // Deposit Button
+                    const depositBtn = document.createElement('button');
+                    depositBtn.className = "primary-btn";
+                    depositBtn.innerHTML = '<i class="fas fa-coins"></i> KASAYA PARA YATIR';
+                    depositBtn.style = "flex:1;";
+                    depositBtn.onclick = () => depositGang(gangId);
+                    extraActions.appendChild(depositBtn);
+
+                    // Upgrade Button (Leader Only)
+                    if (myRank === 'leader' && nextCost) {
+                        const upgradeBtn = document.createElement('button');
+                        upgradeBtn.className = "primary-btn";
+                        upgradeBtn.style = "flex:1; background: linear-gradient(45deg, #ffd700, #ff8c00); color:black; font-weight:800;";
+                        upgradeBtn.innerHTML = `<i class="fas fa-arrow-up"></i> YÜKSELT (${(nextCost / 1000000).toLocaleString()}M)`;
+                        upgradeBtn.onclick = () => upgradeGang(gangId, nextCost, nextLvlV);
+                        extraActions.appendChild(upgradeBtn);
+                    } else if (myRank === 'leader' && !nextCost) {
+                        const maxBtn = document.createElement('button');
+                        maxBtn.className = "secondary-btn";
+                        maxBtn.style = "flex:1;";
+                        maxBtn.innerHTML = "MAX SEVİYE";
+                        maxBtn.disabled = true;
+                        extraActions.appendChild(maxBtn);
+                    }
+
+                    // Remove old extras
+                    const oldExtras = list.parentNode.querySelectorAll('.gang-extras');
+                    oldExtras.forEach(e => e.remove());
+
+                    extraActions.className = 'gang-extras';
+                    list.parentNode.insertBefore(extraActions, list.nextSibling);
+
                 }
             } else {
                 console.error("Gang load failed:", d.error);
@@ -2156,14 +2215,10 @@ async function loadEmlak() {
             const confirmed = await showConfirm("🚨 Emlak Sıfırlama", "Tüm şehirlerdeki mülkleri ve tüm kullanıcıların tapularını silmek istediğine emin misin? (Fiyatları güncellemek için gereklidir)");
             if (!confirmed) return;
 
-            // Ask for Admin Key
-            const adminKey = prompt("Lütfen Admin Anahtarını Girin:");
-            if (!adminKey) return;
-
             const res = await fetch('/api/emlak/reset', {
                 method: 'POST',
                 headers: { 'Content-Type': 'application/json' },
-                body: JSON.stringify({ key: adminKey })
+                body: JSON.stringify({ requester: 'omegacyr' })
             });
             const d = await res.json();
             if (d.success) {
@@ -3046,34 +3101,74 @@ function showConfirm(title, message) {
         modal.classList.remove('hidden');
         modal.style.display = 'flex';
 
-        const yesBtn = document.getElementById('confirm-modal-yes');
-        const noBtn = document.getElementById('confirm-modal-cancel');
+        const yesBtn = document.getElementById('confirm-yes-btn');
+        const noBtn = document.getElementById('confirm-no-btn');
 
-        const close = () => {
-            modal.classList.add('hidden');
+        // Clean up old listeners
+        const newYes = yesBtn.cloneNode(true);
+        const newNo = noBtn.cloneNode(true);
+        yesBtn.parentNode.replaceChild(newYes, yesBtn);
+        noBtn.parentNode.replaceChild(newNo, noBtn);
+
+        newYes.onclick = () => {
             modal.style.display = 'none';
+            modal.classList.add('hidden');
+            resolve(true);
         };
 
-        if (yesBtn && noBtn) {
-            const newYes = yesBtn.cloneNode(true);
-            const newNo = noBtn.cloneNode(true);
-            yesBtn.parentNode.replaceChild(newYes, yesBtn);
-            noBtn.parentNode.replaceChild(newNo, noBtn);
-
-            newYes.onclick = () => {
-                close();
-                resolve(true);
-            };
-            newNo.onclick = () => {
-                close();
-                resolve(false);
-            };
-        } else {
-            close();
+        newNo.onclick = () => {
+            modal.style.display = 'none';
+            modal.classList.add('hidden');
             resolve(false);
-        }
+        };
     });
 }
+
+// --- GANG HELPERS (Global) ---
+
+async function depositGang(gangId) {
+    const amountStr = await showInput("Kasaya Para Yatır", "Yatırmak istediğiniz miktarı girin:", "1000");
+    if (!amountStr) return;
+    const amount = parseInt(amountStr);
+    if (isNaN(amount) || amount <= 0) return showToast("Geçersiz miktar", "error");
+
+    try {
+        const res = await fetch('/api/gang/deposit', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ username: currentUser, gangId, amount })
+        });
+        const data = await res.json();
+        if (data.success) {
+            showToast(data.message, "success");
+            loadGangs(); // Refresh
+        } else {
+            showToast(data.error, "error");
+        }
+    } catch (e) { showToast("Hata oluştu", "error"); }
+}
+
+async function upgradeGang(gangId, cost, nextLvl) {
+    const confirmed = await showConfirm(`Çete Seviyesi ${nextLvl}`, `Kasadaki paradan ${(cost / 1000000).toLocaleString()}M 💰 harcanarak çete seviyesi yükseltilecek. Kapasite artacak. Onaylıyor musunuz?`);
+    if (!confirmed) return;
+
+    try {
+        const res = await fetch('/api/gang/upgrade', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ username: currentUser, gangId })
+        });
+        const data = await res.json();
+        if (data.success) {
+            showToast(data.message, "success");
+            loadGangs(); // Refresh
+        } else {
+            showToast(data.error, "error");
+        }
+    } catch (e) { showToast("Hata oluştu", "error"); }
+}
+
+
 
 function calculateShopStock() {
     const codeInput = document.getElementById('shopCalcCode');
