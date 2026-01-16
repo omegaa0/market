@@ -1100,6 +1100,9 @@ async function loadBorsa() {
             const chartData = [...(data.history || [])];
             if (data.price) chartData.push(data.price);
             drawStockChart(document.getElementById(`chart-${code}`), chartData, data.trend);
+
+            // Auto-update price for default value
+            updateBorsaPrice(code, data.price);
         });
     };
 
@@ -1644,6 +1647,43 @@ async function loadGangs() {
         // In a gang -> Fetch Gang Info & Show Dashboard
         document.getElementById('gang-lobby').classList.add('hidden');
         document.getElementById('gang-dashboard').classList.remove('hidden');
+
+        // Render Public Gangs anyway (at bottom)
+        try {
+            const res = await fetch('/api/gang/list');
+            const data = await res.json();
+            const list = document.getElementById('public-gang-list-dashboard');
+            if (list && data.success) {
+                list.innerHTML = '';
+                const gangs = Object.values(data.gangs || {});
+                if (gangs.length === 0) {
+                    list.innerHTML = '<div style="color:#666;">Başka çete yok.</div>';
+                } else {
+                    gangs.forEach(g => {
+                        // Don't show my own gang in "Other Gangs" list? Or show it?
+                        // User said "diğer çeteleri görebilsin". Showing all is fine, or filter out my own.
+                        if (g.id === gangId) return;
+
+                        const card = document.createElement('div');
+                        card.className = 'glass-panel';
+                        card.style = "padding:15px; display:flex; justify-content:space-between; align-items:center; background:rgba(255,255,255,0.03);";
+                        const cityName = EMLAK_CITIES.find(c => c.id === g.baseCity)?.name || g.baseCity;
+
+                        card.innerHTML = `
+                            <div style="text-align:left;">
+                                <div style="font-weight:800; color:white;">
+                                    <span style="background:var(--primary); color:black; padding:2px 6px; border-radius:4px; font-size:0.7rem; margin-right:5px;">${g.tag}</span>
+                                    ${g.name}
+                                </div>
+                                <div style="font-size:0.75rem; color:#888; margin-top:4px;">📍 ${cityName} | 👑 ${g.leader}</div>
+                            </div>
+                            <div style="font-size:0.8rem; color:var(--primary); font-weight:700;">${g.memberCount} Üye</div>
+                        `;
+                        list.appendChild(card);
+                    });
+                }
+            }
+        } catch (e) { console.error("Dashboard Gang List Error", e); }
 
         try {
             const res = await fetch('/api/gang/info', {

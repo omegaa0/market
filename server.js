@@ -1633,10 +1633,38 @@ app.post('/api/emlak/reset', authAdmin, hasPerm('stocks'), async (req, res) => {
     try {
         console.log(`🚨 EMLAK PİYASASI SIFIRLAMA BAŞLATILDI (${req.adminUser.username} tarafından)`);
 
-        // 1. Tüm şehirlerdeki mülk pazarını sil
-        await db.ref('real_estate_market').remove();
+        // 1. Market Verilerini Çek ve Sadece Sahipleri Temizle (Binaları silme!)
+        const marketRef = db.ref('real_estate_market');
+        const marketSnap = await marketRef.once('value');
+        const marketData = marketSnap.val();
 
-        // 2. Tüm kullanıcıların sahip olduğu mülkleri sil (Opsiyonel ama ekonomi tutarlılığı için gerekli)
+        if (marketData) {
+            // Traverse all cities and properties
+            for (const cityId in marketData) {
+                const properties = marketData[cityId];
+                if (Array.isArray(properties)) {
+                    properties.forEach(p => {
+                        if (p.owner) delete p.owner;
+                        if (p.ownerName) delete p.ownerName;
+                        if (p.purchaseTime) delete p.purchaseTime;
+                    });
+                } else if (typeof properties === 'object') {
+                    for (const pid in properties) {
+                        const p = properties[pid];
+                        if (p.owner) delete p.owner;
+                        if (p.ownerName) delete p.ownerName;
+                        if (p.purchaseTime) delete p.purchaseTime;
+                    }
+                }
+            }
+            // Güncellenmiş (temizlenmiş) veriyi geri yükle
+            await marketRef.set(marketData);
+        } else {
+            // Eğer market yoksa komple silinsin (Fallback)
+            await db.ref('real_estate_market').remove();
+        }
+
+        // 2. Tüm kullanıcıların sahip olduğu mülkleri sil
         const usersSnap = await db.ref('users').once('value');
         const users = usersSnap.val() || {};
         const updates = {};
@@ -1649,7 +1677,7 @@ app.post('/api/emlak/reset', authAdmin, hasPerm('stocks'), async (req, res) => {
             await db.ref().update(updates);
         }
 
-        res.json({ success: true, message: "Emlak piyasası ve tüm mülk sahiplikleri başarıyla sıfırlandı. Yeni fiyatlar artık aktif." });
+        res.json({ success: true, message: "Emlak piyasası sıfırlandı: Tüm mülk sahiplikleri kaldırıldı, binalar satışa hazır." });
     } catch (e) {
         console.error("Emlak Reset Error:", e.message);
         res.status(500).json({ success: false, error: e.message });
@@ -3391,6 +3419,59 @@ app.post('/webhook/kick', async (req, res) => {
             // Goal Bar Update
             await db.ref(`channels/${broadcasterId}/stats/followers`).transaction(val => (val || 0) + 1);
             await addRecentActivity(broadcasterId, 'recent_joiners', { user: follower, type: 'follower' });
+            return;
+        }
+
+        // --- YAYIN DURUMU BİLDİRİMİ (Discord) ---
+        if (eventName === "livestream.status.updated") {
+            // Payload yapısı: data.livestream veya direkt livestream
+            const livestream = (payload.data && payload.data.livestream) || payload.livestream;
+
+            if (livestream) {
+                const isLive = livestream.is_live; // true = online, false = offline
+                const streamTitle = livestream.session_title || "Yayında!";
+                const category = (livestream.categories && livestream.categories[0] && livestream.categories[0].name) || "Genel";
+                const thumbnail = livestream.thumbnail?.url || "";
+
+                // Discord Webhook Belirle (Kanal Ayarı > Global Env)
+                const targetWebhook = (channelData.settings && channelData.settings.discord_webhook_url) || process.env.DISCORD_WEBHOOK;
+
+                if (targetWebhook) {
+                    try {
+                        const embedColor = isLive ? 5238290 : 2829099; // Yeşil / Gri
+                        const statusText = isLive ? "🔴 YAYIN BAŞLADI!" : "⚫ YAYIN SONLANDI";
+                        const desc = isLive
+                            ? `**${streamTitle}**\n\n📺 **Kategori:** ${category}\n🔗 [Yayına Git](https://kick.com/${channelData.slug || broadcasterId})`
+                            : `Yayın sona erdi. İzleyen herkese teşekkürler! 👋`;
+
+                        // Send Discord Message
+                        await axios.post(targetWebhook, {
+                            username: "Kick Bot Bildirim",
+                            avatar_url: "https://kick.com/favicon.ico",
+                            embeds: [{
+                                title: statusText,
+                                description: desc,
+                                color: embedColor,
+                                thumbnail: { url: channelData.profile_pic || "https://kick.com/favicon.ico" },
+                                image: (isLive && thumbnail) ? { url: thumbnail } : undefined,
+                                footer: { text: `Kick Kanalı: ${channelData.username || broadcasterId}` },
+                                timestamp: new Date().toISOString()
+                            }]
+                        });
+                        console.log(`[Webhook] 🔔 Discord bildirimi (${isLive ? 'LIVE' : 'OFFLINE'}) -> ${targetWebhook === process.env.DISCORD_WEBHOOK ? 'Global' : 'Custom'}`);
+                    } catch (e) {
+                        console.error("[Webhook] Discord Error:", e.message);
+                    }
+                }
+
+                // DB Update (Stream Status)
+                await db.ref(`channels/${broadcasterId}/stream_status`).update({
+                    is_live: isLive,
+                    title: streamTitle,
+                    category: category,
+                    last_update: Date.now()
+                });
+            }
             return;
         }
 
@@ -5622,8 +5703,64 @@ EK TALİMAT: ${aiInst}`;
             const snap = await userRef.once('value');
             const d = snap.val() || {};
             const watchTime = d.channel_watch_time?.[broadcasterId] || 0;
-            const messageCount = d.channel_m?.[broadcasterId] || 0;
             await reply(`📊 @${user} Verilerin:\n🕒 İzleme: ${watchTime} dakika\n💬 Mesaj: ${messageCount}`);
+        }
+
+        else if (lowMsg === '!vergi') {
+            // 1. Fetch User Data
+            const uSnap = await userRef.once('value');
+            const uData = uSnap.val() || {};
+
+            // 2. Fetch Global Stocks for real-time valuation
+            const sSnap = await db.ref('global_stocks').once('value');
+            const stocks = sSnap.val() || {};
+
+            let totalTax = 0;
+            let details = [];
+
+            // A. Property Tax (Emlak Vergisi)
+            // Rate: %0.5 Daily
+            let propTax = 0;
+            let propValue = 0;
+            if (uData.properties) {
+                // properties can be array or object
+                const props = Array.isArray(uData.properties) ? uData.properties : Object.values(uData.properties);
+                props.forEach(p => {
+                    const val = p.price || p.cost || 1000000; // Fallback 1M if price lost
+                    propValue += val;
+                });
+                propTax = propValue * 0.005;
+                if (propTax > 0) details.push(`🏠 Emlak: ${Math.floor(propTax).toLocaleString()} 💰`);
+            }
+
+            // B. Stock/Asset Tax (Varlık Vergisi)
+            // Rate: %0.1 Daily
+            let stockTax = 0;
+            let stockValue = 0;
+            if (uData.stocks) {
+                Object.entries(uData.stocks).forEach(([code, amount]) => {
+                    const price = stocks[code] ? stocks[code].price : 0;
+                    stockValue += price * amount;
+                });
+                stockTax = stockValue * 0.001;
+                if (stockTax > 0) details.push(`📈 Borsa: ${Math.floor(stockTax).toLocaleString()} 💰`);
+            }
+
+            // C. Wealth Tax (Servet Vergisi) - Only if cash > 10M
+            // Rate: %0.2 on cash
+            let wealthTax = 0;
+            if ((uData.balance || 0) > 10000000) {
+                wealthTax = (uData.balance || 0) * 0.002;
+                if (wealthTax > 0) details.push(`💼 Servet: ${Math.floor(wealthTax).toLocaleString()} 💰`);
+            }
+
+            totalTax = propTax + stockTax + wealthTax;
+
+            if (totalTax > 0) {
+                await reply(`💸 @${user}, Günlük Tahmini Vergi Borcun: ${Math.floor(totalTax).toLocaleString()} 💰\n(${details.join(' + ')})`);
+            } else {
+                await reply(`💸 @${user}, Şu an vergiye tabi bir varlığın yok. Şanslısın!`);
+            }
         }
 
         else if (lowMsg === '!komutlar') {
@@ -7179,14 +7316,23 @@ app.post('/api/gang/process-request', async (req, res) => {
             console.log("   ➤ Request silindi");
 
             // B. Add to members
+            // Firebase keys cannot store '.', so we might need a safe key if username has dot.
+            // Assuming cleanTarget is safe for now (as it is used in users/{cleanTarget}).
             await gangRef.child('members').child(cleanTarget).set({
                 rank: 'member',
                 joinedAt: Date.now()
             });
             console.log("   ➤ Members'a eklendi");
 
+            // UPDATE MEMBER COUNT explicitly
+            const currentMembersSnap = await gangRef.child('members').once('value');
+            const cnt = currentMembersSnap.numChildren();
+            // Optional: Store count if frontend relies on it
+            // await gangRef.child('memberCount').set(cnt); 
+
             // C. Update user profile
             await targetUserRef.child('gang').set(gangId);
+            await targetUserRef.child('gang_rank').set('member'); // Explicitly set rank
             console.log("   ➤ Kullanıcı profili güncellendi");
 
             res.json({ success: true, message: `${targetUser} çeteye dahil edildi!` });
@@ -7385,20 +7531,47 @@ app.post('/admin-api/remove-property', authAdmin, hasPerm('users'), async (req, 
 
     try {
         const cleanUser = user.toLowerCase();
-        const ref = db.ref(`users/${cleanUser}/properties`); // Note: Changed to 'properties' to match new structure
+        const ref = db.ref(`users/${cleanUser}/properties`);
         const snap = await ref.once('value');
         let properties = snap.val() || [];
 
-        // Convert object to array if needed (Firebase stores arrays with integer keys as object-like structure if sparse, but usually array)
         if (!Array.isArray(properties) && typeof properties === 'object') {
-            // If it's an object with keys like "0", "1", treat values as array
             properties = Object.values(properties);
         }
 
         if (index >= 0 && index < properties.length) {
-            const removed = properties.splice(index, 1);
-            await ref.set(properties);
-            addLog("Emlak Silme", `${user} kullanıcısından ${removed[0]?.name || 'Mülk'} silindi.`);
+            const removed = properties.splice(index, 1)[0]; // Get the removed item
+            await ref.set(properties); // Update user props
+
+            // SYNC WITH GLOBAL MARKET
+            if (removed && removed.city && removed.id) {
+                // Find city key
+                const mapEn = { "İstanbul": "ISTANBUL", "Ankara": "ANKARA", "İzmir": "IZMIR", "Antalya": "ANTALYA", "Bursa": "BURSA" };
+                const cityId = mapEn[removed.city] || removed.city.toUpperCase();
+
+                const marketCityRef = db.ref(`real_estate_market/${cityId}`);
+                const marketSnap = await marketCityRef.once('value');
+                if (marketSnap.exists()) {
+                    const marketProps = marketSnap.val();
+                    // marketProps can be object or array
+                    let targetKey = null;
+                    for (const key in marketProps) {
+                        if (marketProps[key].id === removed.id) {
+                            targetKey = key;
+                            break;
+                        }
+                    }
+
+                    if (targetKey !== null) {
+                        await marketCityRef.child(targetKey).child('owner').remove();
+                        await marketCityRef.child(targetKey).child('ownerName').remove();
+                        await marketCityRef.child(targetKey).child('purchaseTime').remove();
+                        console.log(`[Admin] Mülk marketten de düşürüldü: ${cityId}/${removed.id}`);
+                    }
+                }
+            }
+
+            addLog("Emlak Silme", `${user} kullanıcısından ${removed?.name || 'Mülk'} silindi ve marketten boşa çıkarıldı.`);
             res.json({ success: true });
         } else {
             res.status(400).json({ error: "Geçersiz indeks" });

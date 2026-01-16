@@ -253,12 +253,14 @@
         <div class="shop-layout" style="display: flex; gap: 30px; align-items: flex-start; margin-top: 30px;">
             <!-- LEFT SIDEBAR: DEVLOG -->
             <aside class="sidebar glass-panel" id="main-devlog-sidebar"
-                style="position:static; transform:none; width: 280px; padding: 25px; flex-shrink: 0; text-align: left;">
+                style="position:sticky; top:20px; width: 350px; padding: 25px; flex-shrink: 0; text-align: left; background: rgba(15, 15, 20, 0.95); border: 1px solid rgba(0, 255, 136, 0.2); box-shadow: 0 0 20px rgba(0,0,0,0.5);">
                 <h3
-                    style="margin-bottom: 20px; font-size: 1.1rem; padding-bottom: 10px; display:flex; align-items:center; gap:8px;">
-                    <i class="fas fa-bullhorn" style="color:var(--primary);"></i> Duyurular
+                    style="margin-bottom: 20px; font-size: 1.4rem; padding-bottom: 10px; display:flex; align-items:center; gap:10px; border-bottom: 1px solid rgba(255,255,255,0.1); color: #fff; text-shadow: 0 0 10px rgba(0,255,136,0.5);">
+                    <i class="fas fa-bullhorn" style="color:var(--primary); font-size: 1.2rem;"></i> DUYURULAR
                 </h3>
-                <div id="devlog-list" style="display:flex; flex-direction:column; gap:12px;">
+
+                <div id="devlog-list"
+                    style="display:flex; flex-direction:column; gap:15px; max-height: 80vh; overflow-y: auto; padding-right: 5px;">
                     <div style="color:#666; font-size:0.8rem;">Yükleniyor...</div>
                 </div>
             </aside>
@@ -295,31 +297,7 @@
                 <div id="tab-borsa" class="tab-content hidden">
                     <h2 style="margin-bottom:20px;">📈 Küresel Borsa (Canlı)</h2>
 
-                    <!-- 🧮 HESAPLAYICI (Yeni) -->
-                    <div class="glass-panel"
-                        style="margin-bottom:20px; padding:20px; display:flex; align-items:center; gap:20px; flex-wrap:wrap; background:rgba(255,255,255,0.03);">
-                        <div style="flex:1; min-width:200px;">
-                            <h3 style="color:var(--primary); margin-bottom:5px; font-size:1rem;">🧮 Borsa Hesaplayıcı
-                            </h3>
-                            <p style="color:#aaa; font-size:0.8rem;">İşlem yapmadan önce maliyet ve kazancını hesapla.
-                            </p>
-                        </div>
-                        <div style="display:flex; gap:10px; align-items:center; flex:2; flex-wrap:wrap;">
-                            <input type="text" id="shopCalcCode" placeholder="Hisse Kodu (Örn: AAPL)"
-                                class="borsa-input" style="width:140px; margin:0; text-transform:uppercase;"
-                                oninput="calculateShopStock()">
-                            <input type="number" id="shopCalcAmount" placeholder="Adet" class="borsa-input"
-                                style="width:100px; margin:0;" oninput="calculateShopStock()">
-                        </div>
-                        <div
-                            style="display:flex; flex-direction:column; align-items:flex-end; min-width:150px; background:rgba(0,0,0,0.3); padding:10px; border-radius:10px;">
-                            <div style="font-size:0.75rem; color:#888;">ALIŞ MALİYETİ</div>
-                            <div id="shopCalcBuy" style="font-size:1rem; font-weight:800; color:white;">0 💰</div>
-                            <div style="font-size:0.75rem; color:#888; margin-top:5px;">SATIŞ (NET)</div>
-                            <div id="shopCalcSell" style="font-size:1rem; font-weight:800; color:var(--primary);">0 💰
-                            </div>
-                        </div>
-                    </div>
+                    <!-- HESAPLAYICI KALDIRILDI (Canlı Hesaplama Kartlarda) -->
 
                     <!-- 📰 NEWSPAPER STYLE NEWS SECTION -->
                     <div class="news-section">
@@ -556,6 +534,14 @@
                             <div id="gang-members-list" style="display: grid; grid-template-columns: 1fr; gap: 10px;">
                                 <!-- Dynamic Rows -->
                             </div>
+                        </div>
+                    </div>
+
+                    <div style="margin-top: 50px; border-top: 1px solid rgba(255,255,255,0.1); padding-top: 30px;">
+                        <h4 class="sect-title"><i class="fas fa-users"></i> Diğer Çeteler</h4>
+                        <div id="public-gang-list-dashboard"
+                            style="display: grid; grid-template-columns: 1fr 1fr; gap: 15px;">
+                            <!-- JS fills -->
                         </div>
                     </div>
                 </div>
