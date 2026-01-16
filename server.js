@@ -225,6 +225,10 @@ function initializeBackgroundTasks() {
     // Webhook kayıtlarını tazele
     setTimeout(registerAllWebhooks, 5000);
 
+    // Vergi toplama sistemini başlat
+    setInterval(collectDailyTaxes, 3600000);
+    setTimeout(collectDailyTaxes, 30000);
+
     console.log("✅ Tüm arka plan görevleri kuyruğa alındı.");
 }
 
@@ -2102,6 +2106,7 @@ async function saveHourlyStockHistory() {
 
 // Sunucu başladığında tüm hisselerin volatilite değerlerini düzelt
 async function fixStockVolatility() {
+    if (!isDbReady) return;
     try {
         const stockRef = db.ref('global_stocks');
         const snap = await stockRef.once('value');
@@ -2159,7 +2164,7 @@ async function fixStockVolatility() {
 }
 
 // Sunucu başladığında volatiliteleri düzelt
-setTimeout(fixStockVolatility, 3000);
+// setTimeout(fixStockVolatility, 3000); // initializeBackgroundTasks içinde çalışıyor
 
 app.post('/api/borsa/fix-costs', async (req, res) => {
     if (req.body.requester !== 'omegacyr') return res.status(403).json({ success: false, error: 'Yetkisiz Erişim' });
@@ -2717,6 +2722,7 @@ async function calculateStockTax(stocks, globalStocks) {
 }
 
 async function collectDailyTaxes() {
+    if (!isDbReady) return;
     const todayKey = getTodayDateKey();
 
     try {
@@ -2824,11 +2830,9 @@ async function collectDailyTaxes() {
     }
 }
 
-// Vergi kontrolü - Her saat başı kontrol et (ancak günde bir kez çalışır)
-setInterval(collectDailyTaxes, 3600000); // 1 saat
-
-// Sunucu başlatıldığında da kontrol et (ancak son toplama tarihine göre çalışır)
-setTimeout(collectDailyTaxes, 30000); // 30 saniye sonra kontrol
+// Vergi kontrolleri initializeBackgroundTasks içinde başlatılıyor
+// setInterval(collectDailyTaxes, 3600000);
+// setTimeout(collectDailyTaxes, 30000);
 
 // PKCE & HELPERS
 const sleep = (ms) => new Promise(resolve => setTimeout(resolve, ms));
@@ -7158,6 +7162,7 @@ app.post('/dashboard-api/data', authDashboard, async (req, res) => {
 
 // --- YENİ: LİDERLİK TABLOSU ---
 app.post('/api/leaderboard', async (req, res) => {
+    if (!isDbReady) return res.json([]);
     try {
         const { type, channelId } = req.body;
         let snap;
@@ -7283,6 +7288,7 @@ function getTodayKey() {
 }
 
 async function trackWatchTime() {
+    if (!isDbReady) return;
     try {
         const channelsSnap = await db.ref('channels').once('value');
         const channels = channelsSnap.val() || {};
@@ -7460,6 +7466,7 @@ setInterval(trackWatchTime, 60000);
 
 // DAILY STATS SNAPSHOT (Every hour check if day changed)
 async function takeDailyStatsSnapshot() {
+    if (!isDbReady) return;
     try {
         const today = getTodayKey();
         const channelsSnap = await db.ref('channels').once('value');
@@ -7569,7 +7576,7 @@ async function syncSingleChannelStats(chanId, chan) {
 }
 
 async function syncChannelStats() {
-    // Token kontrolü için sessiz sync (webhook'lar asıl veriyi güncelliyor)
+    if (!isDbReady) return;
     try {
         const channelsSnap = await db.ref('channels').once('value');
         const channels = channelsSnap.val() || {};
@@ -8846,33 +8853,8 @@ async function addRecentActivity(broadcasterId, key, item) {
     }
 }
 
-/**
- * Günlük istatistiklerin anlık görüntüsünü alır (Chartlar için)
- */
-async function takeDailyStatsSnapshot() {
-    try {
-        const today = getTodayKey();
-        const channelsSnap = await db.ref('channels').once('value');
-        const allChannels = channelsSnap.val() || {};
-
-        for (const [id, data] of Object.entries(allChannels)) {
-            const statsSnap = await db.ref(`channels/${id}/stats`).once('value');
-            const stats = statsSnap.val() || {};
-
-            await db.ref(`channels/${id}/stats/history/${today}`).set({
-                followers: stats.followers || 0,
-                subscribers: stats.subscribers || 0,
-                timestamp: Date.now()
-            });
-        }
-        console.log(`📊 Günlük istatistik snapshotları alındı: ${today}`);
-    } catch (e) {
-        console.error("DailyStatsSnapshot Error:", e);
-    }
-}
-
-// Her gece 23:59'da stats snapshot al (veya her 6 saatte bir basitçe)
-setInterval(takeDailyStatsSnapshot, 21600000);
+// function takeDailyStatsSnapshot duplicate removed
+// setInterval(takeDailyStatsSnapshot, 21600000);
 
 // =============================================================================
 // KICK RESMİ WEBHOOK SİSTEMİ (PUSHER YOK)
