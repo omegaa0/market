@@ -887,9 +887,9 @@ async function updateGlobalStocks() {
 
             const newsType = Math.random() > 0.5 ? 'GOOD' : 'BAD';
 
-            // Her hedef hisse için farklı etki (daha büyük: %15-30)
+            // Her hedef hisse için farklı etki (çok büyük: %50-75)
             for (const target of targets) {
-                const percent = (Math.random() * 0.15) + 0.15; // %15-%30 arası etki
+                const percent = (Math.random() * 0.25) + 0.50; // %50-%75 arası etki
                 const impact = newsType === 'GOOD' ? (1 + percent) : (1 - percent);
                 stocks[target].price = Math.round(stocks[target].price * impact);
             }
@@ -1094,8 +1094,8 @@ app.post('/admin-api/add-news', authAdmin, hasPerm('stocks'), async (req, res) =
 
             // Eğer impact 0 ise otomatik hesapla (haber türüne göre)
             if (effectiveImpact === 0) {
-                // %10 ile %15 arasında rastgele etki
-                const randomImpact = 10 + Math.random() * 5;
+                // %50 ile %75 arasında rastgele etki
+                const randomImpact = 50 + Math.random() * 25;
                 effectiveImpact = type === 'GOOD' ? randomImpact : -randomImpact;
             } else {
                 // Manuel girilen impact'ı haber türüne göre işaretle
