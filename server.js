@@ -256,14 +256,21 @@ async function startServerBot() {
         } catch (error) {
             console.error("⚠️ Sunucu Botu Giriş Hatası:", error.code, error.message);
 
-            if (error.code === 'auth/user-not-found') {
+            // Firebase artık güvenlik için 'user-not-found' yerine 'invalid-login-credentials' döndürebiliyor
+            if (error.code === 'auth/user-not-found' || error.code === 'auth/invalid-login-credentials') {
                 try {
-                    console.log("ℹ️ Sunucu Botu oluşturuluyor...");
+                    console.log("ℹ️ Sunucu Botu oluşturuluyor veya bilgiler doğrulanıyor...");
                     const user = await auth.createUserWithEmailAndPassword(SERVER_EMAIL, SERVER_PASS);
                     console.log("✅ Sunucu Botu Oluşturuldu:", user.user.email);
                     isDbReady = true;
+                    initializeBackgroundTasks();
                 } catch (e) {
-                    console.error("❌ Sunucu Botu Oluşturma Hatası:", e.message);
+                    // Eğer kullanıcı zaten varsa ama şifre yanlışsa buraya düşecektir
+                    if (e.code === 'auth/email-already-in-use') {
+                        console.error("❌ Sunucu Botu şifresi yanlış! Lütfen Render panelindeki SERVER_BOT_PASSWORD değerini kontrol edin.");
+                    } else {
+                        console.error("❌ Sunucu Botu Oluşturma Hatası:", e.message);
+                    }
                 }
             } else if (retryCount < maxRetries) {
                 retryCount++;
