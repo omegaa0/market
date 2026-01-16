@@ -12,6 +12,30 @@ const firebaseConfig = {
 firebase.initializeApp(firebaseConfig);
 const db = firebase.database();
 
+// ===== XSS KORUMA - HTML SANITIZER =====
+function sanitizeHTML(str) {
+    if (typeof str !== 'string') return str;
+    const temp = document.createElement('div');
+    temp.textContent = str;
+    return temp.innerHTML;
+}
+
+// Güvenli innerHTML kullanımı için yardımcı
+function safeSetHTML(element, html) {
+    // Sadece bilinen güvenli HTML etiketlerine izin ver
+    const allowedTags = ['b', 'i', 'u', 'strong', 'em', 'span', 'div', 'br', 'p', 'small'];
+    const tagPattern = /<\/?([a-z][a-z0-9]*)\b[^>]*>/gi;
+
+    const sanitized = html.replace(tagPattern, (match, tag) => {
+        if (allowedTags.includes(tag.toLowerCase())) {
+            return match;
+        }
+        return sanitizeHTML(match);
+    });
+
+    element.innerHTML = sanitized;
+}
+
 // EĞİTİM & MESLEK VERİLERİ (SERVER İLE SENKRON)
 const EDUCATION = {
     0: "Cahil", 1: "İlkokul", 2: "Ortaokul", 3: "Lise",

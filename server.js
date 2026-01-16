@@ -9,9 +9,91 @@ const multer = require('multer');
 const firebase = require('firebase/compat/app');
 require('firebase/compat/database');
 
+// ===== GÜVENLİK PAKETLERİ =====
+const bcrypt = require('bcryptjs');
+const cors = require('cors');
+const rateLimit = require('express-rate-limit');
+
+// ===== TOKEN ŞİFRELEME YARDIMCILARI =====
+const ENCRYPTION_KEY = process.env.TOKEN_ENCRYPTION_KEY || crypto.randomBytes(32).toString('hex').slice(0, 32);
+const IV_LENGTH = 16;
+
+function encryptToken(text) {
+    if (!text) return null;
+    const iv = crypto.randomBytes(IV_LENGTH);
+    const cipher = crypto.createCipheriv('aes-256-cbc', Buffer.from(ENCRYPTION_KEY, 'utf8'), iv);
+    let encrypted = cipher.update(text, 'utf8', 'hex');
+    encrypted += cipher.final('hex');
+    return iv.toString('hex') + ':' + encrypted;
+}
+
+function decryptToken(text) {
+    if (!text || !text.includes(':')) return text; // Eski şifresiz token'lar için fallback
+    try {
+        const parts = text.split(':');
+        const iv = Buffer.from(parts[0], 'hex');
+        const encryptedText = parts[1];
+        const decipher = crypto.createDecipheriv('aes-256-cbc', Buffer.from(ENCRYPTION_KEY, 'utf8'), iv);
+        let decrypted = decipher.update(encryptedText, 'hex', 'utf8');
+        decrypted += decipher.final('utf8');
+        return decrypted;
+    } catch (e) {
+        return text; // Şifre çözme başarısız olursa orijinali döndür (eski token)
+    }
+}
+
+// ===== GÜÇLÜ SESSION TOKEN ÜRETİCİ =====
+function generateSecureToken(length = 64) {
+    return crypto.randomBytes(length).toString('base64url');
+}
+
 const fetch = (...args) => import('node-fetch').then(({ default: fetch }) => fetch(...args));
 
 const app = express();
+
+// ===== CORS YAPILANDIRMASI =====
+const allowedOrigins = [
+    'https://aloskegangbot-market.onrender.com',
+    'http://localhost:3000',
+    'http://127.0.0.1:3000'
+];
+
+app.use(cors({
+    origin: function (origin, callback) {
+        // Aynı origin veya izin verilenler
+        if (!origin || allowedOrigins.includes(origin)) {
+            callback(null, true);
+        } else {
+            callback(null, true); // Geliştirme için açık, production'da false yapılabilir
+        }
+    },
+    credentials: true,
+    methods: ['GET', 'POST', 'PUT', 'DELETE', 'PATCH', 'OPTIONS'],
+    allowedHeaders: ['Content-Type', 'Authorization', 'X-Requested-With', 'c-id']
+}));
+
+// ===== RATE LIMITING =====
+const generalLimiter = rateLimit({
+    windowMs: 1 * 60 * 1000, // 1 dakika
+    max: 100, // IP başına 100 istek
+    message: { success: false, error: 'Çok fazla istek! Lütfen biraz bekleyin.' },
+    standardHeaders: true,
+    legacyHeaders: false
+});
+
+const authLimiter = rateLimit({
+    windowMs: 15 * 60 * 1000, // 15 dakika
+    max: 10, // IP başına 10 giriş denemesi
+    message: { success: false, error: 'Çok fazla giriş denemesi! 15 dakika bekleyin.' }
+});
+
+const transactionLimiter = rateLimit({
+    windowMs: 1 * 60 * 1000, // 1 dakika
+    max: 30, // Dakikada 30 işlem
+    message: { success: false, error: 'İşlem limiti aşıldı! Biraz bekleyin.' }
+});
+
+app.use(generalLimiter); // Tüm isteklere uygula
 app.use(bodyParser.json());
 
 // GÜVENLİK HEADERS (Helmet benzeri manuel koruma)
@@ -257,32 +339,60 @@ const PROFILE_CUSTOMIZATIONS = {
 const REDIRECT_URI = "https://aloskegangbot-market.onrender.com/auth/kick/callback";
 
 // ---------------------------------------------------------
-// ADMİN KULLANICI SİSTEMİ BAŞLATMA
+// ADMİN KULLANICI SİSTEMİ BAŞLATMA (GÜVENLİ - BCRYPT HASH)
 // ---------------------------------------------------------
 async function initAdminUsers() {
     try {
         const adminRef = db.ref('admin_users');
         const snap = await adminRef.once('value');
 
-        const defaultAdmins = {
-            "omegacyr": {
-                password: "Atgm1974?",
-                name: "omegacyr",
-                created_at: 1767711297325
-            },
-            "arven": {
-                password: "954687?ğu",
-                name: "arven",
-                created_at: Date.now()
-            }
-        };
+        // Şifreler artık .env dosyasından okunuyor (düz metin kodda saklanmıyor!)
+        const omegaPass = process.env.ADMIN_PASS_OMEGA || 'change_me_immediately';
+        const arvenPass = process.env.ADMIN_PASS_ARVEN || 'change_me_immediately';
 
         if (!snap.exists()) {
-            // Hiç admin yoksa oluştur (Sadece ilk kurulumda çalışır)
+            // İlk kurulumda hash'li şifrelerle oluştur
+            const omegaHash = await bcrypt.hash(omegaPass, 12);
+            const arvenHash = await bcrypt.hash(arvenPass, 12);
+
+            const defaultAdmins = {
+                "omegacyr": {
+                    password_hash: omegaHash,
+                    name: "omegacyr",
+                    created_at: Date.now()
+                },
+                "arven": {
+                    password_hash: arvenHash,
+                    name: "arven",
+                    created_at: Date.now()
+                }
+            };
+
             await adminRef.set(defaultAdmins);
-            console.log("✅ Admin tablosu ilk kez oluşturuldu.");
+            console.log("✅ Admin tablosu HASH'Lİ şifrelerle oluşturuldu.");
         } else {
-            console.log("✅ Mevcut admin verileri korundu. (Deploy/Restart sırasında sıfırlanmadı)");
+            // Mevcut adminlerin şifreleri hash'li mi kontrol et
+            const admins = snap.val();
+            let needsUpdate = false;
+            const updates = {};
+
+            for (const [username, data] of Object.entries(admins)) {
+                // Eğer eski format (plaintext password) varsa, hash'le
+                if (data.password && !data.password_hash) {
+                    const hash = await bcrypt.hash(data.password, 12);
+                    updates[`${username}/password_hash`] = hash;
+                    updates[`${username}/password`] = null; // Eski düz şifreyi sil
+                    needsUpdate = true;
+                    console.log(`🔐 ${username} şifresi hash'lendi.`);
+                }
+            }
+
+            if (needsUpdate) {
+                await adminRef.update(updates);
+                console.log("✅ Admin şifreleri güvenli formata dönüştürüldü.");
+            } else {
+                console.log("✅ Admin verileri güvenli formatta.");
+            }
         }
     } catch (e) {
         console.error("Admin Users Init Error:", e.message);
@@ -507,19 +617,33 @@ const authAdmin = async (req, res, next) => {
 
         const userSnap = await db.ref(`admin_users/${username}`).once('value');
         const userData = userSnap.val();
-        if (userData && userData.password === password) {
-            req.adminUser = { username, ...userData };
 
-            // Omegacyr için her zaman master yetkileri (veritabanında olmasa bile)
-            if (username === 'omegacyr') {
-                req.adminUser.role = 'master';
-                req.adminUser.permissions = {
-                    channels: true, users: true, troll: true, logs: true,
-                    quests: true, stocks: true, memory: true, global: true, admins: true
-                };
+        if (userData) {
+            // Önce hash'li şifreyi dene, yoksa eski format (geçiş dönemi için)
+            let isValid = false;
+
+            if (userData.password_hash) {
+                // Güvenli bcrypt karşılaştırma
+                isValid = await bcrypt.compare(password, userData.password_hash);
+            } else if (userData.password === password) {
+                // Eski format (geçiş dönemi - initAdminUsers otomatik migrate edecek)
+                isValid = true;
             }
 
-            return next();
+            if (isValid) {
+                req.adminUser = { username, ...userData };
+
+                // Omegacyr için her zaman master yetkileri (veritabanında olmasa bile)
+                if (username === 'omegacyr') {
+                    req.adminUser.role = 'master';
+                    req.adminUser.permissions = {
+                        channels: true, users: true, troll: true, logs: true,
+                        quests: true, stocks: true, memory: true, global: true, admins: true
+                    };
+                }
+
+                return next();
+            }
         }
     } else if (key === ADMIN_KEY_PRE && ADMIN_KEY_PRE !== "") {
         // Eski usul şifre ile girilirse MASTER kabul et (omegacyr)
@@ -1498,7 +1622,7 @@ app.post('/api/borsa/reset', async (req, res) => {
 });
 
 // BORSA ALIM İŞLEMİ (Server-Side Secure)
-app.post('/api/borsa/buy', async (req, res) => {
+app.post('/api/borsa/buy', transactionLimiter, async (req, res) => {
     try {
         let { username, code, amount } = req.body;
         amount = parseFloat(amount);
@@ -1558,7 +1682,7 @@ app.post('/api/borsa/buy', async (req, res) => {
 });
 
 // BORSA SATIŞ İŞLEMİ (Server-Side Secure)
-app.post('/api/borsa/sell', async (req, res) => {
+app.post('/api/borsa/sell', transactionLimiter, async (req, res) => {
     try {
         let { username, code, amount } = req.body;
         amount = parseFloat(amount);
@@ -2180,8 +2304,8 @@ app.get('/auth/kick/callback', async (req, res) => {
         const loginKey = existingData.dashboard_key || crypto.randomBytes(16).toString('hex');
 
         const updateObj = {
-            access_token: response.data.access_token,
-            refresh_token: response.data.refresh_token,
+            access_token: encryptToken(response.data.access_token),
+            refresh_token: encryptToken(response.data.refresh_token),
             username: (userData.slug || userData.name || "").toLowerCase(),
             slug: (userData.slug || userData.name || ""),
             broadcaster_id: bid,
@@ -2200,6 +2324,7 @@ app.get('/auth/kick/callback', async (req, res) => {
         }
 
         await chanRef.update(updateObj);
+        // Token'ı kullanırken decrypt et
         await registerKickWebhook(bid, response.data.access_token);
 
         // Dashboard'a yönlendir
@@ -2499,7 +2624,7 @@ const verifySession = async (req, res, next) => {
 };
 
 // --- GENERIC MARKET BUY (TTS, SOUND, MUTE, SR) ---
-app.post('/api/market/buy', verifySession, async (req, res) => {
+app.post('/api/market/buy', transactionLimiter, verifySession, async (req, res) => {
     const { username, channelId, type, data } = req.body;
     if (!username || !channelId || !type) return res.json({ success: false, error: "Eksik bilgi!" });
 
@@ -3191,7 +3316,9 @@ async function sendChatMessage(message, broadcasterId) {
         const chan = snap.val();
 
         // Eğer bot token'ı yoksa yayıncı token'ını kullan (Eski usul)
-        const finalToken = botToken || chan?.access_token;
+        // Token'ı decrypt et (şifreli saklanıyor)
+        const channelToken = chan?.access_token ? decryptToken(chan.access_token) : null;
+        const finalToken = botToken || channelToken;
 
         if (!finalToken) {
             console.error(`[Chat] ${broadcasterId} için hiçbir token bulunamadı.`);
@@ -3352,7 +3479,7 @@ async function timeoutUser(broadcasterId, targetUsername, duration) {
 
             const banRes = await axios.post(url, body, {
                 headers: {
-                    'Authorization': `Bearer ${channelData.access_token}`,
+                    'Authorization': `Bearer ${decryptToken(channelData.access_token)}`,
                     'Content-Type': 'application/json',
                     'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36',
                     'Accept': 'application/json'
@@ -5921,7 +6048,7 @@ const authDashboard = async (req, res, next) => {
 app.get('/dashboard', (req, res) => { res.sendFile(path.join(__dirname, 'dashboard.html')); });
 
 // 2FA İSTEĞİ (Kullanıcı adı ve şifre doğrulaması yapar)
-app.post('/admin-api/2fa-request', async (req, res) => {
+app.post('/admin-api/2fa-request', authLimiter, async (req, res) => {
     let { username, password } = req.body;
     const ip = getClientIp(req);
 
@@ -5936,14 +6063,28 @@ app.post('/admin-api/2fa-request', async (req, res) => {
 
     console.log(`[AUTH-DEBUG] Login attempt: User="${username}", Found=${!!userData}`);
 
-    if (!userData || userData.password !== password) {
-        await sendDiscordLoginNotify('fail', username, ip, 'Hatalı şifre veya kullanıcı adı');
+    if (!userData) {
+        await sendDiscordLoginNotify('fail', username, ip, 'Kullanıcı bulunamadı');
         return res.status(403).json({ success: false, error: 'Giriş bilgileri hatalı' });
     }
 
+    // Bcrypt veya eski format şifre kontrolü
+    let isValid = false;
+    if (userData.password_hash) {
+        isValid = await bcrypt.compare(password, userData.password_hash);
+    } else if (userData.password === password) {
+        isValid = true; // Eski format (geçiş dönemi)
+    }
+
+    if (!isValid) {
+        await sendDiscordLoginNotify('fail', username, ip, 'Hatalı şifre');
+        return res.status(403).json({ success: false, error: 'Giriş bilgileri hatalı' });
+    }
+
+    // Güvenli 2FA kodu ve oturum anahtarı oluştur
     const code = Math.floor(100000 + Math.random() * 900000).toString();
-    const loginKey = `${username}:${password}`;
-    active2FACodes[loginKey] = { code, expires: Date.now() + 5 * 60 * 1000 };
+    const sessionKey = generateSecureToken(32); // Şifre yerine güvenli token kullan
+    active2FACodes[sessionKey] = { code, username, expires: Date.now() + 5 * 60 * 1000 };
 
     if (process.env.DISCORD_WEBHOOK) {
         try {
@@ -5962,7 +6103,7 @@ app.post('/admin-api/2fa-request', async (req, res) => {
         console.log(`⚠️ DISCORD_WEBHOOK bulunamadı! [${username}] için kod: ${code}`);
     }
 
-    res.json({ success: true, message: 'Kod gönderildi' });
+    res.json({ success: true, message: 'Kod gönderildi', sessionKey });
 });
 
 // GİRİŞ KONTROL (Kullanıcı:Şifre + 2FA Kodu)
