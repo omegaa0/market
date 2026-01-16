@@ -998,99 +998,309 @@ header {
     max-height: 100%;
 }
 
+/* --- DEVELOPER LOG (TIMELINE DESIGN) --- */
+
 .devlog-header {
-    padding: 15px 20px;
-    background: rgba(255, 255, 255, 0.03);
+    background: linear-gradient(90deg, var(--glass-bg) 0%, rgba(0, 0, 0, 0) 100%);
+    padding: 20px;
     border-bottom: 1px solid rgba(255, 255, 255, 0.05);
     display: flex;
     align-items: center;
-    gap: 10px;
+    gap: 12px;
 }
 
 .devlog-header h3 {
     margin: 0;
-    font-size: 1rem;
+    font-size: 1.1rem;
+    font-weight: 800;
     color: var(--primary);
-    font-weight: 700;
-    letter-spacing: 0.5px;
+    text-transform: uppercase;
+    letter-spacing: 1px;
+    text-shadow: 0 0 10px rgba(5, 234, 106, 0.4);
 }
 
 #devlog-content {
-    padding: 15px 20px;
+    padding: 20px;
     overflow-y: auto;
-    font-size: 0.85rem;
-    display: flex;
-    flex-direction: column;
-    gap: 12px;
+    position: relative;
+    /* Timeline Line */
+    border-left: 2px solid rgba(255, 255, 255, 0.1);
+    margin-left: 20px;
 }
 
+.announcement-item {
+    position: relative;
+    margin-bottom: 30px;
+    padding-left: 25px;
+    animation: slideInRight 0.5s ease backwards;
+}
+
+/* Timeline Dot */
+.announcement-item::before {
+    content: '';
+    position: absolute;
+    left: -27px;
+    /* Adjust for parent margin + border width */
+    top: 5px;
+    width: 12px;
+    height: 12px;
+    background: var(--bg-dark);
+    border: 2px solid var(--primary);
+    border-radius: 50%;
+    box-shadow: 0 0 8px var(--primary);
+    z-index: 2;
+}
+
+.announcement-item.badge-breaking::before {
+    border-color: #e74c3c;
+    box-shadow: 0 0 8px #e74c3c;
+}
+
+.announcement-item.badge-warning::before {
+    border-color: #f39c12;
+    box-shadow: 0 0 8px #f39c12;
+}
+
+.ann-header {
+    margin-bottom: 8px;
+}
+
+.ann-type {
+    display: inline-block;
+    font-size: 0.7rem;
+    font-weight: 800;
+    color: var(--primary);
+    background: rgba(5, 234, 106, 0.1);
+    padding: 2px 8px;
+    border-radius: 4px;
+    margin-bottom: 5px;
+}
+
+.ann-date {
+    display: block;
+    font-size: 0.7rem;
+    color: #666;
+    margin-bottom: 8px;
+    font-family: monospace;
+}
+
+.ann-text {
+    background: rgba(255, 255, 255, 0.03);
+    border: 1px solid rgba(255, 255, 255, 0.05);
+    padding: 15px;
+    border-radius: 8px;
+    font-size: 0.9rem;
+    color: #ccc;
+    line-height: 1.5;
+    position: relative;
+}
+
+/* Arrow for box */
+.ann-text::after {
+    content: '';
+    position: absolute;
+    left: -6px;
+    top: 15px;
+    width: 10px;
+    height: 10px;
+    background: rgba(30, 30, 30, 1);
+    /* Should match inner bg roughly */
+    border-left: 1px solid rgba(255, 255, 255, 0.05);
+    border-bottom: 1px solid rgba(255, 255, 255, 0.05);
+    transform: rotate(45deg);
+}
+
+@keyframes slideInRight {
+    from {
+        opacity: 0;
+        transform: translateX(20px);
+    }
+
+    to {
+        opacity: 1;
+        transform: translateX(0);
+    }
+}
+
+/* Scrollbar */
 #devlog-content::-webkit-scrollbar {
     width: 4px;
 }
 
-#devlog-content::-webkit-scrollbar-track {
-    background: rgba(0, 0, 0, 0.2);
-}
-
 #devlog-content::-webkit-scrollbar-thumb {
-    background: rgba(255, 255, 255, 0.2);
+    background: #333;
     border-radius: 4px;
-}
-
-/* Announcement Items */
-.announcement-item {
-    background: rgba(255, 255, 255, 0.03);
-    border-radius: 8px;
-    padding: 12px 14px;
-    border-left: 3px solid var(--primary);
-    transition: all 0.2s ease;
-    position: relative;
-    overflow: hidden;
-}
-
-.announcement-item:hover {
-    background: rgba(255, 255, 255, 0.06);
-    transform: translateX(3px);
-}
-
-.announcement-item.badge-warning {
-    border-left-color: #f39c12;
-    background: rgba(243, 156, 18, 0.05);
-}
-
-.announcement-item.badge-breaking {
-    border-left-color: #e74c3c;
-    background: rgba(231, 76, 60, 0.05);
-}
-
-.ann-header {
-    display: flex;
-    justify-content: space-between;
-    align-items: center;
-    margin-bottom: 6px;
-}
-
-.ann-type {
-    font-size: 0.65rem;
-    font-weight: 800;
-    text-transform: uppercase;
-    color: var(--text-dim);
-    letter-spacing: 1px;
-}
-
-.ann-date {
-    font-size: 0.65rem;
-    color: rgba(255, 255, 255, 0.3);
-}
-
-.ann-text {
-    font-size: 0.85rem;
-    color: #ddd;
-    line-height: 1.4;
 }
 
 @media (max-width: 1400px) {
     .side-devlog {
         display: none;
     }
+}
+
+/* GANG DESIGN TWEAKS */
+.gang-card {
+    background: radial-gradient(circle at top right, rgba(20, 20, 20, 0.95), rgba(0, 0, 0, 1)),
+        url('https://www.transparenttextures.com/patterns/dark-matter.png');
+    border: 1px solid rgba(255, 255, 255, 0.08);
+    box-shadow: 0 20px 50px rgba(0, 0, 0, 0.6);
+}
+
+.gang-header {
+    border-bottom: 1px solid rgba(255, 255, 255, 0.05);
+    padding-bottom: 20px;
+    margin-bottom: 20px;
+}
+
+.member-row {
+    background: rgba(0, 0, 0, 0.2) !important;
+    border: 1px solid rgba(255, 255, 255, 0.02);
+    margin-bottom: 8px;
+    border-radius: 8px;
+    padding: 10px 15px !important;
+    transition: transform 0.2s, background 0.2s !important;
+}
+
+.member-row:hover {
+    background: rgba(255, 255, 255, 0.05) !important;
+    transform: translateX(5px);
+    border-color: rgba(255, 255, 255, 0.1);
+}
+
+/* --- ANIMATIONS --- */
+@keyframes fadeInUp {
+    from {
+        opacity: 0;
+        transform: translateY(20px);
+    }
+
+    to {
+        opacity: 1;
+        transform: translateY(0);
+    }
+}
+
+@keyframes bounceIn {
+    0% {
+        transform: scale(0.3);
+        opacity: 0;
+    }
+
+    50% {
+        transform: scale(1.05);
+        opacity: 1;
+    }
+
+    70% {
+        transform: scale(0.9);
+    }
+
+    100% {
+        transform: scale(1);
+    }
+}
+
+@keyframes pulse-glow {
+    0% {
+        box-shadow: 0 0 5px rgba(5, 234, 106, 0.2);
+    }
+
+    50% {
+        box-shadow: 0 0 15px rgba(5, 234, 106, 0.4);
+    }
+
+    100% {
+        box-shadow: 0 0 5px rgba(5, 234, 106, 0.2);
+    }
+}
+
+/* --- GANG UI ENHANCEMENTS --- */
+.gang-tag-pill {
+    background: var(--primary);
+    color: #000;
+    padding: 4px 12px;
+    border-radius: 6px;
+    font-weight: 900;
+    font-size: 0.9rem;
+    letter-spacing: 1px;
+    box-shadow: 0 0 15px rgba(5, 234, 106, 0.3);
+}
+
+.gang-stat-grid {
+    display: grid;
+    grid-template-columns: repeat(auto-fit, minmax(150px, 1fr));
+    gap: 15px;
+    margin-top: 25px;
+}
+
+.stat-box {
+    background: rgba(255, 255, 255, 0.03);
+    border: 1px solid rgba(255, 255, 255, 0.05);
+    padding: 20px;
+    border-radius: 12px;
+    text-align: center;
+    transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+}
+
+.stat-box:hover {
+    background: rgba(255, 255, 255, 0.05);
+    border-color: var(--primary-dim);
+    transform: translateY(-5px);
+    box-shadow: 0 10px 20px rgba(0, 0, 0, 0.3);
+}
+
+.stat-box label {
+    display: block;
+    font-size: 0.7rem;
+    color: #888;
+    text-transform: uppercase;
+    font-weight: 800;
+    margin-bottom: 8px;
+    letter-spacing: 1px;
+}
+
+.stat-box .val {
+    font-size: 1.6rem;
+    font-weight: 900;
+    color: white;
+}
+
+.stat-box .val.primary {
+    color: var(--primary);
+    text-shadow: 0 0 10px rgba(5, 234, 106, 0.3);
+}
+
+/* Timeline specific tweaks */
+#devlog-content .announcement-item::before {
+    transition: all 0.3s ease;
+}
+
+#devlog-content .announcement-item:hover::before {
+    transform: scale(1.5);
+    background: var(--primary);
+}
+
+/* --- MISC --- */
+.primary-btn {
+    transition: all 0.2s ease;
+    cursor: pointer;
+}
+
+.primary-btn:hover {
+    transform: translateY(-2px);
+    filter: brightness(1.1);
+}
+
+.primary-btn:active {
+    transform: translateY(0);
+}
+
+.logout-btn {
+    transition: all 0.2s ease;
+}
+
+.logout-btn:hover {
+    background: rgba(255, 50, 50, 0.2) !important;
+    border-color: #ff3232 !important;
+    color: white !important;
 }

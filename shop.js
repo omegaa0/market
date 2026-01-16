@@ -1629,25 +1629,28 @@ async function loadGangs() {
                 } else {
                     gangs.forEach(g => {
                         const card = document.createElement('div');
-                        card.className = 'glass-panel';
-                        card.style = "margin-bottom:10px; padding:15px; display:flex; justify-content:space-between; align-items:center; background:rgba(255,255,255,0.03);";
+                        card.className = 'gang-card';
+                        card.style = "margin-bottom:15px; padding:20px; display:flex; justify-content:space-between; align-items:center; position:relative; overflow:hidden;";
 
                         const memberCount = Object.keys(g.members || {}).length;
                         const cityName = EMLAK_CITIES.find(c => c.id === g.baseCity)?.name || g.baseCity;
+                        const lvl = g.level || 1;
 
                         card.innerHTML = `
-                            <div style="text-align:left;">
-                                <div style="font-weight:800; color:white; font-size: 1rem; display:flex; align-items:center;">
-                                    <span style="background:var(--primary); color:black; padding:2px 8px; border-radius:4px; font-size:0.75rem; margin-right:8px; font-weight:900;">${g.tag}</span>
+                            <div style="position:absolute; top:-10px; right:-10px; font-size:4rem; opacity:0.03; font-weight:900; pointer-events:none; font-style:italic;">${g.tag}</div>
+                            <div style="text-align:left; position:relative; z-index:1;">
+                                <div style="font-weight:900; color:white; font-size: 1.1rem; display:flex; align-items:center; gap:10px;">
+                                    <span style="background:var(--primary); color:black; padding:3px 10px; border-radius:6px; font-size:0.8rem; font-weight:900; box-shadow:0 0 10px var(--primary-dim);">${g.tag}</span>
                                     ${g.name}
                                 </div>
-                                <div style="font-size:0.8rem; color:#aaa; margin-top:6px; display:flex; gap:10px;">
-                                    <span><i class="fas fa-map-marker-alt"></i> ${cityName}</span>
-                                    <span><i class="fas fa-crown"></i> ${g.leader}</span>
-                                    <span><i class="fas fa-users"></i> ${memberCount} Üye</span>
+                                <div style="font-size:0.8rem; color:#aaa; margin-top:10px; display:flex; gap:15px; align-items:center;">
+                                    <span title="Üs Şehri"><i class="fas fa-map-marker-alt" style="color:var(--primary);"></i> ${cityName}</span>
+                                    <span title="Lider"><i class="fas fa-crown" style="color:#ffd700;"></i> ${g.leader}</span>
+                                    <span title="Seviye"><i class="fas fa-star" style="color:#5dade2;"></i> Seviye ${lvl}</span>
+                                    <span title="Üye Sayısı"><i class="fas fa-users" style="color:#aaa;"></i> ${memberCount} Üye</span>
                                 </div>
                             </div>
-                            <button onclick="joinGang('${g.id}')" class="primary-btn" style="width:auto; padding:8px 20px; font-size:0.8rem; border-radius:6px;">
+                            <button onclick="joinGang('${g.id}')" class="primary-btn" style="width:auto; padding:10px 25px; font-size:0.85rem; border-radius:30px; position:relative; z-index:1; border:none; box-shadow: 0 4px 15px rgba(5,234,106,0.3);">
                                 <i class="fas fa-user-plus"></i> KATIL
                             </button>
                         `;
@@ -1673,27 +1676,32 @@ async function loadGangs() {
                 list.innerHTML = '';
                 const gangs = Object.values(data.gangs || {});
                 if (gangs.length === 0) {
-                    list.innerHTML = '<div style="color:#666;">Başka çete yok.</div>';
+                    list.innerHTML = '<div style="color:#666; text-align:center; padding:20px;">Başka çete bulunamadı.</div>';
                 } else {
                     gangs.forEach(g => {
-                        // Don't show my own gang in "Other Gangs" list? Or show it?
-                        // User said "diğer çeteleri görebilsin". Showing all is fine, or filter out my own.
                         if (g.id === gangId) return;
 
                         const card = document.createElement('div');
-                        card.className = 'glass-panel';
-                        card.style = "padding:15px; display:flex; justify-content:space-between; align-items:center; background:rgba(255,255,255,0.03);";
+                        card.className = 'gang-card';
+                        card.style = "padding:15px 20px; display:flex; justify-content:space-between; align-items:center; margin-bottom:10px; background:rgba(255,255,255,0.02);";
                         const cityName = EMLAK_CITIES.find(c => c.id === g.baseCity)?.name || g.baseCity;
+                        const lvl = g.level || 1;
 
                         card.innerHTML = `
                             <div style="text-align:left;">
-                                <div style="font-weight:800; color:white;">
-                                    <span style="background:var(--primary); color:black; padding:2px 6px; border-radius:4px; font-size:0.7rem; margin-right:5px;">${g.tag}</span>
+                                <div style="font-weight:800; color:white; font-size:0.95rem; display:flex; align-items:center; gap:8px;">
+                                    <span style="background:rgba(255,255,255,0.1); color:rgba(255,255,255,0.7); padding:2px 6px; border-radius:4px; font-size:0.7rem;">${g.tag}</span>
                                     ${g.name}
                                 </div>
-                                <div style="font-size:0.75rem; color:#888; margin-top:4px;">📍 ${cityName} | 👑 ${g.leader}</div>
+                                <div style="font-size:0.75rem; color:#666; margin-top:5px; display:flex; gap:10px;">
+                                    <span>📍 ${cityName}</span>
+                                    <span>⭐ Lvl ${lvl}</span>
+                                    <span>👑 ${g.leader}</span>
+                                </div>
                             </div>
-                            <div style="font-size:0.8rem; color:var(--primary); font-weight:700;">${g.memberCount} Üye</div>
+                            <div style="font-size:0.85rem; color:var(--primary); font-weight:800; background:rgba(5,234,106,0.05); padding:5px 12px; border-radius:20px;">
+                                <i class="fas fa-users" style="font-size:0.7rem;"></i> ${g.memberCount}
+                            </div>
                         `;
                         list.appendChild(card);
                     });
@@ -1829,9 +1837,6 @@ async function loadGangs() {
                     });
 
                     // Add Deposit / Upgrade Buttons Section (Below Members List)
-                    const extraActions = document.createElement('div');
-                    extraActions.style = "margin-top:20px; border-top:1px solid rgba(255,255,255,0.1); padding-top:20px; display:flex; gap:10px; flex-wrap:wrap;";
-
                     const lvl = g.level || 1;
                     const bal = g.balance || 0;
                     const costs = { 1: 1000000, 2: 5000000, 3: 25000000, 4: 100000000 };
@@ -1847,37 +1852,48 @@ async function loadGangs() {
                         `;
                     }
 
-                    // Deposit Button
-                    const depositBtn = document.createElement('button');
-                    depositBtn.className = "primary-btn";
-                    depositBtn.innerHTML = '<i class="fas fa-coins"></i> KASAYA PARA YATIR';
-                    depositBtn.style = "flex:1;";
-                    depositBtn.onclick = () => depositGang(gangId);
-                    extraActions.appendChild(depositBtn);
+                    // UPDATE TOP ACTIONS (Donate / Upgrade / Leave)
+                    const actionsDiv = document.getElementById('gang-top-actions');
+                    if (actionsDiv) {
+                        actionsDiv.innerHTML = '';
 
-                    // Upgrade Button (Leader Only)
-                    if (myRank === 'leader' && nextCost) {
-                        const upgradeBtn = document.createElement('button');
-                        upgradeBtn.className = "primary-btn";
-                        upgradeBtn.style = "flex:1; background: linear-gradient(45deg, #ffd700, #ff8c00); color:black; font-weight:800;";
-                        upgradeBtn.innerHTML = `<i class="fas fa-arrow-up"></i> YÜKSELT (${(nextCost / 1000000).toLocaleString()}M)`;
-                        upgradeBtn.onclick = () => upgradeGang(gangId, nextCost, nextLvlV);
-                        extraActions.appendChild(upgradeBtn);
-                    } else if (myRank === 'leader' && !nextCost) {
-                        const maxBtn = document.createElement('button');
-                        maxBtn.className = "secondary-btn";
-                        maxBtn.style = "flex:1;";
-                        maxBtn.innerHTML = "MAX SEVİYE";
-                        maxBtn.disabled = true;
-                        extraActions.appendChild(maxBtn);
+                        // Donate
+                        const dBtn = document.createElement('button');
+                        dBtn.className = 'primary-btn';
+                        dBtn.style = 'flex:1;';
+                        dBtn.innerHTML = '💰 KASAYA BAĞIŞ YAP';
+                        dBtn.onclick = () => depositGang(gangId);
+                        actionsDiv.appendChild(dBtn);
+
+                        // Upgrade (Leader Only)
+                        if (myRank === 'leader' && nextCost) {
+                            const uBtn = document.createElement('button');
+                            uBtn.className = 'primary-btn';
+                            uBtn.style = "flex:1; background: linear-gradient(45deg, #ffd700, #ff8c00); color:black; font-weight:800; border:none;";
+                            uBtn.innerHTML = `<i class="fas fa-arrow-up"></i> YÜKSELT (${(nextCost / 1000000).toLocaleString()}M)`;
+                            uBtn.onclick = () => upgradeGang(gangId, nextCost, nextLvlV);
+                            actionsDiv.appendChild(uBtn);
+                        } else if (myRank === 'leader' && !nextCost) {
+                            const maxBtn = document.createElement('button');
+                            maxBtn.className = "secondary-btn";
+                            maxBtn.style = "flex:1;";
+                            maxBtn.innerHTML = "MAX SEVİYE";
+                            maxBtn.disabled = true;
+                            actionsDiv.appendChild(maxBtn);
+                        }
+
+                        // Leave
+                        const lBtn = document.createElement('button');
+                        lBtn.className = 'logout-btn';
+                        lBtn.style = 'flex:0.3; height: 50px;';
+                        lBtn.innerText = 'Ayrıl';
+                        lBtn.onclick = () => leaveGang();
+                        actionsDiv.appendChild(lBtn);
                     }
 
-                    // Remove old extras
+                    // Remove old extras (cleanup if any left)
                     const oldExtras = list.parentNode.querySelectorAll('.gang-extras');
                     oldExtras.forEach(e => e.remove());
-
-                    extraActions.className = 'gang-extras';
-                    list.parentNode.insertBefore(extraActions, list.nextSibling);
 
                 }
             } else {
@@ -3101,8 +3117,8 @@ function showConfirm(title, message) {
         modal.classList.remove('hidden');
         modal.style.display = 'flex';
 
-        const yesBtn = document.getElementById('confirm-yes-btn');
-        const noBtn = document.getElementById('confirm-no-btn');
+        const yesBtn = document.getElementById('confirm-modal-yes');
+        const noBtn = document.getElementById('confirm-modal-cancel');
 
         // Clean up old listeners
         const newYes = yesBtn.cloneNode(true);
