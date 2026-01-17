@@ -394,7 +394,12 @@ function showAuth() {
     if (mainContent) mainContent.classList.add('hidden');
     if (step1) step1.classList.remove('hidden');
     if (step2) step2.classList.add('hidden');
-    db.ref('pending_auth').off();
+
+    // Eski polling varsa temizle
+    if (window.authPoller) {
+        clearInterval(window.authPoller);
+        window.authPoller = null;
+    }
 }
 
 function startAuth() {
@@ -405,46 +410,77 @@ function startAuth() {
     // Özel karakter kontrolü
     if (/[.#$\[\]]/.test(user)) return showToast("Kullanıcı adı geçersiz karakterler içeriyor!", "error");
 
-    const code = Math.floor(100000 + Math.random() * 900000).toString();
-
     const codeDisplay = document.getElementById('auth-code');
     const cmdExample = document.getElementById('cmd-example');
     const step1 = document.getElementById('step-1');
     const step2 = document.getElementById('step-2');
 
-    // UI'yi hemen güncelle ki kullanıcı beklediğini anlasın
-    if (codeDisplay) codeDisplay.innerText = code;
-    if (cmdExample) cmdExample.innerText = `!doğrulama ${code}`;
-    if (step1) step1.classList.add('hidden');
-    if (step2) step2.classList.remove('hidden');
+    showToast("Kod oluşturuluyor...", "info");
 
-    showToast("Kod oluşturuldu, kaydediliyor...", "success");
+    // Firebase yerine Server API kullan (Güvenlik için)
+    fetch('/api/auth/generate-code', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ username: user })
+    })
+        .then(res => res.json())
+        .then(data => {
+            if (!data.success) {
+                showToast(data.error || "Kod oluşturulamadı!", "error");
+                return;
+            }
 
-    db.ref('pending_auth/' + user).set({ code, timestamp: Date.now() })
-        .then(() => {
-            console.log(`[Shop] Auth code WRITE commanded for ${user}: ${code}`);
+            const code = data.code;
 
-            // Onay bekleyen dinleyiciyi kur
-            db.ref('auth_success/' + user).off(); // Eski varsa temizle
-            db.ref('auth_success/' + user).on('value', (snap) => {
-                const result = snap.val();
-                if (result) {
-                    // Check if it's the new object format with token or legacy boolean
-                    if (result.token) {
-                        localStorage.setItem('aloskegang_token', result.token);
-                    }
+            // UI'yi güncelle
+            if (codeDisplay) codeDisplay.innerText = code;
+            if (cmdExample) cmdExample.innerText = `!doğrulama ${code}`;
+            if (step1) step1.classList.add('hidden');
+            if (step2) step2.classList.remove('hidden');
 
-                    db.ref('auth_success/' + user).remove();
-                    db.ref('auth_success/' + user).off();
-                    login(user);
-                    showToast("Giriş Başarılı! Hoş geldin.", "success");
+            console.log(`[Shop] Auth code generated for ${user}: ${code}`);
+            showToast("Kod oluşturuldu! Twitch'te komutu yaz.", "success");
+
+            // Polling ile auth durumunu kontrol et (Firebase listener yerine)
+            let pollCount = 0;
+            const maxPolls = 120; // 2 dakika (her saniye kontrol)
+
+            const authPoller = setInterval(async () => {
+                pollCount++;
+
+                if (pollCount > maxPolls) {
+                    clearInterval(authPoller);
+                    showToast("Doğrulama süresi doldu. Tekrar deneyin.", "warning");
+                    if (step1) step1.classList.remove('hidden');
+                    if (step2) step2.classList.add('hidden');
+                    return;
                 }
-            });
+
+                try {
+                    const checkRes = await fetch(`/api/auth/check/${user}`);
+                    const checkData = await checkRes.json();
+
+                    if (checkData.authenticated) {
+                        clearInterval(authPoller);
+
+                        if (checkData.token) {
+                            localStorage.setItem('aloskegang_token', checkData.token);
+                        }
+
+                        login(user);
+                        showToast("Giriş Başarılı! Hoş geldin.", "success");
+                    }
+                } catch (e) {
+                    console.error("Auth polling error:", e);
+                }
+            }, 1000);
+
+            // Cleanup fonksiyonu - sayfa değişirse polling'i durdur
+            window.authPoller = authPoller;
         })
         .catch(err => {
-            console.error("Auth Firebase Error:", err);
-            showToast("Bağlantı hatası! Firebase yetkilerini kontrol edin.", "error");
-            // Hata varsa geri dön
+            console.error("Auth API Error:", err);
+            showToast("Sunucu bağlantı hatası!", "error");
             if (step1) step1.classList.remove('hidden');
             if (step2) step2.classList.add('hidden');
         });

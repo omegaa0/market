@@ -123,10 +123,99 @@ app.get('/api/firebase-config', (req, res) => {
     });
 });
 
-// Sadece gerekli dosyaları public yapıyoruz
-const publicFiles = ['shop.js', 'shop.css', 'admin.html', 'dashboard.html', 'shop.html', 'overlay.html', 'goals.html', 'horse-race.html'];
+// ===== SECURE AUTH API ENDPOINTS =====
+// Bu endpoint'ler Firebase kuralları sıkılaştırıldığı için gerekli
+
+// 1. Doğrulama kodu oluştur (Client -> Server -> Firebase)
+app.post('/api/auth/generate-code', async (req, res) => {
+    try {
+        const { username } = req.body;
+
+        if (!username || username.length < 3) {
+            return res.status(400).json({ success: false, error: 'Geçersiz kullanıcı adı' });
+        }
+
+        // Özel karakter kontrolü (Firebase path için)
+        if (/[.#$\[\]]/.test(username)) {
+            return res.status(400).json({ success: false, error: 'Kullanıcı adı geçersiz karakterler içeriyor' });
+        }
+
+        const cleanUser = username.toLowerCase().trim();
+        const code = Math.floor(100000 + Math.random() * 900000).toString();
+
+        // Firebase'e yaz (Server bot olarak yetkiliyiz)
+        await db.ref('pending_auth/' + cleanUser).set({
+            code,
+            timestamp: Date.now()
+        });
+
+        console.log(`[Auth API] Kod oluşturuldu: ${cleanUser} -> ${code}`);
+
+        res.json({ success: true, code });
+    } catch (e) {
+        console.error('[Auth API] Kod oluşturma hatası:', e.message);
+        res.status(500).json({ success: false, error: 'Sunucu hatası' });
+    }
+});
+
+// 2. Auth durumunu kontrol et (Polling için)
+app.get('/api/auth/check/:username', async (req, res) => {
+    try {
+        const cleanUser = req.params.username.toLowerCase().trim();
+
+        const snap = await db.ref('auth_success/' + cleanUser).once('value');
+        const result = snap.val();
+
+        if (result && result.success) {
+            // Başarılı giriş - token'ı döndür ve sil
+            await db.ref('auth_success/' + cleanUser).remove();
+
+            res.json({
+                success: true,
+                authenticated: true,
+                token: result.token
+            });
+        } else {
+            res.json({ success: true, authenticated: false });
+        }
+    } catch (e) {
+        console.error('[Auth API] Check hatası:', e.message);
+        res.status(500).json({ success: false, error: 'Sunucu hatası' });
+    }
+});
+
+// 3. Pending auth'u temizle (İptal için)
+app.delete('/api/auth/cancel/:username', async (req, res) => {
+    try {
+        const cleanUser = req.params.username.toLowerCase().trim();
+        await db.ref('pending_auth/' + cleanUser).remove();
+        res.json({ success: true });
+    } catch (e) {
+        res.status(500).json({ success: false, error: 'Sunucu hatası' });
+    }
+});
+
+// Sadece gerekli dosyaları public yapıyoruz (admin.html HARİÇ - güvenlik için gizli URL)
+const publicFiles = ['shop.js', 'shop.css', 'dashboard.html', 'shop.html', 'overlay.html', 'goals.html', 'horse-race.html'];
 publicFiles.forEach(file => {
     app.get(`/${file}`, (req, res) => res.sendFile(path.join(__dirname, file)));
+});
+
+// ===== GİZLİ ADMİN PANELİ =====
+// Tahmin edilemez URL ile admin paneline erişim
+// URL: /panel-9x7k2m4n (Bu URL'yi sadece adminler bilmeli!)
+const ADMIN_SECRET_PATH = '/panel-9x7k2m4n';
+
+app.get(ADMIN_SECRET_PATH, (req, res) => {
+    res.sendFile(path.join(__dirname, 'admin.html'));
+});
+
+// Eski /admin.html ve /admin URL'lerini engelle
+app.get('/admin.html', (req, res) => {
+    res.status(404).send('Not Found');
+});
+app.get('/admin', (req, res) => {
+    res.status(404).send('Not Found');
 });
 
 // GÖRSELLERİ VE GIFLERİ KÖK DİZİNDEN SERV ET
@@ -7831,11 +7920,18 @@ app.post('/admin-api/list-admins', authAdmin, async (req, res) => {
     const snap = await db.ref('admin_users').once('value');
     const admins = snap.val() || {};
 
-    // Şifreleri güvenlik için temizle (opsiyonel ama adminler arası gizlilik için)
-    // const cleanAdmins = {};
-    // Object.entries(admins).forEach(([u, d]) => { cleanAdmins[u] = { ...d, password: '****' }; });
+    // Şifre hash'lerini temizle (güvenlik için client'a gönderme!)
+    const cleanAdmins = {};
+    Object.entries(admins).forEach(([username, data]) => {
+        cleanAdmins[username] = {
+            name: data.name || username,
+            created_at: data.created_at,
+            permissions: data.permissions || {},
+            // password_hash GÖNDERİLMİYOR!
+        };
+    });
 
-    res.json(admins);
+    res.json(cleanAdmins);
 });
 
 app.post('/admin-api/update-admin-perms', authAdmin, async (req, res) => {
@@ -7866,8 +7962,11 @@ app.post('/admin-api/create-admin', authAdmin, async (req, res) => {
         const snap = await adminRef.once('value');
         if (snap.exists()) return res.status(400).json({ error: 'Bu kullanıcı adı zaten kullanımda.' });
 
+        // Şifreyi bcrypt ile hash'le (Güvenlik için!)
+        const hashedPassword = await bcrypt.hash(password, 12);
+
         await adminRef.set({
-            password: password,
+            password_hash: hashedPassword, // Düz metin değil, HASH!
             name: cleanUser,
             created_at: Date.now(),
             permissions: {
