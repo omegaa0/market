@@ -3846,9 +3846,14 @@ function renderBusinessTypes() {
                         ${type.setupCost.toLocaleString()} 💰
                     </div>
                     
-                    <div style="font-size:0.75rem; color:#888; margin-bottom:10px;">
+                    <div style="font-size:0.75rem; color:#888; margin-bottom:5px;">
                         ${type.produces ? `Üretim: ${type.produces.map(p => productData[p]?.icon || p).join(' ')}` : `Satış: ${type.products?.map(p => productData[p]?.icon || p).join(' ') || ''}`}
                     </div>
+                    ${type.requires && type.requires.length > 0 ? `
+                    <div style="font-size:0.75rem; color:#aaa; margin-bottom:10px;">
+                        Gereksinim: ${type.requires.map(r => productData[r]?.name || r).join(', ')}
+                    </div>
+                    ` : ''}
                     
                     ${needsLicense ? `<div style="font-size:0.75rem; color:#ff8800; margin-bottom:10px;">🔒 ${licenseInfo?.name || 'Lisans'} gerekli</div>` : ''}
                     
@@ -3994,6 +3999,13 @@ async function showCreateBusinessModal(typeCode) {
                     ${propOptions}
                 </select>
                 
+                ${type.requires && type.requires.length > 0 ? `
+                <div style="background:rgba(255, 255, 255, 0.05); padding:10px; border-radius:8px; margin-bottom:10px;">
+                    <p style="margin:0; font-size:0.8rem; color:#aaa;">Gerekli Hammaddeler:</p>
+                    <p style="margin:5px 0 0 0; font-size:0.9rem; color:#fff;">${type.requires.map(r => '• ' + (productData[r]?.name || r)).join('<br>')}</p>
+                </div>
+                ` : ''}
+
                 <div style="background:rgba(5, 234, 106, 0.1); padding:10px; border-radius:8px; border:1px solid rgba(5, 234, 106, 0.2);">
                     <p style="margin:0; font-size:0.85rem; color:#ccc;">💰 Kuruluş Bedeli: <b style="color:var(--primary);">${type.setupCost.toLocaleString()}</b></p>
                 </div>
