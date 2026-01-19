@@ -6718,6 +6718,17 @@ EK TALİMAT: ${aiInst}`;
                 return await reply(`🚫 @${user}, Transfer yapman yasaklanmış! Para gönderemezsin.`);
             }
 
+            // GÜNLÜK TRANSFER LİMİTİ (100K)
+            const DAILY_TRANSFER_LIMIT = 100000;
+            const today = getTodayKey();
+            const dailyStats = data.daily_transfers || {};
+            const sentToday = dailyStats[today] || 0;
+
+            if (!data.is_infinite && (sentToday + amount) > DAILY_TRANSFER_LIMIT) {
+                const remaining = Math.max(0, DAILY_TRANSFER_LIMIT - sentToday);
+                return await reply(`🚫 @${user}, Günlük transfer limitine ulaştın! (Sınır: 100.000 💰). Bugün kalan limitin: ${remaining.toLocaleString()} 💰`);
+            }
+
             if (!data.is_infinite && data.balance < amount) {
                 return await reply(`❌ @${user}, Bakiyen yetersiz! Mevcut: ${data.balance.toLocaleString()} 💰`);
             }
@@ -6740,10 +6751,14 @@ EK TALİMAT: ${aiInst}`;
             const taxAmount = Math.floor(amount * TRANSFER_TAX_RATE);
             const finalAmount = amount - taxAmount;
 
-            // İşlem: Gönderenden düş (TAM MİKTAR)
+            // İşlem: Gönderenden düş (TAM MİKTAR) ve Günlük limiti güncelle
             if (!data.is_infinite) {
                 await userRef.transaction(u => {
-                    if (u) u.balance = (u.balance || 0) - amount;
+                    if (u) {
+                        u.balance = (u.balance || 0) - amount;
+                        if (!u.daily_transfers) u.daily_transfers = {};
+                        u.daily_transfers[today] = (u.daily_transfers[today] || 0) + amount;
+                    }
                     return u;
                 });
             }
@@ -9883,7 +9898,7 @@ app.post('/api/business/create', transactionLimiter, async (req, res) => {
 
         // Seçilen şehirde gerekli mülk türünde mülk var mı?
         const hasRequiredProperty = Object.values(userProps).some(p =>
-            p.city === city && p.type === requiredPropType && !p.usedBy
+            (p.city === city || p.cityId === city) && p.category === requiredPropType && !p.usedBy
         );
 
         if (!hasRequiredProperty) {
@@ -9897,7 +9912,7 @@ app.post('/api/business/create', transactionLimiter, async (req, res) => {
         // PropertyId belirtilmemişse, otomatik uygun mülkü bul ve ata
         if (!propertyId) {
             const suitableProp = Object.entries(userProps).find(([id, p]) =>
-                p.city === city && p.type === requiredPropType && !p.usedBy
+                p.city === city && p.category === requiredPropType && !p.usedBy
             );
             if (suitableProp) {
                 propertyId = suitableProp[0];
@@ -9913,7 +9928,7 @@ app.post('/api/business/create', transactionLimiter, async (req, res) => {
             if (specProp.city !== city) {
                 return res.json({ success: false, error: "Bu mülk başka şehirde!" });
             }
-            if (specProp.type !== requiredPropType) {
+            if (specProp.category !== requiredPropType) {
                 const needName = requiredPropType === 'shop' ? 'dükkan' : 'arazi';
                 return res.json({ success: false, error: `Bu işletme için ${needName} gerekli!` });
             }
@@ -11538,7 +11553,7 @@ app.get('/api/marketplace/listings', async (req, res) => {
         }
 
         // --- SISTEM ÜRÜNLERİ (%10 Kalite) ---
-        // Her ürün grubundan 1 adet sistem ilanı ekle
+        // Her önemli ürün grubundan farklı şehirlerde sistem ilanları ekle
         const SYSTEM_PRODUCTS = [
             { code: 'ekmek', qty: 100, price: 15 },
             { code: 'su', qty: 100, price: 10 },
@@ -11550,18 +11565,27 @@ app.get('/api/marketplace/listings', async (req, res) => {
             { code: 'patates', qty: 100, price: 20 }
         ];
 
+        const CITIES = ['İstanbul', 'Ankara', 'İzmir', 'Amasya', 'Bursa', 'Antalya'];
+
         SYSTEM_PRODUCTS.forEach(p => {
-            activeListings.unshift({
-                id: 'system_' + p.code,
-                seller: 'SYSTEM',
-                productCode: p.code,
-                quantity: p.qty,
-                pricePerUnit: p.price,
-                totalPrice: p.qty * p.price,
-                quality: 10,
-                isSystem: true,
-                createdAt: Date.now()
-            });
+            // Her ürün için 2-3 farklı şehirde ilan oluştur
+            const cityCount = 2 + Math.floor(Math.random() * 2);
+            const shuffledCities = [...CITIES].sort(() => 0.5 - Math.random());
+
+            for (let i = 0; i < cityCount; i++) {
+                activeListings.unshift({
+                    id: 'system_' + p.code + '_' + shuffledCities[i],
+                    seller: 'SYSTEM',
+                    productCode: p.code,
+                    quantity: p.qty,
+                    pricePerUnit: p.price,
+                    totalPrice: p.qty * p.price,
+                    quality: 10,
+                    city: shuffledCities[i],
+                    isSystem: true,
+                    createdAt: Date.now()
+                });
+            }
         });
 
         res.json({ success: true, listings: activeListings });
@@ -11573,10 +11597,10 @@ app.get('/api/marketplace/listings', async (req, res) => {
 // Yeni ilan oluştur
 app.post('/api/marketplace/create-listing', async (req, res) => {
     try {
-        const { username, productCode, quantity, pricePerUnit } = req.body;
+        const { username, productCode, quantity, pricePerUnit, city } = req.body;
 
         // Validasyon
-        if (!username || !productCode || !quantity || !pricePerUnit) {
+        if (!username || !productCode || !quantity || !pricePerUnit || !city) {
             return res.json({ success: false, error: 'Eksik bilgi!' });
         }
 
@@ -11607,6 +11631,7 @@ app.post('/api/marketplace/create-listing', async (req, res) => {
             quantity,
             pricePerUnit,
             totalPrice: quantity * pricePerUnit,
+            city,
             status: 'active',
             createdAt: Date.now()
         });
@@ -11620,51 +11645,99 @@ app.post('/api/marketplace/create-listing', async (req, res) => {
 // İlan satın al
 app.post('/api/marketplace/buy-listing', async (req, res) => {
     try {
-        const { username, listingId } = req.body;
+        const { username, listingId, targetCity } = req.body; // Alıcının bulunduğu şehir
 
-        const listingSnap = await db.ref('marketplace/' + listingId).once('value');
-        const listing = listingSnap.val();
+        let listing;
+        if (listingId.startsWith('system_')) {
+            // Sistem ilanı bilgilerini manuel oluştur (GET endpoint'i ile uyumlu)
+            const parts = listingId.split('_');
+            const code = parts[1];
+            const city = parts[2];
+
+            const SYSTEM_DEFAULTS = {
+                'ekmek': { qty: 100, price: 15 }, 'su': { qty: 100, price: 10 },
+                'un': { qty: 50, price: 80 }, 'seker': { qty: 50, price: 60 },
+                'yumurta': { qty: 50, price: 80 }, 'sut': { qty: 50, price: 50 },
+                'domates': { qty: 50, price: 35 }, 'patates': { qty: 100, price: 20 }
+            };
+
+            const config = SYSTEM_DEFAULTS[code];
+            if (!config) return res.json({ success: false, error: 'Sistem ürünü bulunamadı!' });
+
+            listing = {
+                id: listingId,
+                seller: 'SYSTEM',
+                productCode: code,
+                quantity: config.qty,
+                pricePerUnit: config.price,
+                totalPrice: config.qty * config.price,
+                city: city,
+                quality: 10,
+                isSystem: true,
+                status: 'active'
+            };
+        } else {
+            const listingSnap = await db.ref('marketplace/' + listingId).once('value');
+            listing = listingSnap.val();
+        }
 
         if (!listing || listing.status !== 'active') {
             return res.json({ success: false, error: 'İlan bulunamadı veya aktif değil!' });
         }
 
-        // Kendi ilanını satın alamaz
         if (listing.seller === username) {
             return res.json({ success: false, error: 'Kendi ilanını satın alamazsın!' });
         }
+
+        // --- TAŞIMA ÜCRETİ HESAPLAMA ---
+        let transportFee = 0;
+        if (targetCity && listing.city && targetCity.trim() !== listing.city.trim()) {
+            transportFee = Math.ceil(listing.totalPrice * 0.10); // %10 Taşıma ücreti
+        }
+        const totalCost = listing.totalPrice + transportFee;
 
         // Alıcının bakiyesini kontrol et
         const buyerSnap = await db.ref('users/' + username).once('value');
         const buyer = buyerSnap.val();
         if (!buyer) return res.json({ success: false, error: 'Kullanıcı bulunamadı!' });
 
-        if ((buyer.balance || 0) < listing.totalPrice) {
-            return res.json({ success: false, error: 'Bakiye yetersiz!' });
+        if ((buyer.balance || 0) < totalCost) {
+            const errorMsg = transportFee > 0
+                ? `Bakiye yetersiz! Ürün: ${listing.totalPrice} + Nakliye: ${transportFee} = Toplam: ${totalCost} 💰`
+                : `Bakiye yetersiz! (${listing.totalPrice} 💰)`;
+            return res.json({ success: false, error: errorMsg });
         }
 
-        // Satıcının bilgilerini al
-        const sellerSnap = await db.ref('users/' + listing.seller).once('value');
-        const seller = sellerSnap.val();
-        if (!seller) {
-            return res.json({ success: false, error: 'Satıcı bulunamadı!' });
+        // Satıcı (Eğer sistem değilse)
+        let seller = null;
+        if (!listing.isSystem) {
+            const sellerSnap = await db.ref('users/' + listing.seller).once('value');
+            seller = sellerSnap.val();
+            if (!seller) return res.json({ success: false, error: 'Satıcı bulunamadı!' });
         }
         // İşlem yap
         await db.ref('users/' + username).update({
-            balance: (buyer.balance || 0) - listing.totalPrice,
+            balance: (buyer.balance || 0) - (listing.totalPrice + transportFee),
             ['inventory/' + listing.productCode]: ((buyer.inventory || {})[listing.productCode] || 0) + listing.quantity
         });
 
-        await db.ref('users/' + listing.seller).update({
-            balance: (seller.balance || 0) + listing.totalPrice
-        });
+        if (!listing.isSystem && seller) {
+            await db.ref('users/' + listing.seller).update({
+                balance: (seller.balance || 0) + listing.totalPrice
+            });
+        }
 
         // İlanı kaldır (Sistem ilanı değilse)
         if (!listing.isSystem) {
             await db.ref('marketplace/' + listingId).update({ status: 'sold', soldTo: username, soldAt: Date.now() });
         }
 
-        res.json({ success: true, message: `${listing.quantity} adet ürün satın alındı!` });
+        res.json({
+            success: true,
+            message: transportFee > 0
+                ? `${listing.quantity} adet ürün satın alındı! (${transportFee} 💰 nakliye dahil)`
+                : `${listing.quantity} adet ürün satın alındı!`
+        });
     } catch (e) {
         res.status(500).json({ success: false, error: e.message });
     }
