@@ -167,15 +167,14 @@ function validateCsrfToken(username, token) {
 function verifyWebhookSignature(payload, signature, secret) {
     if (!signature || !secret) return false;
 
+    // Use raw payload if possible, otherwise stringify (but ordering matters!)
     const hmac = crypto.createHmac('sha256', secret);
-    hmac.update(JSON.stringify(payload));
+    const body = JSON.stringify(payload);
+    hmac.update(body);
     const calculatedSignature = hmac.digest('hex');
 
-    // Timing attack'a karşı constant-time comparison
-    return crypto.timingSafeEqual(
-        Buffer.from(signature),
-        Buffer.from(calculatedSignature)
-    );
+    // Case-insensitive comparison can sometimes help with different header formats
+    return signature.toLowerCase() === calculatedSignature.toLowerCase();
 }
 
 // 8. SESSION TIMEOUT YÖNETİMİ
@@ -2761,9 +2760,50 @@ app.post('/api/borsa/reset', async (req, res) => {
     }
 });
 
+// BORSA DURUMU GETİR
+app.get('/api/borsa/status', async (req, res) => {
+    try {
+        const snap = await db.ref('settings/borsa_active').once('value');
+        const isActive = snap.val() !== false; // Varsayılan true
+        res.json({ success: true, active: isActive });
+    } catch (e) {
+        res.status(500).json({ success: false, error: e.message });
+    }
+});
+
+// BORSA DURUMU DEĞİŞTİR (Admin Only)
+app.post('/api/borsa/toggle-status', async (req, res) => {
+    try {
+        const { key, active } = req.body;
+
+        // Admin yetkisi kontrolü
+        const adminUsersSnap = await db.ref('admin_users').once('value');
+        const adminUsers = adminUsersSnap.val() || {};
+        const isAdmin = Object.entries(adminUsers).some(([name, data]) => {
+            const authKey = `${name}:${data.pass || data.password}`;
+            return authKey === key;
+        });
+
+        if (!isAdmin) {
+            return res.status(403).json({ success: false, error: "Yetkisiz erişim!" });
+        }
+
+        await db.ref('settings/borsa_active').set(active);
+        console.log(`📈 BORSA DURUMU GÜNCELLENDİ: ${active ? 'AÇIK' : 'KAPALI'}`);
+        res.json({ success: true, active: active });
+    } catch (e) {
+        res.status(500).json({ success: false, error: e.message });
+    }
+});
+
 // BORSA ALIM İŞLEMİ (Server-Side Secure)
 app.post('/api/borsa/buy', transactionLimiter, async (req, res) => {
     try {
+        const borsaSnap = await db.ref('settings/borsa_active').once('value');
+        if (borsaSnap.val() === false) {
+            return res.status(403).json({ success: false, error: "Borsa şu anda alım işlemlerine kapalıdır!" });
+        }
+
         let { username, code, amount, idempotencyKey } = req.body;
 
         // GÜVENLİK: Username sanitization (NoSQL Injection koruması)
@@ -2852,6 +2892,11 @@ app.post('/api/borsa/buy', transactionLimiter, async (req, res) => {
 // BORSA SATIŞ İŞLEMİ (Server-Side Secure)
 app.post('/api/borsa/sell', transactionLimiter, async (req, res) => {
     try {
+        const borsaSnap = await db.ref('settings/borsa_active').once('value');
+        if (borsaSnap.val() === false) {
+            return res.status(403).json({ success: false, error: "Borsa şu anda satım işlemlerine kapalıdır!" });
+        }
+
         let { username, code, amount, idempotencyKey } = req.body;
 
         // GÜVENLİK: Username sanitization
@@ -11483,6 +11528,33 @@ app.get('/api/marketplace/listings', async (req, res) => {
             }
         }
 
+        // --- SISTEM ÜRÜNLERİ (%10 Kalite) ---
+        // Her ürün grubundan 1 adet sistem ilanı ekle
+        const SYSTEM_PRODUCTS = [
+            { code: 'ekmek', qty: 999, price: 50 },
+            { code: 'su', qty: 999, price: 20 },
+            { code: 'un', qty: 500, price: 100 },
+            { code: 'seker', qty: 500, price: 120 },
+            { code: 'yumurta', qty: 300, price: 40 },
+            { code: 'sut', qty: 200, price: 150 },
+            { code: 'domates', qty: 300, price: 80 },
+            { code: 'patates', qty: 500, price: 60 }
+        ];
+
+        SYSTEM_PRODUCTS.forEach(p => {
+            activeListings.unshift({
+                id: 'system_' + p.code,
+                seller: 'SYSTEM',
+                productCode: p.code,
+                quantity: p.qty,
+                pricePerUnit: p.price,
+                totalPrice: p.price, // Sistem tekli fiyat gösterir gibi
+                quality: 10,
+                isSystem: true,
+                createdAt: Date.now()
+            });
+        });
+
         res.json({ success: true, listings: activeListings });
     } catch (e) {
         res.status(500).json({ success: false, error: e.message });
@@ -11578,8 +11650,10 @@ app.post('/api/marketplace/buy-listing', async (req, res) => {
             balance: (seller.balance || 0) + listing.totalPrice
         });
 
-        // İlanı kaldır
-        await db.ref('marketplace/' + listingId).update({ status: 'sold', soldTo: username, soldAt: Date.now() });
+        // İlanı kaldır (Sistem ilanı değilse)
+        if (!listing.isSystem) {
+            await db.ref('marketplace/' + listingId).update({ status: 'sold', soldTo: username, soldAt: Date.now() });
+        }
 
         res.json({ success: true, message: `${listing.quantity} adet ürün satın alındı!` });
     } catch (e) {
@@ -11624,7 +11698,7 @@ app.get('/api/warehouse/info', async (req, res) => {
         if (!user) return res.json({ success: false, error: 'Kullanıcı bulunamadı!' });
 
         const warehouseLevel = user.warehouseLevel || 0;
-        const capacity = 100 + (warehouseLevel * 50); // Her seviye +50 kapasite
+        const capacity = 5000 + (warehouseLevel * 500); // 5000'den başlar, +500 artar
 
         res.json({ success: true, level: warehouseLevel, capacity });
     } catch (e) {
@@ -11641,7 +11715,7 @@ app.post('/api/warehouse/upgrade', async (req, res) => {
         if (!user) return res.json({ success: false, error: 'Kullanıcı bulunamadı!' });
 
         const currentLevel = user.warehouseLevel || 0;
-        const upgradeCost = 50000 * Math.pow(2, currentLevel); // Üstel maliyet artışı
+        const upgradeCost = 50000 * (currentLevel + 1); // Doğrusal artış yapalım
 
         if ((user.balance || 0) < upgradeCost) {
             return res.json({ success: false, error: 'Bakiye yetersiz!' });
@@ -11666,7 +11740,7 @@ app.get('/api/rnd/upgrades', async (req, res) => {
         const user = userSnap.val();
         if (!user) return res.json({ success: false, error: 'Kullanıcı bulunamadı!' });
 
-        const rndUpgrades = user.rndUpgrades || {};
+        const rndUpgrades = user.productQualities || {};
 
         res.json({ success: true, upgrades: rndUpgrades });
     } catch (e) {
@@ -11692,15 +11766,16 @@ app.post('/api/rnd/buy-upgrade', async (req, res) => {
         const user = userSnap.val();
         if (!user) return res.json({ success: false, error: 'Kullanıcı bulunamadı!' });
 
-        const rndUpgrades = user.rndUpgrades || {};
-        const currentLevel = rndUpgrades[upgradeType] || 0;
-        const upgradeInfo = UPGRADES[upgradeType];
+        const productQualities = user.productQualities || {};
+        const currentLevel = productQualities[upgradeType] || 0;
+        const maxLevel = 100;
+        const upgradeStep = 5;
 
-        if (currentLevel >= upgradeInfo.maxLevel) {
-            return res.json({ success: false, error: 'Maksimum seviyeye ulaşıldı!' });
+        if (currentLevel >= maxLevel) {
+            return res.json({ success: false, error: 'Maksimum kaliteye ulaşıldı!' });
         }
 
-        const cost = upgradeInfo.cost * (currentLevel + 1);
+        const cost = 25000 * ((currentLevel / upgradeStep) + 1);
 
         if ((user.balance || 0) < cost) {
             return res.json({ success: false, error: 'Bakiye yetersiz!' });
@@ -11708,10 +11783,10 @@ app.post('/api/rnd/buy-upgrade', async (req, res) => {
 
         await db.ref('users/' + username).update({
             balance: (user.balance || 0) - cost,
-            ['rndUpgrades/' + upgradeType]: currentLevel + 1
+            ['productQualities/' + upgradeType]: currentLevel + upgradeStep
         });
 
-        res.json({ success: true, message: `${upgradeInfo.name} seviye ${currentLevel + 1}'e yükseltildi!` });
+        res.json({ success: true, message: `${upgradeType.toUpperCase()} kalitesi %${currentLevel + upgradeStep}'e yükseltildi!` });
     } catch (e) {
         res.status(500).json({ success: false, error: e.message });
     }

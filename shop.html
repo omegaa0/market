@@ -474,13 +474,12 @@
                             style="border:none; background:rgba(255,255,255,0.05); color:#aaa; padding:8px 15px; border-radius:8px; cursor:pointer; font-weight:600; transition:0.2s;">⭐
                             Özel</button>
                     </div>
-                    <div style="display:grid; grid-template-columns: repeat(auto-fill, minmax(280px, 1fr)); gap:15px;">
+                    <div id="business-types-grid"
+                        style="display:grid; grid-template-columns: repeat(auto-fill, minmax(280px, 1fr)); gap:20px;">
                         <!-- İşletme Türleri - JS ile doldurulacak -->
-                        <div id="business-types-grid">
-                            <div style="text-align:center; padding:40px; opacity:0.5;">
-                                <div class="loader"></div>
-                                <p style="margin-top:15px;">İşletme türleri yükleniyor...</p>
-                            </div>
+                        <div style="grid-column: 1/-1; text-align:center; padding:40px; opacity:0.5;">
+                            <div class="loader"></div>
+                            <p style="margin-top:15px;">İşletme türleri yükleniyor...</p>
                         </div>
                     </div>
                 </div>
@@ -490,7 +489,7 @@
                     <div class="glass-panel" style="padding:20px; margin-bottom:20px;">
                         <h3 style="margin:0 0 10px 0;">📦 Depo Sistemi</h3>
                         <p style="color:var(--text-dim); font-size:0.85rem; margin-bottom:20px;">
-                            Depo kapasiteni artırarak daha fazla ürün stoklayabilirsin. Her seviye +50 kapasite ekler.
+                            Depo kapasiteni artırarak daha fazla ürün stoklayabilirsin. Her seviye +500 kapasite ekler.
                         </p>
                         <div style="background:rgba(0,0,0,0.3); padding:25px; border-radius:12px; margin-bottom:20px;">
                             <div style="font-size:3rem; text-align:center; margin-bottom:15px;">📦</div>
@@ -526,15 +525,17 @@
                 <!-- AR-GE -->
                 <div id="business-sub-rnd" class="business-sub-content hidden">
                     <div class="glass-panel" style="padding:20px; margin-bottom:20px;">
-                        <h3 style="margin:0 0 10px 0;">🔬 Araştırma ve Geliştirme</h3>
+                        <h3 style="margin:0 0 10px 0;">🔬 Ürün Araştırma ve Geliştirme</h3>
                         <p style="color:var(--text-dim); font-size:0.85rem; margin-bottom:20px;">
-                            İşletmelerinizin kalitesini, üretim hızını ve verimliliğini artırın.
+                            Deponuzdaki hammaddelerin ve ürettiğiniz ürünlerin kalitesini artırın. Daha yüksek kalite,
+                            pazar yerinde daha yüksek fiyat demektir!
                         </p>
+
                         <div id="rnd-upgrades-container"
-                            style="display:grid; grid-template-columns: repeat(auto-fill, minmax(250px, 1fr)); gap:15px;">
+                            style="display:grid; grid-template-columns: repeat(auto-fill, minmax(280px, 1fr)); gap:20px;">
                             <div style="grid-column: 1/-1; text-align:center; padding:40px; opacity:0.5;">
                                 <div class="loader"></div>
-                                <p style="margin-top:15px;">Yükleniyor...</p>
+                                <p style="margin-top:15px;">Depo verileri taranıyor...</p>
                             </div>
                         </div>
                     </div>

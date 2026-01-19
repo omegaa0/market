@@ -968,6 +968,25 @@
                     <button class="btn" style="background:#222;" onclick="triggerNews()">📰 TEST HABERİ TETİKLE</button>
                 </div>
             </div>
+
+            <!-- BORSA AÇ/KAPAT TOGGLE -->
+            <div class="card"
+                style="margin-bottom:20px; padding:20px; display:flex; align-items:center; justify-content:space-between; border:2px solid #333;">
+                <div>
+                    <h3 style="margin:0 0 5px 0;">🔒 Borsa Alım/Satım Kontrolü</h3>
+                    <p style="font-size:0.8rem; color:var(--muted); margin:0;">Borsada hisse alım-satımı açık veya
+                        kapalı.</p>
+                </div>
+                <div style="display:flex; align-items:center; gap:15px;">
+                    <span id="borsa-status-text"
+                        style="font-size:0.9rem; font-weight:600; color:#888;">Yükleniyor...</span>
+                    <label class="switch" style="transform:scale(1.3);">
+                        <input type="checkbox" id="borsa-trading-toggle" onchange="toggleBorsaTrading(this.checked)">
+                        <span class="slider"></span>
+                    </label>
+                </div>
+            </div>
+
             <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:20px;">
                 <h2 style="margin:0;">📈 Borsa Yönetimi</h2>
                 <div
@@ -2376,7 +2395,47 @@
 
 
             // STOCKS
+            async function loadBorsaStatus() {
+                try {
+                    const res = await fetch('/api/borsa/status');
+                    const data = await res.json();
+                    if (data.success) {
+                        const toggle = document.getElementById('borsa-trading-toggle');
+                        const statusText = document.getElementById('borsa-status-text');
+                        toggle.checked = data.active;
+                        statusText.textContent = data.active ? '🟢 AÇIK' : '🔴 KAPALI';
+                        statusText.style.color = data.active ? 'var(--primary)' : 'var(--danger)';
+                    }
+                } catch (e) {
+                    console.error("Borsa status load error:", e);
+                }
+            }
+
+            async function toggleBorsaTrading(enabled) {
+                try {
+                    const res = await fetch('/api/borsa/toggle-status', {
+                        method: 'POST',
+                        headers: { 'Content-Type': 'application/json' },
+                        body: JSON.stringify({ key: sessionKey, active: enabled })
+                    });
+                    const data = await res.json();
+                    if (data.success) {
+                        const statusText = document.getElementById('borsa-status-text');
+                        statusText.textContent = enabled ? '🟢 AÇIK' : '🔴 KAPALI';
+                        statusText.style.color = enabled ? 'var(--primary)' : 'var(--danger)';
+                        showToast(`Borsa alım/satımı ${enabled ? 'açıldı' : 'kapatıldı'}.`);
+                    } else {
+                        alert(data.error);
+                        document.getElementById('borsa-trading-toggle').checked = !enabled;
+                    }
+                } catch (e) {
+                    console.error("Borsa toggle error:", e);
+                    document.getElementById('borsa-trading-toggle').checked = !enabled;
+                }
+            }
+
             async function loadStocks() {
+                loadBorsaStatus();
                 const res = await fetch('/admin-api/stocks', {
                     method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ key: sessionKey })
                 });

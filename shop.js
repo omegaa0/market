@@ -4104,12 +4104,20 @@ async function loadMarketListings() {
         let html = '';
         for (const listing of data.listings) {
             const product = productData[listing.productCode] || { name: listing.productCode, icon: '📦' };
+            const isSystem = listing.isSystem;
+            const quality = listing.quality || 0;
+
             html += `
-                <div class="glass-panel" style="padding:20px; border-radius:16px; border:1px solid rgba(255,255,255,0.05);">
+                <div class="glass-panel" style="padding:20px; border-radius:16px; border:1px solid ${isSystem ? 'var(--primary)' : 'rgba(255,255,255,0.05)'}; position:relative;">
+                    ${isSystem ? '<div style="position:absolute; top:10px; right:10px; background:var(--primary); color:black; font-size:0.6rem; padding:2px 6px; border-radius:4px; font-weight:800;">SİSTEM</div>' : ''}
                     <div style="font-size:2.5rem; text-align:center; margin-bottom:10px;">${product.icon}</div>
                     <h4 style="margin:0 0 5px 0; text-align:center;">${product.name}</h4>
                     <div style="text-align:center; color:#888; font-size:0.85rem; margin-bottom:10px;">
-                        Satıcı: <b style="color:var(--primary);">${listing.seller}</b>
+                        Satıcı: <b style="color:${isSystem ? 'var(--primary)' : '#fff'};">${listing.seller}</b>
+                    </div>
+                    <div style="text-align:center; margin-bottom:10px;">
+                        <div style="font-size:0.7rem; color:#888; text-transform:uppercase;">Kalite</div>
+                        <div style="font-size:1.1rem; font-weight:800; color:var(--secondary);">%${quality}</div>
                     </div>
                     <div style="text-align:center; margin-bottom:10px;">
                         <span style="font-size:1.5rem; font-weight:800; color:var(--primary);">${listing.quantity}</span>
@@ -4118,7 +4126,7 @@ async function loadMarketListings() {
                     <div style="text-align:center; font-size:1.2rem; font-weight:700; margin-bottom:15px; color:#fff;">
                         💰 ${listing.totalPrice.toLocaleString()}
                     </div>
-                    <button onclick="buyMarketListing('${listing.id}')" class="buy-btn" style="width:100%;">Satın Al</button>
+                    <button onclick="buyMarketListing('${listing.id}')" class="buy-btn" style="width:100%;">${isSystem ? '🛒 Hemen Al' : 'Satın Al'}</button>
                 </div>
             `;
         }
@@ -4290,10 +4298,12 @@ async function loadWarehouseInfo() {
         const data = await res.json();
 
         if (data.success) {
-            document.getElementById('warehouse-level').textContent = data.level;
-            document.getElementById('warehouse-capacity').textContent = data.capacity;
+            const level = data.level || 0;
+            const capacity = data.capacity || 5000;
+            document.getElementById('warehouse-level').textContent = level;
+            document.getElementById('warehouse-capacity').textContent = capacity;
 
-            const cost = 50000 * Math.pow(2, data.level);
+            const cost = 50000 * (level + 1);
             document.getElementById('warehouse-upgrade-btn').innerHTML = `📦 Depo Yükselt (${cost.toLocaleString()} 💰)`;
         }
     } catch (e) {
@@ -4302,7 +4312,7 @@ async function loadWarehouseInfo() {
 }
 
 async function upgradeWarehouse() {
-    showConfirm('Depo Yükseltme', 'Depoyu yükseltmek istediğine emin misin? Her seviye +50 kapasite ekler.').then(async (confirmed) => {
+    showConfirm('Depo Yükseltme', 'Depoyu yükseltmek istediğine emin misin? Her seviye +500 kapasite ekler.').then(async (confirmed) => {
         if (!confirmed) return;
         try {
             const res = await fetch('/api/warehouse/upgrade', {
@@ -4323,35 +4333,39 @@ async function upgradeWarehouse() {
 // ==================== R&D FONKSİYONLARI ====================
 async function loadRnDUpgrades() {
     try {
-        const res = await fetch('/api/rnd/upgrades?username=' + currentUser);
-        const data = await res.json();
-
-        const UPGRADES = {
-            production_speed: { name: 'Üretim Hızı', icon: '⚡', cost: 100000, maxLevel: 10, desc: 'Üretim süresini azaltır' },
-            quality_boost: { name: 'Kalite Artışı', icon: '💎', cost: 150000, maxLevel: 5, desc: 'Ürün kalitesini artırır' },
-            cost_reduction: { name: 'Maliyet Azaltma', icon: '💰', cost: 120000, maxLevel: 5, desc: 'Üretim maliyetini düşürür' }
-        };
+        const userData = await getUserData();
+        const inventory = userData.inventory || {};
+        const productQualities = userData.productQualities || {};
 
         const container = document.getElementById('rnd-upgrades-container');
         let html = '';
 
-        for (const [code, info] of Object.entries(UPGRADES)) {
-            const currentLevel = data.upgrades[code] || 0;
-            const nextCost = info.cost * (currentLevel + 1);
-            const maxed = currentLevel >= info.maxLevel;
+        const inventoryItems = Object.entries(inventory).filter(([code, qty]) => qty > 0);
+
+        if (inventoryItems.length === 0) {
+            container.innerHTML = '<div style="grid-column:1/-1; text-align:center; padding:60px; opacity:0.5;"><p>Deponuzda ürün bulunmuyor. AR-GE yapabilmek için önce ürün stoklamalısınız!</p></div>';
+            return;
+        }
+
+        for (const [code, qty] of inventoryItems) {
+            const product = productData[code] || { name: code, icon: '📦' };
+            const currentQuality = productQualities[code] || 0;
+            const upgradeStep = 5;
+            const nextCost = 25000 * ((currentQuality / upgradeStep) + 1);
+            const maxed = currentQuality >= 100;
 
             html += `
-                <div class="glass-panel" style="padding:20px; border-radius:16px; ${maxed ? 'opacity:0.7; border:2px solid var(--primary);' : 'border:1px solid rgba(255,255,255,0.05);'}">
-                    <div style="font-size:2.5rem; text-align:center; margin-bottom:10px;">${info.icon}</div>
-                    <h4 style="margin:0 0 5px 0; text-align:center;">${info.name}</h4>
-                    <p style="font-size:0.8rem; color:#888; text-align:center; margin-bottom:10px;">${info.desc}</p>
+                <div class="glass-panel" style="padding:20px; border-radius:16px; border:1px solid rgba(255,255,255,0.05);">
+                    <div style="font-size:2.5rem; text-align:center; margin-bottom:10px;">${product.icon}</div>
+                    <h4 style="margin:0 0 5px 0; text-align:center;">${product.name}</h4>
+                    <p style="font-size:0.8rem; color:#888; text-align:center; margin-bottom:10px;">Stokta: ${qty} adet</p>
                     <div style="text-align:center; margin-bottom:15px;">
-                        <div style="font-size:0.75rem; color:#aaa;">Seviye</div>
-                        <div style="font-size:1.8rem; font-weight:800; color:var(--primary);">${currentLevel} / ${info.maxLevel}</div>
+                        <div style="font-size:0.75rem; color:#aaa; text-transform:uppercase;">Mevcut Kalite</div>
+                        <div style="font-size:1.8rem; font-weight:800; color:var(--secondary);">%${currentQuality}</div>
                     </div>
                     ${maxed ?
                     '<div style="text-align:center; color:var(--primary); font-weight:700;">✅ MAKSİMUM</div>' :
-                    `<button onclick="buyRnDUpgrade('${code}')" class="buy-btn" style="width:100%;">Yükselt (💰 ${nextCost.toLocaleString()})</button>`
+                    `<button onclick="buyRnDUpgrade('${code}')" class="buy-btn" style="width:100%;">🧬 %${currentQuality + upgradeStep} Yap (💰 ${nextCost.toLocaleString()})</button>`
                 }
                 </div>
             `;
