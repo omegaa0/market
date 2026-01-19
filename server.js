@@ -2884,7 +2884,8 @@ app.post('/api/borsa/buy', transactionLimiter, async (req, res) => {
 
     } catch (e) {
         console.error("Borsa Buy Error:", e.message);
-        logSecurityEvent('STOCK_BUY_EXCEPTION', username || 'unknown', { error: e.message }, req.ip);
+        const buyer = (req.body && req.body.username) || 'unknown';
+        logSecurityEvent('STOCK_BUY_EXCEPTION', buyer, { error: e.message }, req.ip);
         res.status(500).json({ success: false, error: "Sunucu hatası." });
     }
 });
@@ -2977,7 +2978,8 @@ app.post('/api/borsa/sell', transactionLimiter, async (req, res) => {
 
     } catch (e) {
         console.error("Borsa Sell Error:", e.message);
-        logSecurityEvent('STOCK_SELL_EXCEPTION', username || 'unknown', { error: e.message }, req.ip);
+        const seller = (req.body && req.body.username) || 'unknown';
+        logSecurityEvent('STOCK_SELL_EXCEPTION', seller, { error: e.message }, req.ip);
         res.status(500).json({ success: false, error: "Sunucu hatası." });
     }
 });
