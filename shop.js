@@ -3040,7 +3040,7 @@ async function showCustomizationMarket() {
         card.innerHTML = `
             <div class="item-icon" style="color:${c.color}; text-shadow: 0 0 10px ${c.color};">🎨</div>
             <div class="item-info">
-                <h3 style="color:${c.color}">${c.name}</h3>
+                <h3>${c.name}</h3>
                 <p>İsim Rengi</p>
                 <span class="item-cost">${c.price.toLocaleString()} 💰</span>
             </div>
@@ -3803,43 +3803,80 @@ function renderMarketPrices() {
 
 
 // İşletme kur modal
-function showCreateBusinessModal(typeCode) {
+async function showCreateBusinessModal(typeCode) {
     const type = businessTypes[typeCode];
     if (!type) return;
 
-    const cities = ['İstanbul', 'Ankara', 'İzmir', 'Amasya', 'Bursa', 'Antalya'];
+    try {
+        // Kullanıcının mülklerini kontrol et
+        const userRes = await fetch('/api/user/info?username=' + currentUser);
+        const userData = await userRes.json();
+        const user = userData.user || {};
+        const properties = user.properties || [];
 
-    showConfirm(`
-        <h3>${type.icon} ${type.name} Kur</h3>
-        <div style="margin:15px 0;">
-            <input type="text" id="new-biz-name" placeholder="İşletme Adı" class="borsa-input" style="width:100%; margin-bottom:10px;">
-            <select id="new-biz-city" class="borsa-input" style="width:100%;">
-                ${cities.map(c => `<option value="${c}">${c}</option>`).join('')}
-            </select>
-        </div>
-        <p style="color:#888; font-size:0.85rem;">Kuruluş maliyeti: <b style="color:var(--primary);">${type.setupCost.toLocaleString()} 💰</b></p>
-    `, async () => {
-        const name = document.getElementById('new-biz-name').value.trim();
-        const city = document.getElementById('new-biz-city').value;
+        // Hangi tip mülk gerekli? (Retail -> shop, Diğerleri -> land)
+        const requiredCategory = (type.category === 'retail') ? 'shop' : 'land';
 
-        if (!name) return showToast('İşletme adı gerekli!', 'error');
+        // Uygun ve boş mülkleri filtrele
+        const eligibleProps = properties.map((p, index) => ({ ...p, originalIndex: index }))
+            .filter(p => p.category === requiredCategory && !p.usedBy);
 
-        try {
+        if (eligibleProps.length === 0) {
+            const propName = requiredCategory === 'shop' ? 'Dükkan' : 'Arazi';
+            return showToast(`İşletme kurmak için boş bir ${propName} sahibi olmalısın! Emlak sekmesine göz at.`, 'error');
+        }
+
+        const propOptions = eligibleProps.map(p =>
+            `<option value="${p.originalIndex}">${p.city || p.cityId} - ${p.name}</option>`
+        ).join('');
+
+        showConfirm(`
+            <h3>${type.icon} ${type.name} Kur</h3>
+            <div style="margin:15px 0; text-align:left;">
+                <label style="display:block; font-size:0.85rem; color:#aaa; margin-bottom:8px;">İşletme Adı:</label>
+                <input type="text" id="new-biz-name" placeholder="Örn: Örnek ${type.name}" class="borsa-input" style="width:100%; margin-bottom:15px;">
+                
+                <label style="display:block; font-size:0.85rem; color:#aaa; margin-bottom:8px;">Kurulacak Mülk Seçimi:</label>
+                <select id="new-biz-prop-index" class="borsa-input" style="width:100%; margin-bottom:15px;">
+                    ${propOptions}
+                </select>
+                
+                <div style="background:rgba(5, 234, 106, 0.1); padding:10px; border-radius:8px; border:1px solid rgba(5, 234, 106, 0.2);">
+                    <p style="margin:0; font-size:0.85rem; color:#ccc;">💰 Kuruluş Bedeli: <b style="color:var(--primary);">${type.setupCost.toLocaleString()}</b></p>
+                </div>
+            </div>
+        `, async () => {
+            const name = document.getElementById('new-biz-name').value.trim();
+            const propIndex = document.getElementById('new-biz-prop-index').value;
+            const selectedProp = eligibleProps.find(p => p.originalIndex.toString() === propIndex);
+
+            if (!name) return showToast('İşletme adı gerekli!', 'error');
+            if (!selectedProp) return showToast('Mülk seçimi geçersiz!', 'error');
+
             const res = await fetch('/api/business/create', {
                 method: 'POST',
                 headers: { 'Content-Type': 'application/json' },
-                body: JSON.stringify({ username: currentUser, businessType: typeCode, city, name })
+                body: JSON.stringify({
+                    username: currentUser,
+                    businessType: typeCode,
+                    city: selectedProp.city || selectedProp.cityId,
+                    name,
+                    propertyId: selectedProp.originalIndex.toString()
+                })
             });
             const data = await res.json();
             showToast(data.message || data.error, data.success ? 'success' : 'error');
+
             if (data.success) {
                 loadMyBusinesses();
                 switchBusinessTab('my-businesses');
+                loadProfile(); // Bakiye ve mülk listesini tazele
             }
-        } catch (e) {
-            showToast('Hata: ' + e.message, 'error');
-        }
-    });
+        });
+    } catch (e) {
+        showToast('Mülk bilgileri alınamadı!', 'error');
+        console.error(e);
+    }
 }
 
 // Lisans satın al
@@ -4134,6 +4171,9 @@ async function loadMarketListings() {
                     <div style="text-align:center; color:#888; font-size:0.85rem; margin-bottom:10px;">
                         Satıcı: <b style="color:${isSystem ? 'var(--primary)' : '#fff'};">${listing.seller}</b>
                     </div>
+                    <div style="text-align:center; color:#aaa; font-size:0.8rem; margin-bottom:10px;">
+                        📍 <span style="color:var(--secondary); font-weight:700;">${listing.city || 'BİLİNMİYOR'}</span>
+                    </div>
                     <div style="text-align:center; margin-bottom:10px;">
                         <div style="font-size:0.7rem; color:#888; text-transform:uppercase;">Kalite</div>
                         <div style="font-size:1.1rem; font-weight:800; color:var(--secondary);">%${quality}</div>
@@ -4216,6 +4256,14 @@ async function loadUserInventoryForListing() {
 
     select.innerHTML = html;
 
+    // Şehir seçimi için
+    const cities = ['İstanbul', 'Ankara', 'İzmir', 'Amasya', 'Bursa', 'Antalya']; // Örnek şehirler
+    const citySelect = document.getElementById('new-listing-city');
+    if (citySelect) {
+        citySelect.innerHTML = cities.map(c => `<option value="${c}">${c}</option>`).join('');
+    }
+
+
     // Preview güncellemelerini dinle
     const qtyInput = document.getElementById('new-listing-quantity');
     const priceInput = document.getElementById('new-listing-price');
@@ -4233,9 +4281,26 @@ async function loadUserInventoryForListing() {
 }
 
 async function createMarketListing() {
-    const productCode = document.getElementById('new-listing-product').value;
-    const quantity = parseInt(document.getElementById('new-listing-quantity').value);
-    const pricePerUnit = parseInt(document.getElementById('new-listing-price').value);
+    const productEl = document.getElementById('new-listing-product');
+    const qtyEl = document.getElementById('new-listing-quantity');
+    const priceEl = document.getElementById('new-listing-price');
+
+    let citySelect = document.getElementById('new-listing-city');
+    if (!citySelect) {
+        // Dropdown yoksa uyar (İlk kez render edildiğinde olmayabilir)
+        showToast("Lütfen bir şehir seçin!", "error");
+        return;
+    }
+
+    const productCode = productEl.value;
+    const quantity = parseInt(qtyEl.value);
+    const pricePerUnit = parseInt(priceEl.value);
+    const city = citySelect.value;
+
+    if (!productCode || !quantity || !pricePerUnit || !city) {
+        showToast("Lütfen tüm alanları doldurun!", "error");
+        return;
+    }
 
     if (!productCode) {
         return showToast('Ürün seç!', 'error');
@@ -4253,7 +4318,13 @@ async function createMarketListing() {
         const res = await fetch('/api/marketplace/create-listing', {
             method: 'POST',
             headers: { 'Content-Type': 'application/json' },
-            body: JSON.stringify({ username: currentUser, productCode, quantity, pricePerUnit })
+            body: JSON.stringify({
+                username: currentUser,
+                productCode,
+                quantity,
+                pricePerUnit,
+                city
+            })
         });
         const data = await res.json();
 
@@ -4273,22 +4344,66 @@ async function createMarketListing() {
 }
 
 async function buyMarketListing(listingId) {
-    showConfirm('Satın Alma', 'Bu ürünü satın almak istediğine emin misin?').then(async (confirmed) => {
-        if (!confirmed) return;
-        try {
-            const res = await fetch('/api/marketplace/buy-listing', {
-                method: 'POST',
-                headers: { 'Content-Type': 'application/json' },
-                body: JSON.stringify({ username: currentUser, listingId })
-            });
-            const data = await res.json();
+    try {
+        // İlan detaylarını bul (lokasyon bilgisi için)
+        const resList = await fetch('/api/marketplace/listings');
+        const dataList = await resList.json();
+        const listing = dataList.listings.find(l => l.id === listingId);
+        if (!listing) return showToast("İlan bulunamadı!", "error");
 
-            showToast(data.message || data.error, data.success ? 'success' : 'error');
-            if (data.success) loadMarketListings();
-        } catch (e) {
-            showToast('Hata: ' + e.message, 'error');
+        // Alıcının sahip olduğu işletme şehirlerini al (Taşıma ücreti için)
+        const bizRes = await fetch('/api/business/my/' + currentUser);
+        const bizData = await bizRes.json();
+        const myBusinesses = Object.values(bizData.businesses || {});
+        const myCities = [...new Set(myBusinesses.map(b => b.city))];
+
+        if (myCities.length === 0) {
+            return showToast("Ürünü koyacak bir işletmen (depo) olmalı!", "error");
         }
-    });
+
+        let targetCity = myCities[0]; // Varsayılan ilk şehir
+
+        const fee = (targetCity.toUpperCase() !== (listing.city || "").toUpperCase()) ? Math.ceil(listing.totalPrice * 0.1) : 0;
+
+        // Eğer birden fazla şehri varsa seçtir
+        if (myCities.length > 1) {
+            const cityOptions = myCities.map(c => `<option value="${c}">${c}</option>`).join('');
+            const html = `
+                <div style="margin-top:15px; text-align:left;">
+                    <p style="font-size:0.9rem; margin-bottom:10px;"><b>${listing.quantity} adet ${listing.productCode}</b> (${listing.city || 'Bilinmiyor'})</p>
+                    <label style="display:block; font-size:0.8rem; color:#aaa; margin-bottom:5px;">Hangi şehrinizdeki deponuza gelsin?</label>
+                    <select id="buy-target-city" class="borsa-input" style="width:100%; margin-bottom:10px;">
+                        ${cityOptions}
+                    </select>
+                    <p style="font-size:0.75rem; color:#888;">* Şehirler arası nakliyede %10 lojistik ücreti alınır.</p>
+                </div>
+            `;
+            const confirmed = await showConfirm(`🛒 Satın Alma Onayı`, html);
+            if (!confirmed) return;
+            targetCity = document.getElementById('buy-target-city').value;
+        } else {
+            const msg = fee > 0
+                ? `<b>${listing.quantity} adet ${listing.productCode}</b> satın almak istiyor musunuz?<br><span style="color:#ffa500; font-size:0.8rem;">⚠️ ${listing.city} -> ${targetCity} arası %10 (+${fee} 💰) lojistik ücreti uygulanacaktır.</span>`
+                : `<b>${listing.quantity} adet ${listing.productCode}</b> satın almayı onaylıyor musunuz?`;
+
+            const confirmed = await showConfirm(`🛒 Satın Alma`, msg);
+            if (!confirmed) return;
+        }
+
+        const res = await fetch('/api/marketplace/buy-listing', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ username: currentUser, listingId, targetCity })
+        });
+        const data = await res.json();
+        showToast(data.message || data.error, data.success ? 'success' : 'error');
+        if (data.success) {
+            loadMarketListings();
+            loadProfile();
+        }
+    } catch (e) {
+        showToast('Hata: ' + e.message, 'error');
+    }
 }
 
 async function cancelMarketListing(listingId) {

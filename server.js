@@ -2004,20 +2004,51 @@ app.post('/admin-api/stocks/rename', authAdmin, hasPerm('stocks'), async (req, r
 
         const oldData = snap.val();
 
-        // Check if new code exists
-        const newSnap = await db.ref(`global_stocks/${cleanNew}`).once('value');
-        if (newSnap.exists()) return res.json({ success: false, error: 'Yeni kod zaten kullanımda!' });
+        // Yeni kod zaten var mı kontrol et
+        if (cleanOld !== cleanNew) {
+            const newSnap = await db.ref(`global_stocks/${cleanNew}`).once('value');
+            if (newSnap.exists()) return res.json({ success: false, error: 'Yeni kod zaten kullanımda!' });
+        }
 
-        // Create new entry
+        // 1. Hisse bilgisini güncelle/taşı
         const newData = { ...oldData };
         if (newName) newData.name = newName;
-        // Keep history and other critical data
 
         await db.ref(`global_stocks/${cleanNew}`).set(newData);
-        await db.ref(`global_stocks/${cleanOld}`).remove();
+        if (cleanOld !== cleanNew) {
+            await db.ref(`global_stocks/${cleanOld}`).remove();
+        }
+
+        // 2. Kullanıcı portföylerini taşı
+        if (cleanOld !== cleanNew) {
+            const usersSnap = await db.ref('users').once('value');
+            const users = usersSnap.val() || {};
+            const updates = {};
+            let movedCount = 0;
+
+            for (const [username, userData] of Object.entries(users)) {
+                if (userData.stocks && userData.stocks[cleanOld]) {
+                    const qty = userData.stocks[cleanOld];
+                    updates[`users/${username}/stocks/${cleanNew}`] = qty;
+                    updates[`users/${username}/stocks/${cleanOld}`] = null;
+
+                    if (userData.stock_costs && userData.stock_costs[cleanOld]) {
+                        const cost = userData.stock_costs[cleanOld];
+                        updates[`users/${username}/stock_costs/${cleanNew}`] = cost;
+                        updates[`users/${username}/stock_costs/${cleanOld}`] = null;
+                    }
+                    movedCount++;
+                }
+            }
+
+            if (Object.keys(updates).length > 0) {
+                await db.ref().update(updates);
+            }
+            console.log(`[Borsa Rename] ${cleanOld} -> ${cleanNew} taşıması tamamlandı. ${movedCount} kullanıcı güncellendi.`);
+        }
 
         addLog("Borsa İsim Değişikliği", `${cleanOld} -> ${cleanNew} olarak değiştirildi.`);
-        res.json({ success: true, message: "Kodu başarıyla değiştirildi." });
+        res.json({ success: true, message: "Hisse başarıyla güncellendi ve tüm kullanıcılar taşındı." });
 
     } catch (e) {
         res.json({ success: false, error: e.message });
@@ -2034,6 +2065,12 @@ app.post('/admin-api/trigger-news', authAdmin, hasPerm('stocks'), async (req, re
         const codes = Object.keys(stocks);
         const target = codes[Math.floor(Math.random() * codes.length)];
         const newsType = Math.random() > 0.5 ? 'GOOD' : 'BAD';
+
+        // Şablondan rastgele seç
+        const list = NEWS_TEMPLATES[newsType];
+        const rawMsg = list[Math.floor(Math.random() * list.length)];
+        const newsMsg = rawMsg.replace(/\{coin\}/g, target);
+
         const percent = (Math.random() * 0.15) + 0.10;
         const impact = newsType === 'GOOD' ? (1 + percent) : (1 - percent);
 
@@ -2304,6 +2341,11 @@ app.post('/admin-api/upload-image', authAdmin, hasPerm('troll'), upload.single('
     const baseUrl = process.env.RENDER_EXTERNAL_URL || `${req.protocol}://${req.get('host')}`;
     const fileUrl = `${baseUrl}/uploads/sounds/${channelId}/${req.file.filename}`; // Keeping in same dir logic for simplicity or create images dir
     res.json({ url: fileUrl });
+});
+
+app.post('/admin-api/stocks', authAdmin, hasPerm('stocks'), async (req, res) => {
+    const snap = await db.ref('global_stocks').once('value');
+    res.json(snap.val() || INITIAL_STOCKS);
 });
 
 app.post('/admin-api/stocks/update', authAdmin, hasPerm('stocks'), async (req, res) => {
@@ -8409,46 +8451,7 @@ app.post('/admin-api/get-logs', authAdmin, hasPerm('logs'), async (req, res) => 
     }
 });
 
-// BORSA YÖNETİMİ
-app.post('/admin-api/stocks', authAdmin, hasPerm('stocks'), async (req, res) => {
-    const snap = await db.ref('global_stocks').once('value');
-    res.json(snap.val() || INITIAL_STOCKS);
-});
 
-app.post('/admin-api/stocks/update', authAdmin, hasPerm('stocks'), async (req, res) => {
-    const { code, price, trend } = req.body;
-    if (!code) return res.json({ success: false, error: 'Kod eksik' });
-
-    await db.ref(`global_stocks/${code}`).update({
-        price: parseInt(price),
-        trend: parseInt(trend),
-        lastUpdate: Date.now()
-    });
-    addLog("Borsa Güncelleme", `${code}: ${price} 💰 (Trend: ${trend})`);
-    res.json({ success: true });
-});
-
-app.post('/admin-api/stocks/add', authAdmin, hasPerm('stocks'), async (req, res) => {
-    const { code, price } = req.body;
-    const cleanCode = code.toUpperCase().trim();
-    if (!cleanCode || isNaN(price)) return res.json({ success: false, error: 'Eksik bilgi' });
-
-    await db.ref(`global_stocks/${cleanCode}`).set({
-        price: parseInt(price),
-        oldPrice: parseInt(price),
-        trend: 1,
-        lastUpdate: Date.now()
-    });
-    addLog("Borsa Yeni Hisse", `${cleanCode} eklendi: ${price} 💰`);
-    res.json({ success: true });
-});
-
-app.post('/admin-api/stocks/delete', authAdmin, hasPerm('stocks'), async (req, res) => {
-    const { code } = req.body;
-    await db.ref(`global_stocks/${code}`).remove();
-    addLog("Borsa Hisse Silme", `${code} silindi`);
-    res.json({ success: true });
-});
 
 // BOT HAFIZASI (MEMORİ) YÖNETİMİ
 app.post('/admin-api/memory', authAdmin, hasPerm('memory'), async (req, res) => {

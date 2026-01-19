@@ -2562,6 +2562,53 @@
                 if ((await res.json()).success) loadStocks();
             }
 
+            async function renameStock() {
+                const oldCode = document.getElementById('rename-old').value.trim();
+                const newCode = document.getElementById('rename-new').value.trim();
+                const newName = document.getElementById('rename-name').value.trim();
+
+                if (!oldCode || !newCode) return alert("Eski ve yeni kodları girmelisiniz!");
+
+                try {
+                    const res = await fetch('/admin-api/stocks/rename', {
+                        method: 'POST',
+                        headers: { 'Content-Type': 'application/json' },
+                        body: JSON.stringify({ key: sessionKey, oldCode, newCode, newName })
+                    });
+                    const d = await res.json();
+                    if (d.success) {
+                        alert(d.message);
+                        document.getElementById('rename-old').value = "";
+                        document.getElementById('rename-new').value = "";
+                        document.getElementById('rename-name').value = "";
+                        loadStocks();
+                    } else {
+                        alert(d.error || "İşlem sırasında hata!");
+                    }
+                } catch (e) {
+                    alert("Sunucuyla bağlantı kurulamadı!");
+                }
+            }
+
+            async function triggerNews() {
+                try {
+                    const res = await fetch('/admin-api/trigger-news', {
+                        method: 'POST',
+                        headers: { 'Content-Type': 'application/json' },
+                        body: JSON.stringify({ key: sessionKey })
+                    });
+                    const d = await res.json();
+                    if (d.success) {
+                        alert("Haber tetiklendi: " + d.message);
+                        setTimeout(loadStocks, 1000);
+                    } else {
+                        alert(d.error || "Haber tetiklenemedi!");
+                    }
+                } catch (e) {
+                    alert("Hata: " + e.message);
+                }
+            }
+
 
             // MEMORY
             async function loadMemory() {
