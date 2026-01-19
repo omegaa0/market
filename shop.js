@@ -4352,8 +4352,48 @@ async function loadMarketListings(page = 1) {
         if (data.pagination) {
             const { currentPage, totalPages } = data.pagination;
             let pagHtml = '';
-            for (let i = 1; i <= totalPages; i++) {
-                pagHtml += `<button class="sub-tab-btn ${i === currentPage ? 'active' : ''}" onclick="loadMarketListings(${i})" style="min-width:40px;">${i}</button>`;
+
+            const createBtn = (p, isActive = false) =>
+                `<button class="sub-tab-btn ${isActive ? 'active' : ''}" onclick="loadMarketListings(${p})" style="min-width:40px; margin:0 2px;">${p}</button>`;
+
+            const createDots = () =>
+                `<button class="sub-tab-btn" disabled style="min-width:40px; margin:0 2px; opacity:0.5; cursor:default;">...</button>`;
+
+            if (totalPages <= 7) {
+                // Az sayfa varsa hepsini göster
+                for (let i = 1; i <= totalPages; i++) {
+                    pagHtml += createBtn(i, i === currentPage);
+                }
+            } else {
+                // Çok sayfa varsa akıllı gizleme yap (1 ... 4 5 6 ... 20)
+
+                // 1. İlk sayfa her zaman
+                pagHtml += createBtn(1, currentPage === 1);
+
+                // Sol taraf
+                if (currentPage > 4) {
+                    pagHtml += createDots();
+                }
+
+                // Orta kısım (Aktif sayfanın +- 1 veya 2 etrafı)
+                let start = Math.max(2, currentPage - 1);
+                let end = Math.min(totalPages - 1, currentPage + 1);
+
+                // Kenarlara çok yakınsa aralığı genişlet
+                if (currentPage <= 4) { end = 5; } // Başlangıca yakınsa 1,2,3,4,5...
+                if (currentPage >= totalPages - 3) { start = totalPages - 4; } // Sonlara yakınsa ...16,17,18,19,20
+
+                for (let i = start; i <= end; i++) {
+                    pagHtml += createBtn(i, i === currentPage);
+                }
+
+                // Sağ taraf
+                if (currentPage < totalPages - 3) {
+                    pagHtml += createDots();
+                }
+
+                // Son sayfa her zaman
+                pagHtml += createBtn(totalPages, currentPage === totalPages);
             }
             paginationContainer.innerHTML = pagHtml;
         }
