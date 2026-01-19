@@ -4322,6 +4322,12 @@ async function loadMarketListings(page = 1) {
             const product = productData[listing.productCode] || { name: listing.productCode, icon: '📦', unit: 'adet' };
             const isSystem = listing.isSystem;
 
+            // Hatalı/Jenerik ürünleri liseden kaldır (sebze, meyve)
+            // Domates, Biber gibi gerçek ürünler KALSIN.
+            if (listing.productCode === 'sebze' || listing.productCode === 'meyve') {
+                continue;
+            }
+
             html += `
                 <div class="glass-panel" style="padding:20px; border-radius:16px; border:1px solid ${isSystem ? 'var(--primary)' : 'rgba(255,255,255,0.1)'};">
                     <div style="display:flex; justify-content:space-between; align-items:start; margin-bottom:15px;">
@@ -4680,19 +4686,17 @@ async function loadWarehouseInfo() {
                         </div>
                     </div>`;
                 } else {
-                    // Seçilebilir Şehirler (Backend validasyonuna uygun olmalı)
-                    const allowedCities = ['İstanbul', 'Ankara', 'İzmir', 'Antalya', 'Bursa', 'Amasya'];
+                    // Seçilebilir Şehirler (Tüm Emlak Şehirleri)
+                    // Alfabetik sırala
+                    const sortedCities = EMLAK_CITIES.sort((a, b) => a.name.localeCompare(b.name, 'tr'));
 
                     let cityGridHtml = '';
-                    allowedCities.forEach(cityName => {
-                        // EMLAK_CITIES'den veri bulmaya çalış ama yoksa da sorun değil, ismi kullan
-                        const cityData = EMLAK_CITIES.find(c => c.name === cityName) || { name: cityName };
-
+                    sortedCities.forEach(cityData => {
                         cityGridHtml += `
-                            <div class="city-select-card" onclick="selectBaseCityCard('${cityName}', this)" 
-                                 style="background:rgba(255,255,255,0.05); border:1px solid rgba(255,255,255,0.1); border-radius:10px; padding:15px; cursor:pointer; text-align:center; transition:all 0.2s;">
-                                <div style="font-size:1.5rem; margin-bottom:5px;">🏙️</div>
-                                <div style="font-weight:700; font-size:1rem;">${cityData.name}</div>
+                            <div class="city-select-card" onclick="selectBaseCityCard('${cityData.name}', this)" 
+                                 style="background:rgba(255,255,255,0.05); border:1px solid rgba(255,255,255,0.1); border-radius:8px; padding:10px; cursor:pointer; text-align:center; transition:all 0.2s; min-height:80px; display:flex; flex-direction:column; justify-content:center; align-items:center;">
+                                <div style="font-size:1.2rem; margin-bottom:5px;">🏙️</div>
+                                <div style="font-weight:600; font-size:0.85rem;">${cityData.name}</div>
                             </div>
                          `;
                     });
@@ -4704,8 +4708,10 @@ async function loadWarehouseInfo() {
                                 <p style="font-size:0.9rem; color:#ccc;">Lojistik operasyonları başlatmak için bir ana merkez seçmelisin. <br><span style="color:#ff6666; font-weight:bold;">Bu işlem kalıcıdır ve değiştirilemez!</span></p>
                             </div>
                             
-                            <div id="base-city-grid" style="display:grid; grid-template-columns: repeat(auto-fit, minmax(100px, 1fr)); gap:10px; margin-bottom:20px;">
-                                ${cityGridHtml}
+                            <div style="height:300px; overflow-y:auto; border:1px solid rgba(255,255,255,0.1); border-radius:10px; padding:10px; margin-bottom:20px; background:rgba(0,0,0,0.2);">
+                                <div id="base-city-grid" style="display:grid; grid-template-columns: repeat(auto-fill, minmax(90px, 1fr)); gap:8px;">
+                                    ${cityGridHtml}
+                                </div>
                             </div>
                             
                             <input type="hidden" id="selected-base-city-val">

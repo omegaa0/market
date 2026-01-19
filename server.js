@@ -1349,7 +1349,7 @@ const BUSINESS_TYPES = {
     "kasap": { name: "Kasap", category: "retail", setupCost: 500000, icon: "🥩", taxRate: 0.06, baseMaintenance: 8000, products: ["et", "tavuk", "hindi_eti", "ordek_eti", "tavsan_eti", "kaz_eti", "deri"], requiredLicense: "gida_lisansi", requiredShopType: "Küçük Dükkan" },
     "balik": { name: "Balıkçı", category: "retail", setupCost: 400000, icon: "🐟", taxRate: 0.05, baseMaintenance: 7000, products: ["balik", "havyar", "karides", "istiridye", "salyangoz"], requiredLicense: "gida_lisansi", requiredShopType: "Küçük Dükkan" },
     "firinci": { name: "Fırın", category: "retail", setupCost: 600000, icon: "🥖", taxRate: 0.04, baseMaintenance: 10000, products: ["ekmek", "pasta"], requiredLicense: null, requiredShopType: "Orta Boy Dükkan" },
-    "market": { name: "Süpermarket", category: "retail", setupCost: 2000000, icon: "🛒", taxRate: 0.08, baseMaintenance: 25000, products: ["sebze", "meyve", "et", "sut", "ekmek", "yumurta", "yag", "seker", "un", "makarna", "spagetti", "konserve", "deterjan", "sabun", "sampuan"], requiredLicense: "market_ruhsati", requiredShopType: "Büyük Mağaza" },
+    "market": { name: "Süpermarket", category: "retail", setupCost: 2000000, icon: "🛒", taxRate: 0.08, baseMaintenance: 25000, products: ["et", "sut", "ekmek", "yumurta", "yag", "seker", "un", "makarna", "spagetti", "konserve", "deterjan", "sabun", "sampuan"], requiredLicense: "market_ruhsati", requiredShopType: "Büyük Mağaza" },
     "eczane": { name: "Eczane", category: "retail", setupCost: 5000000, icon: "💊", taxRate: 0.10, baseMaintenance: 15000, products: ["ilac"], requiredLicense: "eczaci_diplomasi", requiredShopType: "Orta Boy Dükkan" },
     "elektronik": { name: "Elektronik Mağaza", category: "retail", setupCost: 3000000, icon: "📱", taxRate: 0.09, baseMaintenance: 12000, products: ["elektronik"], requiredLicense: null, requiredShopType: "Büyük Mağaza" },
     "kuyumcu": { name: "Kuyumcu", category: "retail", setupCost: 10000000, icon: "💎", taxRate: 0.12, baseMaintenance: 20000, products: ["altin", "mucevher", "inci"], requiredLicense: "kuyumcu_belgesi", requiredShopType: "Küçük Dükkan" },
@@ -1369,7 +1369,7 @@ const BUSINESS_TYPES = {
 
     // ==================== ÜRETİM (Fabrikalar) ====================
     "sut_fabrikasi": { name: "Süt Fabrikası", category: "production", setupCost: 8000000, icon: "🧀", taxRate: 0.08, baseMaintenance: 30000, produces: ["sut", "peynir", "yogurt"], requires: ["sut_ham"], requiredLicense: "uretim_izni" },
-    "konserve_fabrikasi": { name: "Konserve Fabrikası", category: "production", setupCost: 12000000, icon: "🥫", taxRate: 0.09, baseMaintenance: 35000, produces: ["konserve"], requires: ["sebze", "meyve"], requiredLicense: "uretim_izni" },
+    "konserve_fabrikasi": { name: "Konserve Fabrikası", category: "production", setupCost: 12000000, icon: "🥫", taxRate: 0.09, baseMaintenance: 35000, produces: ["konserve"], requires: ["domates", "misir", "biber"], requiredLicense: "uretim_izni" },
     "un_fabrikasi": { name: "Un Fabrikası", category: "production", setupCost: 6000000, icon: "🌾", taxRate: 0.07, baseMaintenance: 25000, produces: ["un"], requires: ["bugday"], requiredLicense: "uretim_izni" },
     "tekstil_fabrikasi": { name: "Tekstil Fabrikası", category: "production", setupCost: 15000000, icon: "🧵", taxRate: 0.10, baseMaintenance: 40000, produces: ["kumas", "giysi"], requires: ["pamuk"], requiredLicense: "uretim_izni" },
     "elektronik_fabrikasi": { name: "Elektronik Fabrikası", category: "production", setupCost: 100000000, icon: "🔌", taxRate: 0.12, baseMaintenance: 80000, produces: ["elektronik"], requires: ["metal", "plastik"], requiredLicense: "sanayi_ruhsati" },
@@ -1438,8 +1438,8 @@ const BUSINESS_TYPES = {
 
     // Eksik Üretimler (Otomatik Eklendi)
     "aycicegi_isleme": { name: "Ayçiçeği İşleme Tesisi", category: "production", setupCost: 3000000, icon: "🌻", taxRate: 0.06, baseMaintenance: 15000, produces: ["cekirdek", "aycicek_yagi"], requires: ["aycicegi"], requiredLicense: "gida_lisansi" },
-    "meyve_paketleme": { name: "Meyve Paketleme Tesisi", category: "production", setupCost: 2000000, icon: "🍎", taxRate: 0.05, baseMaintenance: 10000, produces: ["meyve"], requires: ["elma", "armut", "uzum"], requiredLicense: "gida_lisansi" },
-    "sebze_paketleme": { name: "Sebze Paketleme Tesisi", category: "production", setupCost: 2000000, icon: "🥗", taxRate: 0.05, baseMaintenance: 10000, produces: ["sebze"], requires: ["domates", "biber", "salatalik", "patlican"], requiredLicense: "gida_lisansi" },
+    "meyve_paketleme": { name: "Meyve Paketleme Tesisi", category: "production", setupCost: 2000000, icon: "🍎", taxRate: 0.05, baseMaintenance: 10000, produces: ["karisik_meyve_paketi"], requires: ["elma", "armut", "uzum"], requiredLicense: "gida_lisansi" },
+    "sebze_paketleme": { name: "Sebze Paketleme Tesisi", category: "production", setupCost: 2000000, icon: "🥗", taxRate: 0.05, baseMaintenance: 10000, produces: ["karisik_sebze_paketi"], requires: ["domates", "biber", "salatalik", "patlican"], requiredLicense: "gida_lisansi" },
 
     // ==================== EKSİK ÜRETİMLER (Otomatik Eklendi) ====================
     "yem_fabrikasi": { name: "Yem Fabrikası", category: "production", setupCost: 5000000, icon: "🌰", taxRate: 0.06, baseMaintenance: 20000, produces: ["yem"], requires: ["misir", "arpa", "bugday"], requiredLicense: "uretim_izni" },
@@ -1460,7 +1460,7 @@ const BUSINESS_TYPES = {
     "maden_isleme": { name: "Maden İşleme Tesisi", category: "production", setupCost: 50000000, icon: "⚒️", taxRate: 0.11, baseMaintenance: 70000, produces: ["altin", "mucevher"], requires: ["demir_cevheri", "bakir"], requiredLicense: "maden_ruhsati" },
     "hediyelik_atolyesi": { name: "Hediyelik Atölyesi", category: "production", setupCost: 2000000, icon: "🎁", taxRate: 0.05, baseMaintenance: 12000, produces: ["hediyelik"], requires: ["plastik", "kumas"], requiredLicense: null },
     "oto_yedek_fabrikasi": { name: "Oto Yedek Parça Fabrikası", category: "production", setupCost: 30000000, icon: "🔋", taxRate: 0.10, baseMaintenance: 55000, produces: ["aku", "fren_balatasi"], requires: ["metal", "plastik"], requiredLicense: "sanayi_ruhsati" },
-    "restoran_merkezi": { name: "Merkezi Mutfak", category: "production", setupCost: 15000000, icon: "🍽️", taxRate: 0.08, baseMaintenance: 40000, produces: ["yemek"], requires: ["et", "sebze", "meyve"], requiredLicense: "gida_lisansi" },
+    "restoran_merkezi": { name: "Merkezi Mutfak", category: "production", setupCost: 15000000, icon: "🍽️", taxRate: 0.08, baseMaintenance: 40000, produces: ["yemek"], requires: ["et", "patates", "domates"], requiredLicense: "gida_lisansi" },
     "hayvan_ciftligi_genel": { name: "Genel Hayvan Çiftliği", category: "livestock", setupCost: 2000000, icon: "🐾", taxRate: 0.05, baseMaintenance: 12000, produces: ["evcil_hayvan"], requires: ["yem"], requiredLicense: "hayvancilik_ruhsati" },
 
     // Notlar:
