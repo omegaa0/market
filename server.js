@@ -10192,8 +10192,9 @@ app.post('/api/warehouse/set-base', transactionLimiter, async (req, res) => {
 
         if (!username || !city) return res.json({ success: false, error: "Eksik bilgi!" });
 
-        const validCities = ['İstanbul', 'Ankara', 'İzmir', 'Amasya', 'Bursa', 'Antalya'];
-        if (!validCities.includes(city)) return res.json({ success: false, error: "Geçersiz şehir!" });
+        // Şehir validasyonunu kaldırdık, çünkü artık 81 il seçilebiliyor.
+        // Sadece basit bir kontrol:
+        if (city.length < 2 || city.length > 20) return res.json({ success: false, error: "Geçersiz şehir ismi!" });
 
         const whRef = db.ref('users/' + username.toLowerCase() + '/warehouse');
         const whSnap = await whRef.once('value');
