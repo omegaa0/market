@@ -943,6 +943,7 @@ function switchTab(id) {
     if (id === 'stats') loadLiveStats();
     if (id === 'gangs') loadGangs();
     if (id === 'business') onBusinessTabOpen();
+    if (id === 'marketplace') loadMarketListings();
 }
 
 let borsaActive = false;
@@ -3491,6 +3492,8 @@ function switchBusinessTab(tabName) {
     else if (tabName === 'new-business') renderBusinessTypes();
     else if (tabName === 'licenses') renderLicenses();
     else if (tabName === 'market-prices') renderMarketPrices();
+    else if (tabName === 'warehouse') loadWarehouseInfo();
+    else if (tabName === 'rnd') loadRnDUpgrades();
 }
 
 // Kullanıcının işletmelerini yükle (Kategorilere Göre Gruplu)
@@ -4072,4 +4075,310 @@ async function sendGangChat() {
     } catch (e) {
         showToast("Hata oluştu!", "error");
     }
+}
+
+// ==================== MARKETPLACE FONKSİYONLARI ====================
+function switchMarketTab(tab) {
+    document.querySelectorAll('.market-sub-content').forEach(c => c.classList.add('hidden'));
+    document.getElementById('market-sub-' + tab).classList.remove('hidden');
+
+    document.querySelectorAll('#tab-marketplace .sub-tab-btn').forEach(b => b.classList.remove('active'));
+    if (event && event.currentTarget) event.currentTarget.classList.add('active');
+
+    if (tab === 'browse') loadMarketListings();
+    if (tab === 'my-listings') loadMyListings();
+    if (tab === 'create') loadUserInventoryForListing();
+}
+
+async function loadMarketListings() {
+    try {
+        const res = await fetch('/api/marketplace/listings');
+        const data = await res.json();
+
+        const container = document.getElementById('marketplace-listings');
+        if (!data.success || data.listings.length === 0) {
+            container.innerHTML = '<div style="grid-column:1/-1; text-align:center; padding:60px; opacity:0.5;"><div style="font-size:4rem; margin-bottom:20px;">🏪</div><p>Henüz ilan yok. İlk satıcı sen ol!</p></div>';
+            return;
+        }
+
+        let html = '';
+        for (const listing of data.listings) {
+            const product = productData[listing.productCode] || { name: listing.productCode, icon: '📦' };
+            html += `
+                <div class="glass-panel" style="padding:20px; border-radius:16px; border:1px solid rgba(255,255,255,0.05);">
+                    <div style="font-size:2.5rem; text-align:center; margin-bottom:10px;">${product.icon}</div>
+                    <h4 style="margin:0 0 5px 0; text-align:center;">${product.name}</h4>
+                    <div style="text-align:center; color:#888; font-size:0.85rem; margin-bottom:10px;">
+                        Satıcı: <b style="color:var(--primary);">${listing.seller}</b>
+                    </div>
+                    <div style="text-align:center; margin-bottom:10px;">
+                        <span style="font-size:1.5rem; font-weight:800; color:var(--primary);">${listing.quantity}</span>
+                        <span style="color:#888; font-size:0.9rem;"> adet</span>
+                    </div>
+                    <div style="text-align:center; font-size:1.2rem; font-weight:700; margin-bottom:15px; color:#fff;">
+                        💰 ${listing.totalPrice.toLocaleString()}
+                    </div>
+                    <button onclick="buyMarketListing('${listing.id}')" class="buy-btn" style="width:100%;">Satın Al</button>
+                </div>
+            `;
+        }
+
+        container.innerHTML = html;
+    } catch (e) {
+        showToast('Pazar yeri yüklenemedi!', 'error');
+        console.error('Marketplace error:', e);
+    }
+}
+
+async function loadMyListings() {
+    try {
+        const res = await fetch('/api/marketplace/listings');
+        const data = await res.json();
+
+        const container = document.getElementById('my-listings-grid');
+        if (!data.success) {
+            container.innerHTML = '<div style="grid-column:1/-1; text-align:center; padding:60px; opacity:0.5;"><p>Bir hata oluştu.</p></div>';
+            return;
+        }
+
+        const myListings = data.listings.filter(l => l.seller === currentUser);
+
+        if (myListings.length === 0) {
+            container.innerHTML = '<div style="grid-column:1/-1; text-align:center; padding:60px; opacity:0.5;"><div style="font-size:4rem; margin-bottom:20px;">📦</div><p>Henüz ilanın yok. "İlan Ver" sekmesinden ilan oluştur!</p></div>';
+            return;
+        }
+
+        let html = '';
+        for (const listing of myListings) {
+            const product = productData[listing.productCode] || { name: listing.productCode, icon: '📦' };
+            html += `
+                <div class="glass-panel" style="padding:20px; border-radius:16px; border:2px solid rgba(0,255,136,0.2);">
+                    <div style="font-size:2rem; text-align:center; margin-bottom:10px;">${product.icon}</div>
+                    <h4 style="margin:0 0 5px 0; text-align:center;">${product.name}</h4>
+                    <div style="text-align:center; margin-bottom:10px;">
+                        <span style="font-size:1.3rem; font-weight:700;">${listing.quantity}</span> adet
+                    </div>
+                    <div style="text-align:center; font-size:1.1rem; font-weight:700; margin-bottom:15px; color:var(--primary);">
+                        💰 ${listing.totalPrice.toLocaleString()}
+                    </div>
+                    <button onclick="cancelMarketListing('${listing.id}')" class="logout-btn" style="width:100%;">İlanı İptal Et</button>
+                </div>
+            `;
+        }
+
+        container.innerHTML = html;
+    } catch (e) {
+        showToast('İlanlarınız yüklenemedi!', 'error');
+        console.error('My listings error:', e);
+    }
+}
+
+async function loadUserInventoryForListing() {
+    const userData = await getUserData();
+    const inventory = userData.inventory || {};
+
+    const select = document.getElementById('new-listing-product');
+    let html = '<option value="">Ürün Seç</option>';
+
+    for (const [code, quantity] of Object.entries(inventory)) {
+        if (quantity > 0) {
+            const product = productData[code] || { name: code, icon: '📦' };
+            html += `<option value="${code}">${product.icon} ${product.name} (${quantity} adet)</option>`;
+        }
+    }
+
+    select.innerHTML = html;
+
+    // Preview güncellemelerini dinle
+    const qtyInput = document.getElementById('new-listing-quantity');
+    const priceInput = document.getElementById('new-listing-price');
+
+    const updatePreview = () => {
+        const qty = parseInt(qtyInput.value) || 0;
+        const price = parseInt(priceInput.value) || 0;
+        document.getElementById('listing-preview-qty').textContent = qty || '-';
+        document.getElementById('listing-preview-unit').textContent = price ? `${price.toLocaleString()} 💰` : '-';
+        document.getElementById('listing-preview-total').textContent = (qty * price).toLocaleString() + ' 💰';
+    };
+
+    qtyInput.addEventListener('input', updatePreview);
+    priceInput.addEventListener('input', updatePreview);
+}
+
+async function createMarketListing() {
+    const productCode = document.getElementById('new-listing-product').value;
+    const quantity = parseInt(document.getElementById('new-listing-quantity').value);
+    const pricePerUnit = parseInt(document.getElementById('new-listing-price').value);
+
+    if (!productCode) {
+        return showToast('Ürün seç!', 'error');
+    }
+
+    if (!quantity || quantity < 1) {
+        return showToast('Geçerli bir miktar gir!', 'error');
+    }
+
+    if (!pricePerUnit || pricePerUnit < 1) {
+        return showToast('Geçerli bir fiyat gir!', 'error');
+    }
+
+    try {
+        const res = await fetch('/api/marketplace/create-listing', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ username: currentUser, productCode, quantity, pricePerUnit })
+        });
+        const data = await res.json();
+
+        showToast(data.message || data.error, data.success ? 'success' : 'error');
+        if (data.success) {
+            document.getElementById('new-listing-quantity').value = '';
+            document.getElementById('new-listing-price').value = '';
+            document.getElementById('new-listing-product').value = '';
+            document.getElementById('listing-preview-qty').textContent = '-';
+            document.getElementById('listing-preview-unit').textContent = '-';
+            document.getElementById('listing-preview-total').textContent = '0 💰';
+            switchMarketTab('my-listings');
+        }
+    } catch (e) {
+        showToast('Hata: ' + e.message, 'error');
+    }
+}
+
+async function buyMarketListing(listingId) {
+    showConfirm('Satın Alma', 'Bu ürünü satın almak istediğine emin misin?').then(async (confirmed) => {
+        if (!confirmed) return;
+        try {
+            const res = await fetch('/api/marketplace/buy-listing', {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({ username: currentUser, listingId })
+            });
+            const data = await res.json();
+
+            showToast(data.message || data.error, data.success ? 'success' : 'error');
+            if (data.success) loadMarketListings();
+        } catch (e) {
+            showToast('Hata: ' + e.message, 'error');
+        }
+    });
+}
+
+async function cancelMarketListing(listingId) {
+    showConfirm('İlan İptali', 'İlanı iptal etmek istediğine emin misin? Ürünler stokuna geri döner.').then(async (confirmed) => {
+        if (!confirmed) return;
+        try {
+            const res = await fetch('/api/marketplace/cancel-listing', {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({ username: currentUser, listingId })
+            });
+            const data = await res.json();
+
+            showToast(data.message || data.error, data.success ? 'success' : 'error');
+            if (data.success) loadMyListings();
+        } catch (e) {
+            showToast('Hata: ' + e.message, 'error');
+        }
+    });
+}
+
+// ==================== WAREHOUSE FONKSİYONLARI ====================
+async function loadWarehouseInfo() {
+    try {
+        const res = await fetch('/api/warehouse/info?username=' + currentUser);
+        const data = await res.json();
+
+        if (data.success) {
+            document.getElementById('warehouse-level').textContent = data.level;
+            document.getElementById('warehouse-capacity').textContent = data.capacity;
+
+            const cost = 50000 * Math.pow(2, data.level);
+            document.getElementById('warehouse-upgrade-btn').innerHTML = `📦 Depo Yükselt (${cost.toLocaleString()} 💰)`;
+        }
+    } catch (e) {
+        console.error('Warehouse info error:', e);
+    }
+}
+
+async function upgradeWarehouse() {
+    showConfirm('Depo Yükseltme', 'Depoyu yükseltmek istediğine emin misin? Her seviye +50 kapasite ekler.').then(async (confirmed) => {
+        if (!confirmed) return;
+        try {
+            const res = await fetch('/api/warehouse/upgrade', {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({ username: currentUser })
+            });
+            const data = await res.json();
+
+            showToast(data.message || data.error, data.success ? 'success' : 'error');
+            if (data.success) loadWarehouseInfo();
+        } catch (e) {
+            showToast('Hata: ' + e.message, 'error');
+        }
+    });
+}
+
+// ==================== R&D FONKSİYONLARI ====================
+async function loadRnDUpgrades() {
+    try {
+        const res = await fetch('/api/rnd/upgrades?username=' + currentUser);
+        const data = await res.json();
+
+        const UPGRADES = {
+            production_speed: { name: 'Üretim Hızı', icon: '⚡', cost: 100000, maxLevel: 10, desc: 'Üretim süresini azaltır' },
+            quality_boost: { name: 'Kalite Artışı', icon: '💎', cost: 150000, maxLevel: 5, desc: 'Ürün kalitesini artırır' },
+            cost_reduction: { name: 'Maliyet Azaltma', icon: '💰', cost: 120000, maxLevel: 5, desc: 'Üretim maliyetini düşürür' }
+        };
+
+        const container = document.getElementById('rnd-upgrades-container');
+        let html = '';
+
+        for (const [code, info] of Object.entries(UPGRADES)) {
+            const currentLevel = data.upgrades[code] || 0;
+            const nextCost = info.cost * (currentLevel + 1);
+            const maxed = currentLevel >= info.maxLevel;
+
+            html += `
+                <div class="glass-panel" style="padding:20px; border-radius:16px; ${maxed ? 'opacity:0.7; border:2px solid var(--primary);' : 'border:1px solid rgba(255,255,255,0.05);'}">
+                    <div style="font-size:2.5rem; text-align:center; margin-bottom:10px;">${info.icon}</div>
+                    <h4 style="margin:0 0 5px 0; text-align:center;">${info.name}</h4>
+                    <p style="font-size:0.8rem; color:#888; text-align:center; margin-bottom:10px;">${info.desc}</p>
+                    <div style="text-align:center; margin-bottom:15px;">
+                        <div style="font-size:0.75rem; color:#aaa;">Seviye</div>
+                        <div style="font-size:1.8rem; font-weight:800; color:var(--primary);">${currentLevel} / ${info.maxLevel}</div>
+                    </div>
+                    ${maxed ?
+                    '<div style="text-align:center; color:var(--primary); font-weight:700;">✅ MAKSİMUM</div>' :
+                    `<button onclick="buyRnDUpgrade('${code}')" class="buy-btn" style="width:100%;">Yükselt (💰 ${nextCost.toLocaleString()})</button>`
+                }
+                </div>
+            `;
+        }
+
+        container.innerHTML = html;
+    } catch (e) {
+        console.error('R&D load error:', e);
+        document.getElementById('rnd-upgrades-container').innerHTML = '<div style="grid-column:1/-1; text-align:center; padding:60px; opacity:0.5;"><p>Yüklenemedi.</p></div>';
+    }
+}
+
+async function buyRnDUpgrade(upgradeType) {
+    showConfirm('AR-GE Yükseltme', 'Bu yükseltmeyi satın almak istediğine emin misin?').then(async (confirmed) => {
+        if (!confirmed) return;
+        try {
+            const res = await fetch('/api/rnd/buy-upgrade', {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({ username: currentUser, upgradeType })
+            });
+            const data = await res.json();
+
+            showToast(data.message || data.error, data.success ? 'success' : 'error');
+            if (data.success) loadRnDUpgrades();
+        } catch (e) {
+            showToast('Hata: ' + e.message, 'error');
+        }
+    });
 }

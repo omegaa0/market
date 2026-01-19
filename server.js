@@ -11468,6 +11468,256 @@ async function collectBusinessTaxes() {
     }
 }
 
+// ==================== MARKETPLACE (PAZAR YERİ) API ====================
+// Pazar yerindeki tüm ilanları getir
+app.get('/api/marketplace/listings', async (req, res) => {
+    try {
+        const snap = await db.ref('marketplace').once('value');
+        const allListings = snap.val() || {};
+
+        // Aktif ilanları filtrele
+        const activeListings = [];
+        for (const [id, listing] of Object.entries(allListings)) {
+            if (listing.status === 'active') {
+                activeListings.push({ id, ...listing });
+            }
+        }
+
+        res.json({ success: true, listings: activeListings });
+    } catch (e) {
+        res.status(500).json({ success: false, error: e.message });
+    }
+});
+
+// Yeni ilan oluştur
+app.post('/api/marketplace/create-listing', async (req, res) => {
+    try {
+        const { username, productCode, quantity, pricePerUnit } = req.body;
+
+        // Validasyon
+        if (!username || !productCode || !quantity || !pricePerUnit) {
+            return res.json({ success: false, error: 'Eksik bilgi!' });
+        }
+
+        if (quantity < 1 || pricePerUnit < 1) {
+            return res.json({ success: false, error: 'Geçersiz miktar veya fiyat!' });
+        }
+
+        // Kullanıcının ürünü var mı kontrol et
+        const userSnap = await db.ref('users/' + username).once('value');
+        const user = userSnap.val();
+        if (!user) return res.json({ success: false, error: 'Kullanıcı bulunamadı!' });
+
+        const inventory = user.inventory || {};
+        const currentStock = inventory[productCode] || 0;
+
+        if (currentStock < quantity) {
+            return res.json({ success: false, error: 'Yeterli stok yok!' });
+        }
+
+        // Stoktan düş
+        await db.ref('users/' + username + '/inventory/' + productCode).set(currentStock - quantity);
+
+        // İlan oluştur
+        const listingId = Date.now().toString() + '_' + username;
+        await db.ref('marketplace/' + listingId).set({
+            seller: username,
+            productCode,
+            quantity,
+            pricePerUnit,
+            totalPrice: quantity * pricePerUnit,
+            status: 'active',
+            createdAt: Date.now()
+        });
+
+        res.json({ success: true, message: 'İlan oluşturuldu!', listingId });
+    } catch (e) {
+        res.status(500).json({ success: false, error: e.message });
+    }
+});
+
+// İlan satın al
+app.post('/api/marketplace/buy-listing', async (req, res) => {
+    try {
+        const { username, listingId } = req.body;
+
+        const listingSnap = await db.ref('marketplace/' + listingId).once('value');
+        const listing = listingSnap.val();
+
+        if (!listing || listing.status !== 'active') {
+            return res.json({ success: false, error: 'İlan bulunamadı veya aktif değil!' });
+        }
+
+        // Kendi ilanını satın alamaz
+        if (listing.seller === username) {
+            return res.json({ success: false, error: 'Kendi ilanını satın alamazsın!' });
+        }
+
+        // Alıcının bakiyesini kontrol et
+        const buyerSnap = await db.ref('users/' + username).once('value');
+        const buyer = buyerSnap.val();
+        if (!buyer) return res.json({ success: false, error: 'Kullanıcı bulunamadı!' });
+
+        if ((buyer.balance || 0) < listing.totalPrice) {
+            return res.json({ success: false, error: 'Bakiye yetersiz!' });
+        }
+
+        // Satıcının bilgilerini al
+        const sellerSnap = await db.ref('users/' + listing.seller).once('value');
+        const seller = sellerSnap.val();
+        if (!seller) {
+            return res.json({ success: false, error: 'Satıcı bulunamadı!' });
+        }
+        // İşlem yap
+        await db.ref('users/' + username).update({
+            balance: (buyer.balance || 0) - listing.totalPrice,
+            ['inventory/' + listing.productCode]: ((buyer.inventory || {})[listing.productCode] || 0) + listing.quantity
+        });
+
+        await db.ref('users/' + listing.seller).update({
+            balance: (seller.balance || 0) + listing.totalPrice
+        });
+
+        // İlanı kaldır
+        await db.ref('marketplace/' + listingId).update({ status: 'sold', soldTo: username, soldAt: Date.now() });
+
+        res.json({ success: true, message: `${listing.quantity} adet ürün satın alındı!` });
+    } catch (e) {
+        res.status(500).json({ success: false, error: e.message });
+    }
+});
+
+// İlanı iptal et
+app.post('/api/marketplace/cancel-listing', async (req, res) => {
+    try {
+        const { username, listingId } = req.body;
+
+        const listingSnap = await db.ref('marketplace/' + listingId).once('value');
+        const listing = listingSnap.val();
+
+        if (!listing) return res.json({ success: false, error: 'İlan bulunamadı!' });
+        if (listing.seller !== username) return res.json({ success: false, error: 'Bu ilanı iptal etme yetkin yok!' });
+        if (listing.status !== 'active') return res.json({ success: false, error: 'İlan zaten aktif değil!' });
+
+        // Ürünü geri ver
+        const userSnap = await db.ref('users/' + username).once('value');
+        const user = userSnap.val();
+        const currentStock = ((user.inventory || {})[listing.productCode] || 0);
+
+        await db.ref('users/' + username + '/inventory/' + listing.productCode).set(currentStock + listing.quantity);
+
+        // İlanı kaldır
+        await db.ref('marketplace/' + listingId).update({ status: 'cancelled', cancelledAt: Date.now() });
+
+        res.json({ success: true, message: 'İlan iptal edildi, ürünler geri verildi.' });
+    } catch (e) {
+        res.status(500).json({ success: false, error: e.message });
+    }
+});
+
+// ==================== WAREHOUSE (DEPO) API ====================
+app.get('/api/warehouse/info', async (req, res) => {
+    try {
+        const { username } = req.query;
+        const userSnap = await db.ref('users/' + username).once('value');
+        const user = userSnap.val();
+        if (!user) return res.json({ success: false, error: 'Kullanıcı bulunamadı!' });
+
+        const warehouseLevel = user.warehouseLevel || 0;
+        const capacity = 100 + (warehouseLevel * 50); // Her seviye +50 kapasite
+
+        res.json({ success: true, level: warehouseLevel, capacity });
+    } catch (e) {
+        res.status(500).json({ success: false, error: e.message });
+    }
+});
+
+app.post('/api/warehouse/upgrade', async (req, res) => {
+    try {
+        const { username } = req.body;
+
+        const userSnap = await db.ref('users/' + username).once('value');
+        const user = userSnap.val();
+        if (!user) return res.json({ success: false, error: 'Kullanıcı bulunamadı!' });
+
+        const currentLevel = user.warehouseLevel || 0;
+        const upgradeCost = 50000 * Math.pow(2, currentLevel); // Üstel maliyet artışı
+
+        if ((user.balance || 0) < upgradeCost) {
+            return res.json({ success: false, error: 'Bakiye yetersiz!' });
+        }
+
+        await db.ref('users/' + username).update({
+            balance: (user.balance || 0) - upgradeCost,
+            warehouseLevel: currentLevel + 1
+        });
+
+        res.json({ success: true, message: `Depo seviye ${currentLevel + 1}'e yükseltildi!`, newLevel: currentLevel + 1 });
+    } catch (e) {
+        res.status(500).json({ success: false, error: e.message });
+    }
+});
+
+// ==================== R&D (AR-GE) API ====================
+app.get('/api/rnd/upgrades', async (req, res) => {
+    try {
+        const { username } = req.query;
+        const userSnap = await db.ref('users/' + username).once('value');
+        const user = userSnap.val();
+        if (!user) return res.json({ success: false, error: 'Kullanıcı bulunamadı!' });
+
+        const rndUpgrades = user.rndUpgrades || {};
+
+        res.json({ success: true, upgrades: rndUpgrades });
+    } catch (e) {
+        res.status(500).json({ success: false, error: e.message });
+    }
+});
+
+app.post('/api/rnd/buy-upgrade', async (req, res) => {
+    try {
+        const { username, upgradeType } = req.body;
+
+        const UPGRADES = {
+            production_speed: { name: 'Üretim Hızı', cost: 100000, maxLevel: 10 },
+            quality_boost: { name: 'Kalite Artışı', cost: 150000, maxLevel: 5 },
+            cost_reduction: { name: 'Maliyet Azaltma', cost: 120000, maxLevel: 5 }
+        };
+
+        if (!UPGRADES[upgradeType]) {
+            return res.json({ success: false, error: 'Geçersiz yükseltme tipi!' });
+        }
+
+        const userSnap = await db.ref('users/' + username).once('value');
+        const user = userSnap.val();
+        if (!user) return res.json({ success: false, error: 'Kullanıcı bulunamadı!' });
+
+        const rndUpgrades = user.rndUpgrades || {};
+        const currentLevel = rndUpgrades[upgradeType] || 0;
+        const upgradeInfo = UPGRADES[upgradeType];
+
+        if (currentLevel >= upgradeInfo.maxLevel) {
+            return res.json({ success: false, error: 'Maksimum seviyeye ulaşıldı!' });
+        }
+
+        const cost = upgradeInfo.cost * (currentLevel + 1);
+
+        if ((user.balance || 0) < cost) {
+            return res.json({ success: false, error: 'Bakiye yetersiz!' });
+        }
+
+        await db.ref('users/' + username).update({
+            balance: (user.balance || 0) - cost,
+            ['rndUpgrades/' + upgradeType]: currentLevel + 1
+        });
+
+        res.json({ success: true, message: `${upgradeInfo.name} seviye ${currentLevel + 1}'e yükseltildi!` });
+    } catch (e) {
+        res.status(500).json({ success: false, error: e.message });
+    }
+});
+
+
 // --- SERVER START ---
 const PORT = process.env.PORT || 3000;
 app.listen(PORT, () => {
