@@ -1319,14 +1319,14 @@ function applyDailyLimit(code, newPrice, dailyStartPrice) {
 
 // --- MERKEZI DEPO SİSTEMİ ---
 const WAREHOUSE_LEVELS = {
-    1: { name: "Temel Depo", capacity: 1000, cost: 0 },
-    2: { name: "Küçük Depo", capacity: 2500, cost: 1000000 },
-    3: { name: "Orta Depo", capacity: 5000, cost: 3000000 },
-    4: { name: "Büyük Depo", capacity: 10000, cost: 7000000 },
-    5: { name: "Dev Depo", capacity: 20000, cost: 15000000 },
-    6: { name: "Mega Depo", capacity: 40000, cost: 30000000 },
-    7: { name: "Ultra Depo", capacity: 80000, cost: 60000000 },
-    8: { name: "Süper Depo", capacity: 150000, cost: 120000000 }
+    1: { name: "Temel Depo", capacity: 5000, cost: 0 },
+    2: { name: "Küçük Depo", capacity: 15000, cost: 1000000 },
+    3: { name: "Orta Depo", capacity: 35000, cost: 3000000 },
+    4: { name: "Büyük Depo", capacity: 75000, cost: 7000000 },
+    5: { name: "Dev Depo", capacity: 150000, cost: 15000000 },
+    6: { name: "Mega Depo", capacity: 300000, cost: 30000000 },
+    7: { name: "Ultra Depo", capacity: 600000, cost: 60000000 },
+    8: { name: "Süper Depo", capacity: 1200000, cost: 120000000 }
 };
 
 // --- PERAKENDE SATIŞ TEZGAHI SİSTEMİ ---

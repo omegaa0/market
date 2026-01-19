@@ -4342,7 +4342,14 @@ async function loadMarketListings(page = 1) {
                             <div style="font-size:1.1rem; font-weight:800; color:var(--primary);">💰 ${listing.pricePerUnit.toLocaleString()}</div>
                         </div>
                     </div>
-                    <button onclick="buyMarketListing('${listing.id}', '${listing.city}', ${listing.pricePerUnit}, ${listing.quantity}, '${product.name}', '${product.unit || 'adet'}')" class="buy-btn" style="width:100%;">Satın Al</button>
+                    </div>
+                    
+                    <div style="display:flex; gap:10px; margin-bottom:10px;">
+                        <input type="number" id="buy-qty-${listing.id}" placeholder="Miktar" value="1" min="1" max="${listing.quantity}" 
+                            class="inp" style="margin:0; flex:1; text-align:center;">
+                    </div>
+
+                    <button onclick="const q = document.getElementById('buy-qty-${listing.id}').value; buyMarketListing('${listing.id}', '${listing.city}', ${listing.pricePerUnit}, q, '${product.name}', '${product.unit || 'adet'}')" class="buy-btn" style="width:100%;">Satın Al</button>
                 </div>
             `;
         }
@@ -4648,21 +4655,85 @@ async function loadWarehouseInfo() {
         const data = await res.json();
 
         if (data.success) {
-            const level = data.level || 0;
+            const level = data.level || 1;
             const capacity = data.capacity || 5000;
-            document.getElementById('warehouse-level').textContent = level;
-            document.getElementById('warehouse-capacity').textContent = capacity;
+            const currentUsage = data.currentUsage || 0;
+            const baseCity = data.baseCity;
+            const nextCost = data.nextLevelCost || 0;
 
-            const cost = 50000 * (level + 1);
-            document.getElementById('warehouse-upgrade-btn').innerHTML = `📦 Depo Yükselt (${cost.toLocaleString()} 💰)`;
+            const lvlEl = document.getElementById('warehouse-level');
+            const capEl = document.getElementById('warehouse-capacity');
+            const baseEl = document.getElementById('warehouse-base-container');
+            const upgradeBtn = document.getElementById('warehouse-upgrade-btn');
+
+            if (lvlEl) lvlEl.textContent = level;
+            if (capEl) capEl.textContent = `${currentUsage.toLocaleString()} / ${capacity.toLocaleString()}`;
+
+            // Ana Üs (Base City) Durumu
+            if (baseEl) {
+                if (baseCity) {
+                    baseEl.innerHTML = `<div style="padding:10px; background:rgba(0,255,0,0.1); border-radius:8px; border:1px solid rgba(0,255,0,0.2);">
+                        📍 Ana Lojistik Üssü: <strong>${baseCity}</strong>
+                        <div style="font-size:0.8rem; color:#aaa; margin-top:5px;">Kargo ücretleri bu şehre göre hesaplanır.</div>
+                    </div>`;
+                } else {
+                    baseEl.innerHTML = `
+                        <div style="padding:15px; background:rgba(255,200,0,0.1); border-radius:8px; border:1px solid rgba(255,200,0,0.2);">
+                            ⚠️ Henüz bir ANA ÜS seçmedin!
+                            <p style="font-size:0.85rem; color:#ccc; margin-bottom:10px;">Pazar yerinden alışveriş yapmak ve kargo hesaplamaları için bir merkez belirlemelisin. (Dikkat: Sadece 1 kez seçilebilir!)</p>
+                            <div style="display:flex; gap:10px;">
+                                <select id="base-city-select" class="inp" style="margin:0;">
+                                    <option value="İstanbul">İstanbul</option>
+                                    <option value="Ankara">Ankara</option>
+                                    <option value="İzmir">İzmir</option>
+                                    <option value="Antalya">Antalya</option>
+                                    <option value="Bursa">Bursa</option>
+                                    <option value="Amasya">Amasya</option>
+                                </select>
+                                <button class="btn btn-primary" onclick="setWarehouseBase()">SEÇ VE KAYDET</button>
+                            </div>
+                        </div>
+                    `;
+                }
+            }
+
+            if (upgradeBtn) {
+                if (nextCost > 0) {
+                    upgradeBtn.innerHTML = `📦 Depo Yükselt (${nextCost.toLocaleString()} 💰)`;
+                    upgradeBtn.onclick = () => upgradeWarehouse(nextCost);
+                } else {
+                    upgradeBtn.innerHTML = `📦 Maksimum Seviye`;
+                    upgradeBtn.disabled = true;
+                    upgradeBtn.style.opacity = 0.5;
+                }
+            }
         }
     } catch (e) {
         console.error('Warehouse info error:', e);
     }
 }
 
-async function upgradeWarehouse() {
-    showConfirm('Depo Yükseltme', 'Depoyu yükseltmek istediğine emin misin? Her seviye +500 kapasite ekler.').then(async (confirmed) => {
+async function setWarehouseBase() {
+    const city = document.getElementById('base-city-select').value;
+    showConfirm('Ana Üs Seçimi', `${city} şehrini ana üssün olarak belirlemek istiyor musun? Bu işlem geri alınamaz!`).then(async (c) => {
+        if (!c) return;
+        try {
+            const res = await fetch('/api/warehouse/set-base', {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({ username: currentUser, city })
+            });
+            const d = await res.json();
+            showToast(d.message || d.error, d.success ? "success" : "error");
+            if (d.success) loadWarehouseInfo();
+        } catch (e) {
+            showToast("Hata oluştu!", "error");
+        }
+    });
+}
+
+async function upgradeWarehouse(cost) {
+    showConfirm('Depo Yükseltme', `Depoyu yükseltmek için ${cost?.toLocaleString()} 💰 ödemeyi onaylıyor musun?`).then(async (confirmed) => {
         if (!confirmed) return;
         try {
             const res = await fetch('/api/warehouse/upgrade', {
@@ -4673,7 +4744,10 @@ async function upgradeWarehouse() {
             const data = await res.json();
 
             showToast(data.message || data.error, data.success ? 'success' : 'error');
-            if (data.success) loadWarehouseInfo();
+            if (data.success) {
+                loadWarehouseInfo();
+                loadProfile();
+            }
         } catch (e) {
             showToast('Hata: ' + e.message, 'error');
         }
