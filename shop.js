@@ -4342,7 +4342,6 @@ async function loadMarketListings(page = 1) {
                             <div style="font-size:1.1rem; font-weight:800; color:var(--primary);">💰 ${listing.pricePerUnit.toLocaleString()}</div>
                         </div>
                     </div>
-                    </div>
                     
                     <div style="display:flex; gap:10px; margin-bottom:10px;">
                         <input type="number" id="buy-qty-${listing.id}" placeholder="Miktar" value="1" min="1" max="${listing.quantity}" 

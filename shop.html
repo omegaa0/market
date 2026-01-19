@@ -505,367 +505,365 @@
                                     style="font-size:2rem; font-weight:700; color:#fff; margin-top:5px;">100</div>
                             </div>
                         </div>
-                        <button onclick="upgradeWarehouse()" id="warehouse-upgrade-btn" class="primary-btn"
-                            style="width:100%; font-size:1.1rem; padding:15px;">
-                            📦 Depo Yükselt (50.000 💰)
+                    </div>
+                    <div id="warehouse-base-container" style="margin-bottom:20px;"></div>
+                    <button onclick="upgradeWarehouse()" id="warehouse-upgrade-btn" class="primary-btn"
+                        style="width:100%; font-size:1.1rem; padding:15px;">
+                        📦 Depo Yükselt (50.000 💰)
+                    </button>
+                </div>
+            </div>
+
+            <!-- Lisanslar -->
+            <div id="business-sub-licenses" class="business-sub-content hidden">
+                <div id="licenses-grid"
+                    style="display:grid; grid-template-columns: repeat(auto-fill, minmax(250px, 1fr)); gap:15px;">
+                    <!-- JS fills -->
+                </div>
+            </div>
+
+            <!-- AR-GE -->
+            <div id="business-sub-rnd" class="business-sub-content hidden">
+                <div class="glass-panel" style="padding:20px; margin-bottom:20px;">
+                    <h3 style="margin:0 0 10px 0;">🔬 Ürün Araştırma ve Geliştirme</h3>
+                    <p style="color:var(--text-dim); font-size:0.85rem; margin-bottom:20px;">
+                        Deponuzdaki hammaddelerin ve ürettiğiniz ürünlerin kalitesini artırın. Daha yüksek kalite,
+                        pazar yerinde daha yüksek fiyat demektir!
+                    </p>
+
+                    <div id="rnd-upgrades-container"
+                        style="display:grid; grid-template-columns: repeat(auto-fill, minmax(280px, 1fr)); gap:20px;">
+                        <div style="grid-column: 1/-1; text-align:center; padding:40px; opacity:0.5;">
+                            <div class="loader"></div>
+                            <p style="margin-top:15px;">Depo verileri taranıyor...</p>
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Piyasa Durumu -->
+            <div id="business-sub-market-prices" class="business-sub-content hidden">
+                <div class="glass-panel" style="padding:20px; margin-bottom:20px;">
+                    <h3 style="margin:0 0 15px 0;">📊 Haftalık Piyasa Durumu</h3>
+                    <p style="color:var(--text-dim); font-size:0.85rem; margin-bottom:20px;">
+                        Ürün fiyatları arz/talep dengesine ve aktif piyasa olaylarına göre değişir. Piyasa durumları
+                        haftalık güncellenir.
+                    </p>
+                    <div id="product-prices-table"
+                        style="display:grid; grid-template-columns: repeat(auto-fill, minmax(180px, 1fr)); gap:10px;">
+                        <!-- JS fills -->
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <!-- MARKETPLACE TAB -->
+        <div id="tab-marketplace" class="tab-content hidden">
+            <h2 style="margin-bottom:20px;">🛍️ Pazar Yeri</h2>
+            <p style="color:var(--text-dim); margin-bottom:20px; font-size:0.9rem;">
+                Oyunculardan ürün al veya kendi ürünlerini sat!
+            </p>
+
+            <!-- Alt Sekmeler -->
+            <div style="display:flex; gap:10px; margin-bottom:20px; flex-wrap:wrap;">
+                <button class="sub-tab-btn active" onclick="switchMarketTab('browse')">🔍 İlanlar</button>
+                <button class="sub-tab-btn" onclick="switchMarketTab('my-listings')">📋 İlanlarım</button>
+                <button class="sub-tab-btn" onclick="switchMarketTab('create')">➕ İlan Ver</button>
+            </div>
+
+            <!-- Browse Listings -->
+            <div id="market-sub-browse" class="market-sub-content">
+                <div class="glass-panel"
+                    style="padding:15px; margin-bottom:20px; display:flex; gap:10px; flex-wrap:wrap; align-items:center;">
+                    <input type="text" id="market-search" placeholder="Ürün ara..." class="borsa-input"
+                        style="flex:1; margin:0;" oninput="loadMarketListings(1)">
+                    <select id="market-category-filter" class="borsa-input" style="width:150px; margin:0;"
+                        onchange="loadMarketListings(1)">
+                        <option value="">Tüm Kategoriler</option>
+                        <option value="raw">Hammaddeler</option>
+                        <option value="processed">İşlenmiş Ürünler</option>
+                        <option value="fresh">Taze Ürünler</option>
+                        <option value="animal">Hayvansal Ürünler</option>
+                        <option value="premium">Premium</option>
+                    </select>
+                    <select id="market-city-filter" class="borsa-input" style="width:150px; margin:0;"
+                        onchange="loadMarketListings(1)">
+                        <option value="">Tüm Şehirler</option>
+                        <option value="İstanbul">İstanbul</option>
+                        <option value="Ankara">Ankara</option>
+                        <option value="İzmir">İzmir</option>
+                        <option value="Amasya">Amasya</option>
+                        <option value="Bursa">Bursa</option>
+                        <option value="Antalya">Antalya</option>
+                    </select>
+                </div>
+
+                <div id="marketplace-listings"
+                    style="display:grid; grid-template-columns: repeat(auto-fill, minmax(250px, 1fr)); gap:20px;">
+                    <!-- JS fills -->
+                </div>
+
+                <div id="market-pagination" style="display:flex; justify-content:center; gap:10px; margin-top:30px;">
+                    <!-- JS fills -->
+                </div>
+            </div>
+
+            <!-- My Listings -->
+            <div id="market-sub-my-listings" class="market-sub-content hidden">
+                <div id="my-listings-grid"
+                    style="display:grid; grid-template-columns: repeat(auto-fill, minmax(250px, 1fr)); gap:20px;">
+                </div>
+            </div>
+
+            <!-- Create Listing -->
+            <div id="market-sub-create" class="market-sub-content hidden">
+                <div class="glass-panel" style="max-width:500px; margin:0 auto; padding:30px;">
+                    <h3 style="margin-bottom:20px;">📢 İlan Oluştur</h3>
+                    <label
+                        style="display:block; margin-bottom:8px; font-weight:600; font-size:0.85rem; color:#aaa;">Ürün
+                        Seç</label>
+                    <select id="new-listing-product" class="borsa-input" style="width:100%; margin-bottom:15px;">
+                        <option value="">Ürün Seç</option>
+                    </select>
+                    <label
+                        style="display:block; margin-bottom:8px; font-weight:600; font-size:0.85rem; color:#aaa;">Miktar</label>
+                    <input type="number" id="new-listing-quantity" placeholder="Kaç adet satmak istiyorsun?"
+                        class="borsa-input" style="width:100%; margin-bottom:15px;" min="1">
+                    <label
+                        style="display:block; margin-bottom:8px; font-weight:600; font-size:0.85rem; color:#aaa;">Birim
+                        Fiyat (💰)</label>
+                    <input type="number" id="new-listing-price" placeholder="Her bir ürün için fiyat"
+                        class="borsa-input" style="width:100%; margin-bottom:15px;" min="1">
+                    <label
+                        style="display:block; margin-bottom:8px; font-weight:600; font-size:0.85rem; color:#aaa;">İlan
+                        Şehri</label>
+                    <select id="new-listing-city" class="borsa-input" style="width:100%; margin-bottom:20px;">
+                        <option value="İstanbul">İstanbul</option>
+                        <option value="Ankara">Ankara</option>
+                        <option value="İzmir">İzmir</option>
+                        <option value="Amasya">Amasya</option>
+                        <option value="Bursa">Bursa</option>
+                        <option value="Antalya">Antalya</option>
+                    </select>
+                    <div style="background:rgba(0,0,0,0.3); padding:15px; border-radius:12px; margin-bottom:20px;">
+                        <div
+                            style="display:flex; justify-content:space-between; font-size:0.9rem; color:#aaa; margin-bottom:5px;">
+                            <span>Miktar:</span>
+                            <span id="listing-preview-qty">-</span>
+                        </div>
+                        <div
+                            style="display:flex; justify-content:space-between; font-size:0.9rem; color:#aaa; margin-bottom:5px;">
+                            <span>Birim Fiyat:</span>
+                            <span id="listing-preview-unit">-</span>
+                        </div>
+                        <div
+                            style="display:flex; justify-content:space-between; font-size:1.1rem; font-weight:800; color:var(--primary); border-top:1px solid rgba(255,255,255,0.1); padding-top:10px; margin-top:10px;">
+                            <span>TOPLAM:</span>
+                            <span id="listing-preview-total">0 💰</span>
+                        </div>
+                    </div>
+                    <button onclick="createMarketListing()" class="primary-btn" style="width:100%;">📢 İlan
+                        Ver</button>
+                </div>
+            </div>
+        </div>
+
+        <!-- QUESTS TAB -->
+        <div id="tab-quests" class="tab-content hidden">
+            <h2 style="margin-bottom:20px;">🎯 Günlük Görevler</h2>
+            <div id="quests-container">
+                <!-- JS fills -->
+            </div>
+        </div>
+
+        <!-- CAREER TAB -->
+        <div id="tab-career" class="tab-content hidden">
+            <h2 style="margin-bottom:10px;">💼 Kariyer & Meslekler</h2>
+            <p style="color:var(--text-dim); margin-bottom:20px; font-size:0.9rem;">
+                İşe başlamak için diploman (eğitim seviyen) yetmeli ve gerekli meslek eşyasını satın almalısın.
+            </p>
+            <div id="career-grid" class="market-grid">
+                <!-- JS fills -->
+            </div>
+        </div>
+
+        <!-- GANGS TAB -->
+        <div id="tab-gangs" class="tab-content hidden">
+            <h2 class="sect-title" style="font-size: 1.8rem; margin-bottom: 25px;">
+                <i class="fas fa-skull-crossbones"></i> Çete Bölgesi
+            </h2>
+
+            <!-- GANG LOBBY (Not in a gang) -->
+            <div id="gang-lobby" class="hidden">
+                <div class="gang-card" style="text-align: center; max-width: 600px; margin: 0 auto; padding: 40px;">
+                    <div class="item-icon">🚩</div>
+                    <h3 style="font-size: 1.8rem; margin-bottom: 10px;">Kendi Ekibini Kur</h3>
+                    <p>Sokaklara hakim olmak için kendi çeteni kur ve üyeleri topla.</p>
+
+                    <div
+                        style="display: flex; flex-direction: column; gap: 15px; margin-top: 25px; max-width: 400px; margin-left: auto; margin-right: auto;">
+                        <input type="text" id="gang-name-input" placeholder="Çete Adı (Örn: İstanbul Tigers)"
+                            class="borsa-input" style="font-size: 1rem !important; padding: 12px !important; margin:0;">
+                        <input type="text" id="gang-tag-input" placeholder="Çete Etiketi (3-4 Harf)" maxlength="4"
+                            class="borsa-input"
+                            style="font-size: 1rem !important; padding: 12px !important; margin:0; text-transform:uppercase;">
+
+                        <div style="text-align: left;">
+                            <label
+                                style="font-size: 0.75rem; color: #888; margin-bottom: 8px; display: block; margin-left: 5px;">ÜS
+                                BÖLGESİ SEÇ</label>
+                            <select id="gang-city-input" class="borsa-input"
+                                style="text-align: left; padding-left: 15px !important; margin:0; height: 50px; background:rgba(0,0,0,0.3) !important;">
+                                <option value="">Şehir Seçin...</option>
+                            </select>
+                        </div>
+
+                        <button onclick="createGang()" class="primary-btn" style="margin-top: 10px;">
+                            🏴 Çeteyi Kur (1.000.000 💰)
                         </button>
                     </div>
                 </div>
 
-                <!-- Lisanslar -->
-                <div id="business-sub-licenses" class="business-sub-content hidden">
-                    <div id="licenses-grid"
-                        style="display:grid; grid-template-columns: repeat(auto-fill, minmax(250px, 1fr)); gap:15px;">
-                        <!-- JS fills -->
+                <div style="max-width: 600px; margin: 40px auto 0;">
+                    <h4 class="sect-title">
+                        <i class="fas fa-list-ul"></i> Katılabileceğin Çeteler
+                    </h4>
+                    <div id="public-gang-list" style="display: grid; grid-template-columns: 1fr; gap: 15px;">
+                        <div style="color:#666; font-size:0.9rem; text-align:center; padding:30px;">
+                            Yükleniyor...</div>
                     </div>
                 </div>
+            </div>
 
-                <!-- AR-GE -->
-                <div id="business-sub-rnd" class="business-sub-content hidden">
-                    <div class="glass-panel" style="padding:20px; margin-bottom:20px;">
-                        <h3 style="margin:0 0 10px 0;">🔬 Ürün Araştırma ve Geliştirme</h3>
-                        <p style="color:var(--text-dim); font-size:0.85rem; margin-bottom:20px;">
-                            Deponuzdaki hammaddelerin ve ürettiğiniz ürünlerin kalitesini artırın. Daha yüksek kalite,
-                            pazar yerinde daha yüksek fiyat demektir!
-                        </p>
-
-                        <div id="rnd-upgrades-container"
-                            style="display:grid; grid-template-columns: repeat(auto-fill, minmax(280px, 1fr)); gap:20px;">
-                            <div style="grid-column: 1/-1; text-align:center; padding:40px; opacity:0.5;">
-                                <div class="loader"></div>
-                                <p style="margin-top:15px;">Depo verileri taranıyor...</p>
+            <!-- GANG DASHBOARD (In a gang) -->
+            <div id="gang-dashboard" class="hidden">
+                <div class="gang-card">
+                    <div class="gang-header">
+                        <div>
+                            <h2 style="margin:0; font-size:1.8rem; display:flex; align-items:center; gap:12px;">
+                                <span id="my-gang-tag" class="gang-tag-pill">TAG</span>
+                                <span id="my-gang-name">Çete Adı</span>
+                            </h2>
+                            <div style="color:#888; font-size:0.85rem; margin-top:8px;">
+                                👑 Lider: <span id="my-gang-leader"
+                                    style="color:var(--primary); font-weight:700;">...</span>
                             </div>
                         </div>
-                    </div>
-                </div>
-
-                <!-- Piyasa Durumu -->
-                <div id="business-sub-market-prices" class="business-sub-content hidden">
-                    <div class="glass-panel" style="padding:20px; margin-bottom:20px;">
-                        <h3 style="margin:0 0 15px 0;">📊 Haftalık Piyasa Durumu</h3>
-                        <p style="color:var(--text-dim); font-size:0.85rem; margin-bottom:20px;">
-                            Ürün fiyatları arz/talep dengesine ve aktif piyasa olaylarına göre değişir. Piyasa durumları
-                            haftalık güncellenir.
-                        </p>
-                        <div id="product-prices-table"
-                            style="display:grid; grid-template-columns: repeat(auto-fill, minmax(180px, 1fr)); gap:10px;">
-                            <!-- JS fills -->
+                        <div style="text-align: right;">
+                            <div style="font-size:0.7rem; color:#888; margin-bottom:4px; font-weight:700;">ÇETE
+                                KASASI</div>
+                            <div id="my-gang-balance"
+                                style="font-size:1.6rem; font-weight:800; color:var(--primary); text-shadow: 0 0 15px rgba(5,234,106,0.3);">
+                                0 💰</div>
                         </div>
                     </div>
-                </div>
-            </div>
 
-            <!-- MARKETPLACE TAB -->
-            <div id="tab-marketplace" class="tab-content hidden">
-                <h2 style="margin-bottom:20px;">🛍️ Pazar Yeri</h2>
-                <p style="color:var(--text-dim); margin-bottom:20px; font-size:0.9rem;">
-                    Oyunculardan ürün al veya kendi ürünlerini sat!
-                </p>
-
-                <!-- Alt Sekmeler -->
-                <div style="display:flex; gap:10px; margin-bottom:20px; flex-wrap:wrap;">
-                    <button class="sub-tab-btn active" onclick="switchMarketTab('browse')">🔍 İlanlar</button>
-                    <button class="sub-tab-btn" onclick="switchMarketTab('my-listings')">📋 İlanlarım</button>
-                    <button class="sub-tab-btn" onclick="switchMarketTab('create')">➕ İlan Ver</button>
-                </div>
-
-                <!-- Browse Listings -->
-                <div id="market-sub-browse" class="market-sub-content">
-                    <div class="glass-panel"
-                        style="padding:15px; margin-bottom:20px; display:flex; gap:10px; flex-wrap:wrap; align-items:center;">
-                        <input type="text" id="market-search" placeholder="Ürün ara..." class="borsa-input"
-                            style="flex:1; margin:0;" oninput="loadMarketListings(1)">
-                        <select id="market-category-filter" class="borsa-input" style="width:150px; margin:0;"
-                            onchange="loadMarketListings(1)">
-                            <option value="">Tüm Kategoriler</option>
-                            <option value="raw">Hammaddeler</option>
-                            <option value="processed">İşlenmiş Ürünler</option>
-                            <option value="fresh">Taze Ürünler</option>
-                            <option value="animal">Hayvansal Ürünler</option>
-                            <option value="premium">Premium</option>
-                        </select>
-                        <select id="market-city-filter" class="borsa-input" style="width:150px; margin:0;"
-                            onchange="loadMarketListings(1)">
-                            <option value="">Tüm Şehirler</option>
-                            <option value="İstanbul">İstanbul</option>
-                            <option value="Ankara">Ankara</option>
-                            <option value="İzmir">İzmir</option>
-                            <option value="Amasya">Amasya</option>
-                            <option value="Bursa">Bursa</option>
-                            <option value="Antalya">Antalya</option>
-                        </select>
-                    </div>
-
-                    <div id="marketplace-listings"
-                        style="display:grid; grid-template-columns: repeat(auto-fill, minmax(250px, 1fr)); gap:20px;">
-                        <!-- JS fills -->
-                    </div>
-
-                    <div id="market-pagination"
-                        style="display:flex; justify-content:center; gap:10px; margin-top:30px;">
-                        <!-- JS fills -->
-                    </div>
-                </div>
-
-                <!-- My Listings -->
-                <div id="market-sub-my-listings" class="market-sub-content hidden">
-                    <div id="my-listings-grid"
-                        style="display:grid; grid-template-columns: repeat(auto-fill, minmax(250px, 1fr)); gap:20px;">
-                    </div>
-                </div>
-
-                <!-- Create Listing -->
-                <div id="market-sub-create" class="market-sub-content hidden">
-                    <div class="glass-panel" style="max-width:500px; margin:0 auto; padding:30px;">
-                        <h3 style="margin-bottom:20px;">📢 İlan Oluştur</h3>
-                        <label
-                            style="display:block; margin-bottom:8px; font-weight:600; font-size:0.85rem; color:#aaa;">Ürün
-                            Seç</label>
-                        <select id="new-listing-product" class="borsa-input" style="width:100%; margin-bottom:15px;">
-                            <option value="">Ürün Seç</option>
-                        </select>
-                        <label
-                            style="display:block; margin-bottom:8px; font-weight:600; font-size:0.85rem; color:#aaa;">Miktar</label>
-                        <input type="number" id="new-listing-quantity" placeholder="Kaç adet satmak istiyorsun?"
-                            class="borsa-input" style="width:100%; margin-bottom:15px;" min="1">
-                        <label
-                            style="display:block; margin-bottom:8px; font-weight:600; font-size:0.85rem; color:#aaa;">Birim
-                            Fiyat (💰)</label>
-                        <input type="number" id="new-listing-price" placeholder="Her bir ürün için fiyat"
-                            class="borsa-input" style="width:100%; margin-bottom:15px;" min="1">
-                        <label
-                            style="display:block; margin-bottom:8px; font-weight:600; font-size:0.85rem; color:#aaa;">İlan
-                            Şehri</label>
-                        <select id="new-listing-city" class="borsa-input" style="width:100%; margin-bottom:20px;">
-                            <option value="İstanbul">İstanbul</option>
-                            <option value="Ankara">Ankara</option>
-                            <option value="İzmir">İzmir</option>
-                            <option value="Amasya">Amasya</option>
-                            <option value="Bursa">Bursa</option>
-                            <option value="Antalya">Antalya</option>
-                        </select>
-                        <div style="background:rgba(0,0,0,0.3); padding:15px; border-radius:12px; margin-bottom:20px;">
-                            <div
-                                style="display:flex; justify-content:space-between; font-size:0.9rem; color:#aaa; margin-bottom:5px;">
-                                <span>Miktar:</span>
-                                <span id="listing-preview-qty">-</span>
-                            </div>
-                            <div
-                                style="display:flex; justify-content:space-between; font-size:0.9rem; color:#aaa; margin-bottom:5px;">
-                                <span>Birim Fiyat:</span>
-                                <span id="listing-preview-unit">-</span>
-                            </div>
-                            <div
-                                style="display:flex; justify-content:space-between; font-size:1.1rem; font-weight:800; color:var(--primary); border-top:1px solid rgba(255,255,255,0.1); padding-top:10px; margin-top:10px;">
-                                <span>TOPLAM:</span>
-                                <span id="listing-preview-total">0 💰</span>
-                            </div>
+                    <div class="gang-stat-grid">
+                        <div class="stat-box"
+                            style="background:rgba(255,255,255,0.03); border:1px solid rgba(255,255,255,0.05);">
+                            <label>Üye Sayısı</label>
+                            <div id="my-gang-count" class="val">0</div>
                         </div>
-                        <button onclick="createMarketListing()" class="primary-btn" style="width:100%;">📢 İlan
-                            Ver</button>
+                        <div class="stat-box"
+                            style="background:rgba(255,255,255,0.03); border:1px solid rgba(255,255,255,0.05);">
+                            <label>Sokak Gücü</label>
+                            <div class="val" style="color:#666; font-size:0.9rem;">Yakında...</div>
+                        </div>
+                    </div>
+
+                    <div id="gang-top-actions" style="margin-top:30px; display:flex; gap:15px;">
+                        <button onclick="depositGang(lastUserData?.gang)" class="primary-btn" style="flex:1;">💰
+                            KASAYA BAĞIŞ
+                            YAP</button>
+                        <button onclick="leaveGang()" class="logout-btn" style="flex:0.3; height: 50px;">Ayrıl</button>
                     </div>
                 </div>
-            </div>
 
-            <!-- QUESTS TAB -->
-            <div id="tab-quests" class="tab-content hidden">
-                <h2 style="margin-bottom:20px;">🎯 Günlük Görevler</h2>
-                <div id="quests-container">
-                    <!-- JS fills -->
+                <!-- PENDING REQUESTS (Visible to Leader/Officer) -->
+                <div id="gang-requests-section" class="hidden" style="margin-top:30px;">
+                    <h4 class="sect-title" style="color:var(--primary);"><i class="fas fa-id-badge"></i> Katılım
+                        İstekleri</h4>
+                    <div id="gang-requests-list" style="display: grid; grid-template-columns: 1fr; gap: 10px;">
+                        <!-- Dynamic -->
+                    </div>
                 </div>
-            </div>
 
-            <!-- CAREER TAB -->
-            <div id="tab-career" class="tab-content hidden">
-                <h2 style="margin-bottom:10px;">💼 Kariyer & Meslekler</h2>
-                <p style="color:var(--text-dim); margin-bottom:20px; font-size:0.9rem;">
-                    İşe başlamak için diploman (eğitim seviyen) yetmeli ve gerekli meslek eşyasını satın almalısın.
-                </p>
-                <div id="career-grid" class="market-grid">
-                    <!-- JS fills -->
+                <div style="margin-top:40px;">
+                    <h4 class="sect-title"><i class="fas fa-users-viewfinder"></i> Çete Kadrosu</h4>
+                    <div id="gang-members-list" style="display: grid; grid-template-columns: 1fr; gap: 10px;">
+                        <!-- Dynamic Rows -->
+                    </div>
                 </div>
-            </div>
 
-            <!-- GANGS TAB -->
-            <div id="tab-gangs" class="tab-content hidden">
-                <h2 class="sect-title" style="font-size: 1.8rem; margin-bottom: 25px;">
-                    <i class="fas fa-skull-crossbones"></i> Çete Bölgesi
-                </h2>
-
-                <!-- GANG LOBBY (Not in a gang) -->
-                <div id="gang-lobby" class="hidden">
-                    <div class="gang-card" style="text-align: center; max-width: 600px; margin: 0 auto; padding: 40px;">
-                        <div class="item-icon">🚩</div>
-                        <h3 style="font-size: 1.8rem; margin-bottom: 10px;">Kendi Ekibini Kur</h3>
-                        <p>Sokaklara hakim olmak için kendi çeteni kur ve üyeleri topla.</p>
-
-                        <div
-                            style="display: flex; flex-direction: column; gap: 15px; margin-top: 25px; max-width: 400px; margin-left: auto; margin-right: auto;">
-                            <input type="text" id="gang-name-input" placeholder="Çete Adı (Örn: İstanbul Tigers)"
-                                class="borsa-input"
-                                style="font-size: 1rem !important; padding: 12px !important; margin:0;">
-                            <input type="text" id="gang-tag-input" placeholder="Çete Etiketi (3-4 Harf)" maxlength="4"
-                                class="borsa-input"
-                                style="font-size: 1rem !important; padding: 12px !important; margin:0; text-transform:uppercase;">
-
-                            <div style="text-align: left;">
-                                <label
-                                    style="font-size: 0.75rem; color: #888; margin-bottom: 8px; display: block; margin-left: 5px;">ÜS
-                                    BÖLGESİ SEÇ</label>
-                                <select id="gang-city-input" class="borsa-input"
-                                    style="text-align: left; padding-left: 15px !important; margin:0; height: 50px; background:rgba(0,0,0,0.3) !important;">
-                                    <option value="">Şehir Seçin...</option>
-                                </select>
-                            </div>
-
-                            <button onclick="createGang()" class="primary-btn" style="margin-top: 10px;">
-                                🏴 Çeteyi Kur (1.000.000 💰)
+                <!-- ÇETE SOHBET BÖLÜMÜ -->
+                <div id="gang-chat-section" style="margin-top:40px;">
+                    <h4 class="sect-title"><i class="fas fa-comments"></i> Çete Sohbeti</h4>
+                    <div class="gang-card" style="padding:20px;">
+                        <div id="gang-chat-messages"
+                            style="height:300px; overflow-y:auto; background:rgba(0,0,0,0.3); border-radius:12px; padding:15px; margin-bottom:15px; display:flex; flex-direction:column; gap:10px;">
+                            <div style="color:#666; font-size:0.85rem; text-align:center; padding:20px;">Mesaj yok.
+                                İlk mesajı sen gönder!</div>
+                        </div>
+                        <div id="gang-chat-input-section" style="display:flex; gap:10px;">
+                            <input type="text" id="gang-chat-input" placeholder="Mesajını yaz..."
+                                style="flex:1; background:rgba(255,255,255,0.05); border:1px solid var(--glass-border); border-radius:12px; padding:12px; color:white; font-size:0.95rem;"
+                                maxlength="500">
+                            <button onclick="sendGangMessage()" class="primary-btn"
+                                style="width:auto; padding:12px 25px;">
+                                <i class="fas fa-paper-plane"></i> Gönder
                             </button>
                         </div>
-                    </div>
-
-                    <div style="max-width: 600px; margin: 40px auto 0;">
-                        <h4 class="sect-title">
-                            <i class="fas fa-list-ul"></i> Katılabileceğin Çeteler
-                        </h4>
-                        <div id="public-gang-list" style="display: grid; grid-template-columns: 1fr; gap: 15px;">
-                            <div style="color:#666; font-size:0.9rem; text-align:center; padding:30px;">
-                                Yükleniyor...</div>
+                        <div id="gang-chat-readonly-notice" class="hidden"
+                            style="text-align:center; padding:15px; color:#888; font-size:0.85rem;">
+                            <i class="fas fa-lock"></i> Sadece lider ve sağ kollar mesaj gönderebilir.
                         </div>
-                    </div>
-                </div>
-
-                <!-- GANG DASHBOARD (In a gang) -->
-                <div id="gang-dashboard" class="hidden">
-                    <div class="gang-card">
-                        <div class="gang-header">
-                            <div>
-                                <h2 style="margin:0; font-size:1.8rem; display:flex; align-items:center; gap:12px;">
-                                    <span id="my-gang-tag" class="gang-tag-pill">TAG</span>
-                                    <span id="my-gang-name">Çete Adı</span>
-                                </h2>
-                                <div style="color:#888; font-size:0.85rem; margin-top:8px;">
-                                    👑 Lider: <span id="my-gang-leader"
-                                        style="color:var(--primary); font-weight:700;">...</span>
-                                </div>
-                            </div>
-                            <div style="text-align: right;">
-                                <div style="font-size:0.7rem; color:#888; margin-bottom:4px; font-weight:700;">ÇETE
-                                    KASASI</div>
-                                <div id="my-gang-balance"
-                                    style="font-size:1.6rem; font-weight:800; color:var(--primary); text-shadow: 0 0 15px rgba(5,234,106,0.3);">
-                                    0 💰</div>
-                            </div>
-                        </div>
-
-                        <div class="gang-stat-grid">
-                            <div class="stat-box"
-                                style="background:rgba(255,255,255,0.03); border:1px solid rgba(255,255,255,0.05);">
-                                <label>Üye Sayısı</label>
-                                <div id="my-gang-count" class="val">0</div>
-                            </div>
-                            <div class="stat-box"
-                                style="background:rgba(255,255,255,0.03); border:1px solid rgba(255,255,255,0.05);">
-                                <label>Sokak Gücü</label>
-                                <div class="val" style="color:#666; font-size:0.9rem;">Yakında...</div>
-                            </div>
-                        </div>
-
-                        <div id="gang-top-actions" style="margin-top:30px; display:flex; gap:15px;">
-                            <button onclick="depositGang(lastUserData?.gang)" class="primary-btn" style="flex:1;">💰
-                                KASAYA BAĞIŞ
-                                YAP</button>
-                            <button onclick="leaveGang()" class="logout-btn"
-                                style="flex:0.3; height: 50px;">Ayrıl</button>
-                        </div>
-                    </div>
-
-                    <!-- PENDING REQUESTS (Visible to Leader/Officer) -->
-                    <div id="gang-requests-section" class="hidden" style="margin-top:30px;">
-                        <h4 class="sect-title" style="color:var(--primary);"><i class="fas fa-id-badge"></i> Katılım
-                            İstekleri</h4>
-                        <div id="gang-requests-list" style="display: grid; grid-template-columns: 1fr; gap: 10px;">
-                            <!-- Dynamic -->
-                        </div>
-                    </div>
-
-                    <div style="margin-top:40px;">
-                        <h4 class="sect-title"><i class="fas fa-users-viewfinder"></i> Çete Kadrosu</h4>
-                        <div id="gang-members-list" style="display: grid; grid-template-columns: 1fr; gap: 10px;">
-                            <!-- Dynamic Rows -->
-                        </div>
-                    </div>
-
-                    <!-- ÇETE SOHBET BÖLÜMÜ -->
-                    <div id="gang-chat-section" style="margin-top:40px;">
-                        <h4 class="sect-title"><i class="fas fa-comments"></i> Çete Sohbeti</h4>
-                        <div class="gang-card" style="padding:20px;">
-                            <div id="gang-chat-messages"
-                                style="height:300px; overflow-y:auto; background:rgba(0,0,0,0.3); border-radius:12px; padding:15px; margin-bottom:15px; display:flex; flex-direction:column; gap:10px;">
-                                <div style="color:#666; font-size:0.85rem; text-align:center; padding:20px;">Mesaj yok.
-                                    İlk mesajı sen gönder!</div>
-                            </div>
-                            <div id="gang-chat-input-section" style="display:flex; gap:10px;">
-                                <input type="text" id="gang-chat-input" placeholder="Mesajını yaz..."
-                                    style="flex:1; background:rgba(255,255,255,0.05); border:1px solid var(--glass-border); border-radius:12px; padding:12px; color:white; font-size:0.95rem;"
-                                    maxlength="500">
-                                <button onclick="sendGangMessage()" class="primary-btn"
-                                    style="width:auto; padding:12px 25px;">
-                                    <i class="fas fa-paper-plane"></i> Gönder
-                                </button>
-                            </div>
-                            <div id="gang-chat-readonly-notice" class="hidden"
-                                style="text-align:center; padding:15px; color:#888; font-size:0.85rem;">
-                                <i class="fas fa-lock"></i> Sadece lider ve sağ kollar mesaj gönderebilir.
-                            </div>
-                        </div>
-                    </div>
-                </div>
-
-                <div style="margin-top: 50px; border-top: 1px solid rgba(255,255,255,0.1); padding-top: 30px;">
-                    <h4 class="sect-title"><i class="fas fa-users"></i> Diğer Çeteler</h4>
-                    <div id="public-gang-list-dashboard"
-                        style="display: grid; grid-template-columns: 1fr 1fr; gap: 15px;">
-                        <!-- JS fills -->
                     </div>
                 </div>
             </div>
 
-            <!-- COMMANDS TAB -->
-            <div id="tab-commands" class="tab-content hidden">
-                <h2 style="margin-bottom:10px;">📜 Tüm Bot Komutları</h2>
-                <p style="color:var(--text-dim); margin-bottom:20px; font-size:0.9rem;">
-                    Sohbette kullanabileceğin tüm komutların listesi. Bazı komutlar abonelere özeldir.
-                </p>
-                <div id="commands-grid" class="market-grid"
-                    style="grid-template-columns: repeat(auto-fit, minmax(280px, 1fr));">
-                    <!-- JS fills -->
-                </div>
-            </div>
-
-            <!-- STATS TAB -->
-            <div id="tab-stats" class="tab-content hidden">
-                <h2 style="margin-bottom:20px;">📊 Canlı Topluluk İstatistikleri</h2>
-                <div id="stats-container" class="market-grid"
-                    style="grid-template-columns: repeat(auto-fit, minmax(300px, 1fr));">
-                    <!-- JS fills -->
-                </div>
-            </div>
-
-            <!-- PROFILE TAB -->
-            <div id="tab-profile" class="tab-content hidden">
-                <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:20px;">
-                    <h2 style="margin:0;">👤 Oyuncu Profili</h2>
-                    <button class="primary-btn" onclick="showCustomizationMarket()"
-                        style="width:auto; padding:10px 20px; background:linear-gradient(45deg, #ff00ff, #00ffff); color:white; border:none;">✨
-                        Profili Özelleştir</button>
-                </div>
-                <div id="profile-card" class="glass-panel"
-                    style="position:static; transform:none; width:100%; text-align:left; transition: all 0.5s ease;">
+            <div style="margin-top: 50px; border-top: 1px solid rgba(255,255,255,0.1); padding-top: 30px;">
+                <h4 class="sect-title"><i class="fas fa-users"></i> Diğer Çeteler</h4>
+                <div id="public-gang-list-dashboard" style="display: grid; grid-template-columns: 1fr 1fr; gap: 15px;">
                     <!-- JS fills -->
                 </div>
             </div>
         </div>
+
+        <!-- COMMANDS TAB -->
+        <div id="tab-commands" class="tab-content hidden">
+            <h2 style="margin-bottom:10px;">📜 Tüm Bot Komutları</h2>
+            <p style="color:var(--text-dim); margin-bottom:20px; font-size:0.9rem;">
+                Sohbette kullanabileceğin tüm komutların listesi. Bazı komutlar abonelere özeldir.
+            </p>
+            <div id="commands-grid" class="market-grid"
+                style="grid-template-columns: repeat(auto-fit, minmax(280px, 1fr));">
+                <!-- JS fills -->
+            </div>
+        </div>
+
+        <!-- STATS TAB -->
+        <div id="tab-stats" class="tab-content hidden">
+            <h2 style="margin-bottom:20px;">📊 Canlı Topluluk İstatistikleri</h2>
+            <div id="stats-container" class="market-grid"
+                style="grid-template-columns: repeat(auto-fit, minmax(300px, 1fr));">
+                <!-- JS fills -->
+            </div>
+        </div>
+
+        <!-- PROFILE TAB -->
+        <div id="tab-profile" class="tab-content hidden">
+            <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:20px;">
+                <h2 style="margin:0;">👤 Oyuncu Profili</h2>
+                <button class="primary-btn" onclick="showCustomizationMarket()"
+                    style="width:auto; padding:10px 20px; background:linear-gradient(45deg, #ff00ff, #00ffff); color:white; border:none;">✨
+                    Profili Özelleştir</button>
+            </div>
+            <div id="profile-card" class="glass-panel"
+                style="position:static; transform:none; width:100%; text-align:left; transition: all 0.5s ease;">
+                <!-- JS fills -->
+            </div>
+        </div>
+    </div>
     </div>
 
     <!-- TTS MODAL -->
