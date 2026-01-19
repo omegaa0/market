@@ -4842,17 +4842,24 @@ app.post('/webhook/kick', async (req, res) => {
             return res.status(200).send(payload.challenge);
         }
 
-        // GÜVENLİK: Production'da signature zorunlu
-        if (webhookSecret && signature) {
-            const isValid = verifyWebhookSignature(payload, signature, webhookSecret);
-            if (!isValid) {
-                logSecurityEvent('WEBHOOK_INVALID_SIGNATURE', 'system', { eventType, eventId }, req.ip);
-                return res.status(401).send('Invalid signature');
+        // GÜVENLİK: Sadece Webhook Secret tanımlıysa ve Production ise zorunlu tut
+        if (webhookSecret) {
+            if (signature) {
+                const isValid = verifyWebhookSignature(payload, signature, webhookSecret);
+                if (!isValid) {
+                    console.error(`[Webhook] ❌ Geçersiz imza: ${eventType}`);
+                    return res.status(401).send('Invalid signature');
+                }
+            } else if (process.env.NODE_ENV === 'production') {
+                // Secret var ama imza gelmemişse ve production ise reddet
+                console.error(`[Webhook] ⚠️ İmza eksik (KICK_WEBHOOK_SECRET tanımlı!): ${eventType}`);
+                return res.status(400).send('Missing signature');
             }
-        } else if (process.env.NODE_ENV === 'production' && !signature) {
-            // Production'da signature yoksa reddet
-            logSecurityEvent('WEBHOOK_MISSING_SIGNATURE', 'system', { eventType, eventId }, req.ip);
-            return res.status(401).send('Missing signature');
+        } else {
+            // Secret tanımlı değilse sadece uyarı ver ama işlemi devam ettir
+            if (process.env.NODE_ENV === 'production') {
+                // console.warn(`[Webhook] ⚠️ Güvenlik uyarısı: KICK_WEBHOOK_SECRET tanımlı değil!`);
+            }
         }
 
         // --- OK RESPONSE (Immediate) ---
