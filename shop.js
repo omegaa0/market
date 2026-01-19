@@ -3513,6 +3513,7 @@ async function loadBusinessData() {
 
 // Piyasa olaylarını göster
 // Piyasa olaylarını göster (Breaking News Ticker Style)
+// Piyasa olaylarını göster (Breaking News Ticker Style - Updated)
 function renderMarketEvents() {
     const container = document.getElementById('market-events-list');
     if (!container) return;
@@ -3522,7 +3523,7 @@ function renderMarketEvents() {
         return;
     }
 
-    // Haber bandı stilleri
+    // Haber bandı stilleri (Sarı/Kırmızı alan kaldırıldı, sade şerit)
     const styleId = 'news-ticker-style';
     if (!document.getElementById(styleId)) {
         const style = document.createElement('style');
@@ -3535,34 +3536,34 @@ function renderMarketEvents() {
             .news-ticker-wrap {
                 width: 100%;
                 overflow: hidden;
-                background: linear-gradient(90deg, #cc0000 0%, #aa0000 100%);
+                background: rgba(0, 0, 0, 0.4);
+                border: 1px solid rgba(255, 255, 255, 0.1);
                 border-radius: 8px;
                 display: flex;
                 align-items: center;
                 height: 40px;
                 position: relative;
-                box-shadow: 0 4px 10px rgba(0,0,0,0.3);
+                margin-bottom: 10px;
             }
             .news-label {
-                background: #ff0000;
+                background: #ff4444;
                 color: white;
                 padding: 0 15px;
-                font-weight: 900;
-                font-size: 0.85rem;
+                font-weight: 800;
+                font-size: 0.8rem;
                 height: 100%;
                 display: flex;
                 align-items: center;
                 z-index: 2;
-                box-shadow: 4px 0 10px rgba(0,0,0,0.2);
                 position: absolute;
                 left: 0;
                 text-transform: uppercase;
-                letter-spacing: 1px;
+                letter-spacing: 0.5px;
             }
             .ticker-content {
                 display: flex;
-                animation: ticker 30s linear infinite;
-                padding-left: 120px; /* Label width + padding */
+                animation: ticker 40s linear infinite;
+                padding-left: 120px; /* Label width */
                 white-space: nowrap;
                 height: 100%;
                 align-items: center;
@@ -3570,35 +3571,73 @@ function renderMarketEvents() {
             .ticker-item {
                 display: inline-flex;
                 align-items: center;
-                color: white;
-                font-weight: 600;
-                margin-right: 50px;
+                color: #ddd;
+                font-weight: 500;
+                margin-right: 60px;
                 font-size: 0.9rem;
             }
-            .ticker-item span {
-                opacity: 0.8;
-                font-weight: 400;
-                margin-left: 5px;
-                font-size: 0.8rem;
+            .ticker-item strong {
+                color: #fff;
+                margin-right: 6px;
+                font-weight: 700;
             }
+            .impact-tag {
+                background: rgba(255,255,255,0.15); 
+                padding: 2px 6px; 
+                border-radius: 4px; 
+                font-size: 0.75rem; 
+                margin-left: 8px;
+                color: #4db8ff;
+                font-weight: 600;
+            }
+            .impact-bad { color: #ff6666; }
+            .impact-good { color: #66ff66; }
         `;
         document.head.appendChild(style);
     }
 
-    // Haberleri tekrarla (sonsuz döngü hissi için)
+    // Haberleri tekrarla
     const displayEvents = [...marketEvents, ...marketEvents];
+
+    // Etki metnini oluştur (Helper function)
+    const getEffectText = (e) => {
+        if (!e.effect) return '';
+        let parts = [];
+        if (e.effect.sales) {
+            const val = Math.round((e.effect.sales - 1) * 100);
+            parts.push(`<span class="${val > 0 ? 'impact-good' : 'impact-bad'}">Satışlar ${val > 0 ? '+' : ''}${val}%</span>`);
+        }
+        if (e.effect.production) {
+            const val = Math.round((e.effect.production - 1) * 100);
+            parts.push(`<span class="${val > 0 ? 'impact-good' : 'impact-bad'}">Üretim ${val > 0 ? '+' : ''}${val}%</span>`);
+        }
+        if (e.effect.price) {
+            const val = Math.round((e.effect.price - 1) * 100);
+            // Fiyat artışı satıcı için iyidir (yeşil), alıcı için kötüdür. Genel piyasa algısı: Yüksek fiyat = İyi (Yeşil)
+            parts.push(`<span class="${val > 0 ? 'impact-good' : 'impact-bad'}">Fiyatlar ${val > 0 ? '+' : ''}${val}%</span>`);
+        }
+        if (e.effect.maintenance) {
+            const val = Math.round((e.effect.maintenance - 1) * 100);
+            // Bakım maliyeti artışı kötüdür (kırmızı)
+            parts.push(`<span class="${val < 0 ? 'impact-good' : 'impact-bad'}">Maliyet ${val > 0 ? '+' : ''}${val}%</span>`);
+        }
+
+        if (parts.length === 0) return '';
+        return ` <span class="impact-tag">[${parts.join(', ')}]</span>`;
+    };
 
     const newsHtml = displayEvents.map(e => `
         <div class="ticker-item">
-            🚨 ${e.name}
-            <span>- ${e.desc || 'Piyasa bu gelişmeyi fiyatlıyor...'}</span>
+            <strong>${e.name}</strong>: 
+            ${e.desc || 'Piyasa gelişmesi.'} 
+            ${getEffectText(e)}
         </div>
     `).join('');
 
     container.innerHTML = `
         <div class="news-ticker-wrap">
-            <div class="news-label">SON DAKİKA</div>
-            <div class="ticker-content" style="animation-duration: ${Math.max(20, marketEvents.length * 10)}s;">
+            <div class="news-label">PİYASA</div>
+            <div class="ticker-content" style="animation-duration: ${Math.max(25, marketEvents.length * 12)}s;">
                 ${newsHtml}
             </div>
         </div>
