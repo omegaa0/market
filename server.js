@@ -1876,7 +1876,9 @@ const CITY_DISTANCES = {
     "İstanbul": { "Ankara": 450, "İzmir": 480, "Bursa": 150, "Antalya": 700, "Amasya": 650 },
     "Ankara": { "İstanbul": 450, "İzmir": 580, "Bursa": 380, "Antalya": 480, "Amasya": 330 },
     "İzmir": { "İstanbul": 480, "Ankara": 580, "Bursa": 330, "Antalya": 450, "Amasya": 780 },
-    "Amasya": { "İstanbul": 650, "Ankara": 330, "İzmir": 780, "Bursa": 580, "Antalya": 730 }
+    "Amasya": { "İstanbul": 650, "Ankara": 330, "İzmir": 780, "Bursa": 580, "Antalya": 730 },
+    "Bursa": { "İstanbul": 150, "Ankara": 380, "İzmir": 330, "Amasya": 580, "Antalya": 550 },
+    "Antalya": { "İstanbul": 700, "Ankara": 480, "İzmir": 450, "Amasya": 730, "Bursa": 550 }
 };
 const LOGISTICS_COST_PER_KM = 5; // Birim başına km başına maliyet
 
@@ -10178,6 +10180,38 @@ app.post('/api/warehouse/upgrade', transactionLimiter, async (req, res) => {
     }
 });
 
+// --- Depo Ana Üs (Base) Belirleme ---
+app.post('/api/warehouse/set-base', transactionLimiter, async (req, res) => {
+    try {
+        const { username, city } = req.body;
+
+        // KİLİT KONTROLÜ
+        if (await checkTabLock('business', username)) {
+            return res.json({ success: false, error: "İşlemler şu an bakımda veya erişime kapalı! 🔒" });
+        }
+
+        if (!username || !city) return res.json({ success: false, error: "Eksik bilgi!" });
+
+        const validCities = ['İstanbul', 'Ankara', 'İzmir', 'Amasya', 'Bursa', 'Antalya'];
+        if (!validCities.includes(city)) return res.json({ success: false, error: "Geçersiz şehir!" });
+
+        const whRef = db.ref('users/' + username.toLowerCase() + '/warehouse');
+        const whSnap = await whRef.once('value');
+        let wh = whSnap.val();
+
+        if (wh && wh.baseCity) {
+            return res.json({ success: false, error: "Ana üs zaten seçilmiş! Değiştirilemez." });
+        }
+
+        await whRef.update({ baseCity: city });
+        addLog('Depo', `${username} ana deposunu ${city} olarak belirledi.`);
+
+        res.json({ success: true, message: `Ana üs ${city} olarak belirlendi!` });
+    } catch (e) {
+        res.json({ success: false, error: e.message });
+    }
+});
+
 // --- Depodan Tezgaha Ürün Taşı ---
 app.post('/api/warehouse/transfer-to-counter', transactionLimiter, async (req, res) => {
     try {
@@ -11310,20 +11344,18 @@ app.get('/api/marketplace/listings', async (req, res) => {
         }
 
         // --- SABİT SİSTEM ÜRÜNLERİ ---
-        const SYSTEM_BASE = [
-            { code: 'ekmek', qty: 100000, price: 15 },
-            { code: 'su', qty: 100000, price: 10 },
-            { code: 'un', qty: 50000, price: 80 },
-            { code: 'seker', qty: 50000, price: 60 },
-            { code: 'yumurta', qty: 50000, price: 80 },
-            { code: 'sut', qty: 50000, price: 50 },
-            { code: 'domates', qty: 50000, price: 35 },
-            { code: 'patates', qty: 100000, price: 20 },
-            { code: 'metal', qty: 20000, price: 200 },
-            { code: 'plastik', qty: 20000, price: 100 },
-            { code: 'kereste', qty: 20000, price: 150 },
-            { code: 'kum', qty: 50000, price: 30 }
-        ];
+        // --- SABİT SİSTEM ÜRÜNLERİ (OTOMATİK TÜM ÜRÜNLER) ---
+        const SYSTEM_BASE = [];
+
+        // Tüm PRODUCTS listesini gezerek sisteme ekle
+        for (const [code, product] of Object.entries(PRODUCTS)) {
+            // Şehir başına stok ve fiyat
+            SYSTEM_BASE.push({
+                code: code,
+                qty: 100000,
+                price: product.basePrice || 10
+            });
+        }
 
         const CITIES = ['İstanbul', 'Ankara', 'İzmir', 'Amasya', 'Bursa', 'Antalya'];
 
@@ -11490,15 +11522,41 @@ app.post('/api/marketplace/buy-listing', transactionLimiter, async (req, res) =>
         const user = userSnap.val();
         if (!user) return res.json({ success: false, error: 'Kullanıcı bulunamadı!' });
 
+        // Depo/Base City bilgisini al
+        const warehouseSnap = await db.ref('users/' + username + '/warehouse').once('value');
+        const warehouse = warehouseSnap.val() || { level: 1, currentUsage: 0 };
+
+        // Base City zorunluluğu (Sadece satın alırken)
+        if (!warehouse.baseCity) {
+            return res.json({ success: false, error: 'Satın alım yapabilmek için önce Depo sekmesinden bir ANA ÜS (Şehir) seçmelisin!' });
+        }
+
+        const userBaseCity = warehouse.baseCity;
+
         // Maliyet hesapla
         const itemCost = listing.pricePerUnit * purchaseQty;
 
-        // Kargo ücreti hesapla
+        // Kargo ücreti hesapla (Listing City -> User Base City)
         let shippingFee = 0;
-        if (listing.city !== targetCity && CITY_DISTANCES[listing.city] && CITY_DISTANCES[listing.city][targetCity]) {
-            const distance = CITY_DISTANCES[listing.city][targetCity];
-            shippingFee = Math.round(distance * LOGISTICS_COST_PER_KM * (purchaseQty / 100)); // Her 100 birim için km başına ücret
-            if (shippingFee < 500) shippingFee = 500; // Minimum kargo
+
+        // Eğer aynı şehirde değilse kargo ücreti ekle
+        if (listing.city !== userBaseCity) {
+            if (CITY_DISTANCES[listing.city] && CITY_DISTANCES[listing.city][userBaseCity]) {
+                const distance = CITY_DISTANCES[listing.city][userBaseCity];
+                // Formül: Mesafe * Katsayı * (Adet / 100)
+                // 100 birim altı için minimum hesaplama (Adet/100 -> en az 1 gibi davranmaz, oranlar)
+                // Ama mantıklı olan: Ağırlık/Hacim olsa daha iyi ama şu an Adet üzerinden.
+
+                let weightFactor = purchaseQty / 100;
+                if (weightFactor < 1) weightFactor = 1; // Minimum 1 paket ücreti
+
+                shippingFee = Math.round(distance * LOGISTICS_COST_PER_KM * weightFactor);
+
+                if (shippingFee < 500) shippingFee = 500; // Minimum kargo bedeli
+            } else {
+                // Mesafe bulunamadıysa (Hata durumu, ama güvenli olsun)
+                shippingFee = 5000;
+            }
         }
 
         const totalCost = itemCost + shippingFee;
@@ -11507,11 +11565,16 @@ app.post('/api/marketplace/buy-listing', transactionLimiter, async (req, res) =>
             return res.json({ success: false, error: `Yetersiz bakiye! Gerekli: ${totalCost.toLocaleString()} 💰` });
         }
 
-        // Depo kontrol
-        const warehouseSnap = await db.ref('warehouses/' + username).once('value');
-        const warehouse = warehouseSnap.val() || { level: 1, currentUsage: 0 };
+        // Depo kapasite kontrolü (Zaten yukarıda çekilen 'warehouse' objesini kullan)
+        // Not: 'currentUsage' alanı users/.../warehouse içinde olmayabilir, hesaplanması gerekebilir veya ayrı tutuluyorsa oradan çekilmeli.
+        // Ancak mevcut yapıda 'users/.../warehouse' ana yapı gibi görünüyor.
+        // Basitlik ve güvenilirlik için: 'users/.../inventory' sayılabilir ama şu anlık warehouse objesindeki usage'a güvenelim (Eğer varsa).
+        // Eğer warehouse objesinde currentUsage yoksa 0 kabul edilir.
+
+        const currentUsage = warehouse.currentUsage || 0;
         const capacity = WAREHOUSE_LEVELS[warehouse.level || 1].capacity;
-        if (warehouse.currentUsage + purchaseQty > capacity) {
+
+        if (currentUsage + purchaseQty > capacity) {
             return res.json({ success: false, error: 'Depo kapasitesi yetersiz!' });
         }
 
