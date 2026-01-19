@@ -389,7 +389,7 @@ app.delete('/api/auth/cancel/:username', async (req, res) => {
 });
 
 // Sadece gerekli dosyaları public yapıyoruz (admin.html HARİÇ - güvenlik için gizli URL)
-const publicFiles = ['shop.min.js', 'shop.css', 'dashboard.html', 'shop.html', 'overlay.html', 'goals.html', 'horse-race.html'];
+const publicFiles = ['shop.js', 'shop.min.js', 'shop.css', 'dashboard.html', 'shop.html', 'overlay.html', 'goals.html', 'horse-race.html'];
 publicFiles.forEach(file => {
     app.get(`/${file}`, (req, res) => res.sendFile(path.join(__dirname, file)));
 });
