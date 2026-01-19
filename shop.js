@@ -3113,6 +3113,7 @@ async function buyCustomization(type, id, price) {
 // document.addEventListener('keydown', function (event) { ... });
 
 // UTILS: Custom Modals replacing browser defaults
+// UTILS: Custom Modals replacing browser defaults
 function showAlert(title, message) {
     return new Promise((resolve) => {
         const modal = document.getElementById('alert-modal');
@@ -3120,8 +3121,8 @@ function showAlert(title, message) {
 
         const titleEl = document.getElementById('alert-modal-title');
         const msgEl = document.getElementById('alert-modal-message');
-        if (titleEl) titleEl.innerText = title;
-        if (msgEl) msgEl.innerText = message;
+        if (titleEl) titleEl.innerHTML = title;
+        if (msgEl) msgEl.innerHTML = message;
 
         modal.classList.remove('hidden');
         modal.style.display = 'flex';
@@ -3152,13 +3153,12 @@ function showInput(title, desc, placeholder) {
         const descEl = document.getElementById('input-modal-desc');
         const input = document.getElementById('input-modal-value');
 
-        if (titleEl) titleEl.innerText = title;
-        if (descEl) descEl.innerText = desc;
+        if (titleEl) titleEl.innerHTML = title;
+        if (descEl) descEl.innerHTML = desc;
         if (input) {
             input.value = "";
             input.placeholder = placeholder || "...";
         }
-
         modal.classList.remove('hidden');
         modal.style.display = 'flex';
         if (input) input.focus();
@@ -3211,16 +3211,28 @@ function showInput(title, desc, placeholder) {
     });
 }
 
-function showConfirm(title, message) {
+function showConfirm(title, message, callback) {
+    // Legacy Callback support
+    if (typeof message === 'function') {
+        callback = message;
+        message = title;
+        title = "Onay";
+    }
+
     return new Promise((resolve) => {
         const modal = document.getElementById('confirm-modal');
-        if (!modal) { const r = confirm(message); resolve(r); return; } // Fallback
+        if (!modal) {
+            const r = confirm(typeof message === 'string' ? message : title);
+            if (callback) callback(r);
+            resolve(r);
+            return;
+        }
 
         const titleEl = document.getElementById('confirm-modal-title');
         const msgEl = document.getElementById('confirm-modal-message');
 
-        if (titleEl) titleEl.innerText = title;
-        if (msgEl) msgEl.innerText = message;
+        if (titleEl) titleEl.innerHTML = title;
+        if (msgEl) msgEl.innerHTML = message;
 
         modal.classList.remove('hidden');
         modal.style.display = 'flex';
@@ -3228,7 +3240,6 @@ function showConfirm(title, message) {
         const yesBtn = document.getElementById('confirm-modal-yes');
         const noBtn = document.getElementById('confirm-modal-cancel');
 
-        // Clean up old listeners
         const newYes = yesBtn.cloneNode(true);
         const newNo = noBtn.cloneNode(true);
         yesBtn.parentNode.replaceChild(newYes, yesBtn);
@@ -3237,12 +3248,14 @@ function showConfirm(title, message) {
         newYes.onclick = () => {
             modal.style.display = 'none';
             modal.classList.add('hidden');
+            if (callback) callback(true);
             resolve(true);
         };
 
         newNo.onclick = () => {
             modal.style.display = 'none';
             modal.classList.add('hidden');
+            if (callback) callback(false);
             resolve(false);
         };
     });
@@ -3470,11 +3483,16 @@ function renderMarketEvents() {
     if (!container) return;
 
     if (marketEvents.length === 0) {
-        container.innerHTML = '<span style="opacity:0.7">Şu an aktif olay yok.</span>';
+        container.innerHTML = '<span style="opacity:0.7">Şu an aktif küresel bir olay yok.</span>';
         return;
     }
 
-    container.innerHTML = marketEvents.slice(0, 3).map(e => `<div>${e.name}</div>`).join('');
+    container.innerHTML = marketEvents.map(e => `
+        <div class="glass-panel" style="padding:10px; margin-bottom:10px; border-left:4px solid var(--primary);">
+            <div style="font-weight:700; color:var(--primary); margin-bottom:4px;">${e.name}</div>
+            <div style="font-size:0.8rem; opacity:0.8;">${e.desc || 'Piyasa koşulları değişiyor...'}</div>
+        </div>
+    `).join('');
 }
 
 // Alt sekme değiştir
@@ -4088,6 +4106,7 @@ function switchMarketTab(tab) {
     if (tab === 'browse') loadMarketListings();
     if (tab === 'my-listings') loadMyListings();
     if (tab === 'create') loadUserInventoryForListing();
+    loadBusinessData(); // Her tab geçişinde fiyatları ve olayları tazele
 }
 
 async function loadMarketListings() {

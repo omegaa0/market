@@ -389,7 +389,7 @@ app.delete('/api/auth/cancel/:username', async (req, res) => {
 });
 
 // Sadece gerekli dosyaları public yapıyoruz (admin.html HARİÇ - güvenlik için gizli URL)
-const publicFiles = ['shop.js', 'shop.css', 'dashboard.html', 'shop.html', 'overlay.html', 'goals.html', 'horse-race.html'];
+const publicFiles = ['shop.min.js', 'shop.css', 'dashboard.html', 'shop.html', 'overlay.html', 'goals.html', 'horse-race.html'];
 publicFiles.forEach(file => {
     app.get(`/${file}`, (req, res) => res.sendFile(path.join(__dirname, file)));
 });
@@ -1826,21 +1826,21 @@ const SYSTEM_MARKET_PRODUCTS = [
 
 // --- RASTGELE OLAYLAR ---
 const MARKET_EVENTS = [
-    { id: "hasat_sezonu", name: "🌾 Hasat Sezonu!", effect: { category: "farming", production: 1.5, price: 0.7 }, duration: 7, chance: 0.1 },
-    { id: "kuraklik", name: "☀️ Kuraklık", effect: { category: "farming", production: 0.5, price: 1.5 }, duration: 7, chance: 0.08 },
-    { id: "et_krizi", name: "🥩 Et Fiyatları Tavan!", effect: { products: ["et", "tavuk", "hindi_eti", "ordek_eti", "tavsan_eti", "kaz_eti", "deri"], price: 2.0 }, duration: 5, chance: 0.06 },
-    { id: "sut_bolluğu", name: "🥛 Süt Bolluğu", effect: { products: ["sut", "sut_ham", "peynir", "yogurt"], price: 0.6 }, duration: 5, chance: 0.07 },
-    { id: "bayram_talebi", name: "🎉 Bayram Talebi!", effect: { category: "retail", sales: 2.0 }, duration: 3, chance: 0.05 },
-    { id: "ekonomik_kriz", name: "📉 Ekonomik Durgunluk", effect: { all: true, sales: 0.6, price: 0.8 }, duration: 10, chance: 0.04 },
-    { id: "turizm_sezonu", name: "🏖️ Turizm Sezonu!", effect: { businesses: ["restoran", "cafe", "otel"], sales: 1.8 }, duration: 14, chance: 0.08 },
-    { id: "altin_rallisi", name: "💰 Altın Rallisi!", effect: { products: ["altin", "mucevher", "inci"], price: 1.5 }, duration: 7, chance: 0.05 },
-    { id: "araba_kampanyasi", name: "🚗 Araba Kampanya Dönemi", effect: { products: ["araba", "at"], sales: 1.5, price: 0.9 }, duration: 7, chance: 0.04 },
-    { id: "grip_salgini", name: "🤒 Grip Salgını", effect: { products: ["ilac"], sales: 3.0, price: 1.3 }, duration: 7, chance: 0.06 },
-    { id: "teknoloji_fuari", name: "📱 Teknoloji Fuarı", effect: { products: ["elektronik"], sales: 2.0 }, duration: 5, chance: 0.05 },
-    { id: "sel_felaketi", name: "🌊 Sel Felaketi", effect: { category: "farming", production: 0.3 }, duration: 5, chance: 0.03 },
-    { id: "ihracat_artisi", name: "📦 İhracat Artışı", effect: { category: "production", sales: 1.5 }, duration: 7, chance: 0.06 },
-    { id: "enerji_krizi", name: "⚡ Enerji Krizi", effect: { category: "production", production: 0.7, maintenance: 1.5 }, duration: 7, chance: 0.04 },
-    { id: "yem_sikintisi", name: "🌰 Yem Sıkıntısı", effect: { products: ["yem"], price: 2.5 }, duration: 5, chance: 0.05 }
+    { id: "hasat_sezonu", name: "🌾 Hasat Sezonu!", desc: "Tarım ürünlerinde üretim artar (%150), ancak bol ürün nedeniyle fiyatlar düşer (%70).", effect: { category: "farming", production: 1.5, price: 0.7 }, duration: 7, chance: 0.1 },
+    { id: "kuraklik", name: "☀️ Kuraklık", desc: "Sıcaklık nedeniyle tarım üretimi yarı yarıya düşer (%50), kıtlık nedeniyle fiyatlar %50 artar.", effect: { category: "farming", production: 0.5, price: 1.5 }, duration: 7, chance: 0.08 },
+    { id: "et_krizi", name: "🥩 Et Fiyatları Tavan!", desc: "Hayvancılık sektöründeki kriz nedeniyle et ve türevi ürünlerin fiyatları 2 katına çıkar (%200).", effect: { products: ["et", "tavuk", "hindi_eti", "ordek_eti", "tavsan_eti", "kaz_eti", "deri"], price: 2.0 }, duration: 5, chance: 0.06 },
+    { id: "sut_bolluğu", name: "🥛 Süt Bolluğu", desc: "Süt ve süt ürünlerinde aşırı üretim nedeniyle fiyatlar %40 ucuzlar.", effect: { products: ["sut", "sut_ham", "peynir", "yogurt"], price: 0.6 }, duration: 5, chance: 0.07 },
+    { id: "bayram_talebi", name: "🎉 Bayram Talebi!", desc: "Bayram nedeniyle perakende satışları 2 katına çıkar (%200).", effect: { category: "retail", sales: 2.0 }, duration: 3, chance: 0.05 },
+    { id: "ekonomik_kriz", name: "📉 Ekonomik Durgunluk", desc: "Genel piyasa durgunluğu. Satışlar ve fiyatlar %40'a kadar düşer.", effect: { all: true, sales: 0.6, price: 0.8 }, duration: 10, chance: 0.04 },
+    { id: "turizm_sezonu", name: "🏖️ Turizm Sezonu!", desc: "Tatil bölgelerindeki restoran, kafe ve otellerin satışları %80 artar.", effect: { businesses: ["restoran", "cafe", "otel"], sales: 1.8 }, duration: 14, chance: 0.08 },
+    { id: "altin_rallisi", name: "💰 Altın Rallisi!", desc: "Küresel piyasalarda altına olan güven artar, fiyatlar %50 yükselir.", effect: { products: ["altin", "mucevher", "inci"], price: 1.5 }, duration: 7, chance: 0.05 },
+    { id: "araba_kampanyasi", name: "🚗 Araba Kampanya Dönemi", desc: "Otomobil satışları %50 artar, fiyatlar ise rekabet nedeniyle %10 düşer.", effect: { products: ["araba", "at"], sales: 1.5, price: 0.9 }, duration: 7, chance: 0.04 },
+    { id: "grip_salgini", name: "🤒 Grip Salgını", desc: "Hastalık nedeniyle ilaç satışları 3 katına çıkar (%300)!", effect: { products: ["ilac"], sales: 3.0, price: 1.3 }, duration: 7, chance: 0.06 },
+    { id: "teknoloji_fuari", name: "📱 Teknoloji Fuarı", desc: "Elektronik ürünlere olan ilgi tavan yapar, satışlar 2 katına çıkar.", effect: { products: ["elektronik"], sales: 2.0 }, duration: 5, chance: 0.05 },
+    { id: "sel_felaketi", name: "🌊 Sel Felaketi", desc: "Doğal afet nedeniyle tarım üretimi durma noktasına gelir (%30 verim).", effect: { category: "farming", production: 0.3 }, duration: 5, chance: 0.03 },
+    { id: "ihracat_artisi", name: "📦 İhracat Artışı", desc: "Üretim sektörü için altın çağ! Genel satışlar %50 artar.", effect: { category: "production", sales: 1.5 }, duration: 7, chance: 0.06 },
+    { id: "enerji_krizi", name: "⚡ Enerji Krizi", desc: "Enerji maliyetleri %50 artar, üretim hızı %30 yavaşlar.", effect: { category: "production", production: 0.7, maintenance: 1.5 }, duration: 7, chance: 0.04 },
+    { id: "yem_sikintisi", name: "🌰 Yem Sıkıntısı", desc: "Hayvancılığın ana hammaddesi yemde kıtlık! Fiyatlar 2.5 katına çıkar.", effect: { products: ["yem"], price: 2.5 }, duration: 5, chance: 0.05 }
 ];
 
 // --- İŞLETME SEVİYE SİSTEMİ ---
@@ -11540,14 +11540,14 @@ app.get('/api/marketplace/listings', async (req, res) => {
         // --- SISTEM ÜRÜNLERİ (%10 Kalite) ---
         // Her ürün grubundan 1 adet sistem ilanı ekle
         const SYSTEM_PRODUCTS = [
-            { code: 'ekmek', qty: 999, price: 50 },
-            { code: 'su', qty: 999, price: 20 },
-            { code: 'un', qty: 500, price: 100 },
-            { code: 'seker', qty: 500, price: 120 },
-            { code: 'yumurta', qty: 300, price: 40 },
-            { code: 'sut', qty: 200, price: 150 },
-            { code: 'domates', qty: 300, price: 80 },
-            { code: 'patates', qty: 500, price: 60 }
+            { code: 'ekmek', qty: 100, price: 15 },
+            { code: 'su', qty: 100, price: 10 },
+            { code: 'un', qty: 50, price: 80 },
+            { code: 'seker', qty: 50, price: 60 },
+            { code: 'yumurta', qty: 50, price: 80 },
+            { code: 'sut', qty: 50, price: 50 },
+            { code: 'domates', qty: 50, price: 35 },
+            { code: 'patates', qty: 100, price: 20 }
         ];
 
         SYSTEM_PRODUCTS.forEach(p => {
@@ -11557,7 +11557,7 @@ app.get('/api/marketplace/listings', async (req, res) => {
                 productCode: p.code,
                 quantity: p.qty,
                 pricePerUnit: p.price,
-                totalPrice: p.price, // Sistem tekli fiyat gösterir gibi
+                totalPrice: p.qty * p.price,
                 quality: 10,
                 isSystem: true,
                 createdAt: Date.now()
