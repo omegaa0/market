@@ -4060,58 +4060,150 @@ const verifySession = async (req, res, next) => {
 };
 
 // --- TTS PREVIEW API ---
-// --- FAKEYOU TTS HELPER FUNCTION ---
+// --- FAKEYOU TTS HELPER ---
+// FakeYou cookie-based authentication or API Token
+let fakeYouSessionCookie = null;
+
+async function getFakeYouSession() {
+    // 1. API Token varsa onu kullan (Öncelikli)
+    if (process.env.FAKEYOU_API_TOKEN) {
+        return { type: 'token', value: process.env.FAKEYOU_API_TOKEN };
+    }
+
+    // 2. Zaten cookie varsa kullan
+    if (fakeYouSessionCookie) return { type: 'cookie', value: fakeYouSessionCookie };
+
+    const username = process.env.FAKEYOU_USERNAME;
+    const password = process.env.FAKEYOU_PASSWORD;
+
+    if (!username || !password) {
+        console.log('[FakeYou] Hesap bilgisi yok - anonim mod (Yavaş olabilir)');
+        return null;
+    }
+
+    try {
+        console.log('[FakeYou] Login yapılıyor...');
+        const loginResp = await axios.post('https://api.fakeyou.com/v1/login', {
+            username_or_email: username,
+            password: password
+        }, {
+            headers: { 'Content-Type': 'application/json' }
+        });
+
+        if (loginResp.data.success) {
+            // Set-Cookie header'dan session cookie'yi al
+            const setCookie = loginResp.headers['set-cookie'];
+            if (setCookie) {
+                const match = setCookie[0]?.match(/session=([^;]+)/);
+                if (match) {
+                    fakeYouSessionCookie = match[1];
+                    console.log('[FakeYou] Login başarılı - session cookie alındı');
+                    return { type: 'cookie', value: fakeYouSessionCookie };
+                }
+            }
+        }
+        console.log('[FakeYou] Login başarısız');
+        return null;
+    } catch (e) {
+        console.error('[FakeYou] Login hatası:', e.message);
+        return null; // Login başarısız olsa da anonim dene
+    }
+}
+
 // FakeYou API ile ses oluşturma (async job-based system)
 async function generateFakeYouTTS(modelToken, text) {
-    const fakeYouToken = process.env.FAKEYOU_API_TOKEN;
+    // Session veya Token al
+    const auth = await getFakeYouSession();
 
-    // Headers - API token varsa ekle (rate limit artırır)
+    // Headers
     const headers = {
         'Content-Type': 'application/json',
         'Accept': 'application/json'
     };
 
-    if (fakeYouToken) {
-        headers['Authorization'] = `Bearer ${fakeYouToken}`;
-        console.log('[FakeYou] API Token kullanılıyor - öncelikli kuyruk');
+    // Auth Headers
+    if (auth) {
+        if (auth.type === 'token') {
+            // API key hem cookie olarak (session=...) hem de Authorization header olarak dene
+            // Not: FakeYou dokümantasyonuna göre token genelde session cookie olarak geçer
+            headers['Cookie'] = `session=${auth.value}`;
+            headers['Authorization'] = auth.value;
+            console.log('[FakeYou] API Token kullanılıyor');
+        } else {
+            headers['Cookie'] = `session=${auth.value}`;
+            headers['credentials'] = 'include';
+            console.log('[FakeYou] Session Cookie kullanılıyor');
+        }
     }
 
-    // 1. TTS inference başlat
-    const inferenceResp = await axios.post('https://api.fakeyou.com/tts/inference', {
-        tts_model_token: modelToken,
-        uuid_idempotency_token: uuidv4(),
-        inference_text: text
-    }, { headers });
+    // 1. TTS inference başlat (Retry mekanizmalı)
+    let jobToken = null;
+    const maxRetries = 3;
 
-    if (!inferenceResp.data.success) {
-        throw new Error(inferenceResp.data.error_reason || 'TTS inference başlatılamadı');
+    for (let attempt = 1; attempt <= maxRetries; attempt++) {
+        try {
+            const inferenceResp = await axios.post('https://api.fakeyou.com/tts/inference', {
+                tts_model_token: modelToken,
+                uuid_idempotency_token: uuidv4(),
+                inference_text: text
+            }, { headers });
+
+            if (inferenceResp.data.success) {
+                jobToken = inferenceResp.data.inference_job_token;
+                break; // Başarılı
+            } else {
+                // API success:false döndürdüyse
+                if (inferenceResp.data.error_reason && inferenceResp.data.error_reason.includes('rate limited')) {
+                    throw new Error('rate limited');
+                }
+                throw new Error(inferenceResp.data.error_reason || 'Bilinmeyen API hatası');
+            }
+        } catch (e) {
+            const isRateLimit = e.message.includes('rate limited') || (e.response && e.response.status === 429);
+
+            if (isRateLimit && attempt < maxRetries) {
+                const waitTime = attempt * 2000;
+                console.log(`[FakeYou] Rate limit! ${waitTime}ms bekleniyor... (Deneme ${attempt}/${maxRetries})`);
+                await new Promise(r => setTimeout(r, waitTime));
+                continue;
+            }
+
+            if (attempt === maxRetries) {
+                throw new Error(isRateLimit ? 'FakeYou Sunucuları çok yoğun (Rate Limit)' : e.message);
+            }
+        }
     }
 
-    const jobToken = inferenceResp.data.inference_job_token;
+    if (!jobToken) throw new Error('TTS işi başlatılamadı.');
 
     // 2. Job tamamlanana kadar poll et (max 90 saniye)
-    const maxAttempts = 45;
+    const maxPolls = 45;
     const pollInterval = 2000; // 2 saniye
 
-    for (let i = 0; i < maxAttempts; i++) {
+    for (let i = 0; i < maxPolls; i++) {
         await new Promise(resolve => setTimeout(resolve, pollInterval));
 
-        const statusResp = await axios.get(`https://api.fakeyou.com/tts/job/${jobToken}`, { headers });
+        try {
+            const statusResp = await axios.get(`https://api.fakeyou.com/tts/job/${jobToken}`, { headers });
 
-        if (!statusResp.data.success) continue;
+            if (!statusResp.data.success) continue;
 
-        const status = statusResp.data.state?.status;
+            const status = statusResp.data.state?.status;
 
-        if (status === 'complete_success') {
-            const audioPath = statusResp.data.state.maybe_public_bucket_wav_audio_path;
-            if (audioPath) {
-                return `https://storage.googleapis.com/vocodes-public${audioPath}`;
+            if (status === 'complete_success') {
+                const audioPath = statusResp.data.state.maybe_public_bucket_wav_audio_path;
+                if (audioPath) {
+                    return `https://storage.googleapis.com/vocodes-public${audioPath}`;
+                }
+                throw new Error('Audio path bulunamadı');
+            } else if (status === 'attempt_failed' || status === 'dead') {
+                throw new Error('TTS oluşturma işlemini sunucu reddetti.');
             }
-            throw new Error('Audio path bulunamadı');
-        } else if (status === 'attempt_failed' || status === 'dead') {
-            throw new Error('TTS oluşturma başarısız oldu');
+            // pending, started, or processing... wait.
+        } catch (pollErr) {
+            console.error(`[FakeYou] Polling hatası: ${pollErr.message}`);
+            // Polling hatasında hemen pes etme, bir sonraki turu dene
         }
-        // pending veya started ise devam et
     }
 
     throw new Error('TTS zaman aşımına uğradı (90 saniye)');
