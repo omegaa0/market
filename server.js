@@ -4063,42 +4063,62 @@ app.get('/api/tts/preview', async (req, res) => {
     const { voice } = req.query;
     if (!voice) return res.json({ success: false, error: "Ses seçilmedi!" });
 
-    // ELEVENLABS VOICE MAPPING (Güncel varsayılan sesler)
-    // Not: Kendi sesleriniz için ElevenLabs panelinden Voice ID'leri alın
-    const elevenVoices = {
-        'azeri': 'pNInz6obpgDQGcFmaJgB',    // Adam - multilingual erkek
-        'hasan': 'ErXwobaYiN019PkySvjV',     // Antoni - erkek
-        'selim': 'VR6AewLTigWG4xSOukaG',     // Arnold - erkek
-        'irem': 'EXAVITQu4vr4xnSDxMaL',      // Bella - kadın
-        'aleyna': 'MF3mGyEYCl7XYWbV9V6O',    // Elli - kadın
-        'riza': 'TxGEqnHWrfWFTfGW9XjX'       // Josh - erkek
+    // ELEVENLABS V3 - Ses ve Dil Konfigürasyonu
+    // eleven_v3 modeli 70+ dil destekler (Azerbaycanca dahil)
+    // Varsayılan sesler kullanılıyor - kendi sesleriniz için ElevenLabs panelinden Voice ID alın
+    const voiceConfig = {
+        'azeri': {
+            voiceId: 'pNInz6obpgDQGcFmaJgB',  // Adam - multilingual
+            lang: 'aze',                        // Azerbaycan dili kodu
+            text: 'Salam dostlar, necəsiniz? Bu mənim səsimdir.'
+        },
+        'hasan': {
+            voiceId: 'ErXwobaYiN019PkySvjV',   // Antoni
+            lang: 'tr',                         // Türkçe
+            text: 'Merhaba arkadaşlar, yayınımıza hoş geldiniz!'
+        },
+        'selim': {
+            voiceId: 'VR6AewLTigWG4xSOukaG',   // Arnold
+            lang: 'tr',
+            text: 'Selam millet, keyifler nasıl? Bomba gibiyiz!'
+        },
+        'irem': {
+            voiceId: 'EXAVITQu4vr4xnSDxMaL',   // Bella
+            lang: 'tr',
+            text: 'Merhaba, umarım harika bir gün geçiriyorsundur.'
+        },
+        'aleyna': {
+            voiceId: 'MF3mGyEYCl7XYWbV9V6O',  // Elli
+            lang: 'tr',
+            text: 'Merhaba, ben Aleyna. Bu bir örnek ses kaydıdır.'
+        },
+        'riza': {
+            voiceId: 'TxGEqnHWrfWFTfGW9XjX',   // Josh
+            lang: 'tr',
+            text: 'Dikkat dikkat! Bu bir test anonsudur.'
+        }
     };
 
-    const voiceId = elevenVoices[voice];
-    if (!voiceId) return res.json({ success: false, error: "Geçersiz ses seçimi!" });
+    const config = voiceConfig[voice];
+    if (!config) return res.json({ success: false, error: "Geçersiz ses seçimi!" });
 
     try {
         const elevenKey = process.env.ELEVENLABS_API_KEY;
         if (!elevenKey) return res.json({ success: false, error: "API anahtarı eksik!" });
 
-        // Örnek metinler
-        const sampleTexts = {
-            'azeri': 'Salam dostlar, necəsiniz? Bu mənim səsimdir.',
-            'hasan': 'Merhaba arkadaşlar, yayınımıza hoş geldiniz!',
-            'selim': 'Selam millet, keyifler nasıl? Bomba gibiyiz!',
-            'irem': 'Merhaba, umarım harika bir gün geçiriyorsundur.',
-            'aleyna': 'Merhaba, ben Aleyna. Bu bir örnek ses kaydıdır.',
-            'riza': 'Dikkat dikkat! Bu bir test anonsudur.'
-        };
-
-        const text = sampleTexts[voice] || "Merhaba, bu bir test sesidir.";
-
+        // ElevenLabs V3 API - Azeri ve Türkçe dil desteği ile
         const ttsResp = await axios.post(
-            `https://api.elevenlabs.io/v1/text-to-speech/${voiceId}`,
+            `https://api.elevenlabs.io/v1/text-to-speech/${config.voiceId}`,
             {
-                text: text,
-                model_id: "eleven_multilingual_v2",
-                voice_settings: { stability: 0.5, similarity_boost: 0.8 }
+                text: config.text,
+                model_id: "eleven_v3",           // En yeni model - 70+ dil desteği
+                language_code: config.lang,      // Dil kodu (aze=Azerbaycanca, tr=Türkçe)
+                voice_settings: {
+                    stability: 0.5,
+                    similarity_boost: 0.75,
+                    style: 0,
+                    use_speaker_boost: true
+                }
             },
             {
                 headers: {
@@ -4118,16 +4138,23 @@ app.get('/api/tts/preview', async (req, res) => {
         console.error("TTS Preview Error:", e.message);
         if (e.response) {
             console.error("TTS API Response Status:", e.response.status);
-            console.error("TTS API Response Data:", e.response.data ? e.response.data.toString() : 'No data');
+            try {
+                const errorData = JSON.parse(e.response.data.toString());
+                console.error("TTS API Error Detail:", errorData);
+            } catch {
+                console.error("TTS API Response Data:", e.response.data?.toString());
+            }
         }
 
         let errorMsg = "Ses oluşturulamadı!";
         if (e.response?.status === 400) {
-            errorMsg = "Geçersiz istek - Voice ID veya model hatası olabilir.";
+            errorMsg = "Geçersiz istek - Model veya ses ayarları kontrol edilmeli.";
         } else if (e.response?.status === 401) {
             errorMsg = "API anahtarı geçersiz!";
         } else if (e.response?.status === 429) {
             errorMsg = "API limit aşıldı, daha sonra deneyin.";
+        } else if (e.response?.status === 422) {
+            errorMsg = "Voice ID veya model desteklenmiyor.";
         }
 
         res.json({ success: false, error: errorMsg });
@@ -4160,21 +4187,22 @@ app.post('/api/market/buy', transactionLimiter, verifySession, async (req, res) 
 
             eventPath = "tts";
 
-            // ELEVENLABS VOICE MAPPING (Güncel varsayılan sesler)
-            // Not: Kendi sesleriniz için ElevenLabs panelinden Voice ID'leri alın
-            const elevenVoices = {
-                'azeri': 'pNInz6obpgDQGcFmaJgB',    // Adam - multilingual erkek
-                'hasan': 'ErXwobaYiN019PkySvjV',     // Antoni - erkek
-                'selim': 'VR6AewLTigWG4xSOukaG',     // Arnold - erkek
-                'irem': 'EXAVITQu4vr4xnSDxMaL',      // Bella - kadın
-                'aleyna': 'MF3mGyEYCl7XYWbV9V6O',    // Elli - kadın
-                'riza': 'TxGEqnHWrfWFTfGW9XjX'       // Josh - erkek
+            // ELEVENLABS V3 - Ses ve Dil Konfigürasyonu
+            // eleven_v3 modeli 70+ dil destekler (Azerbaycanca dahil)
+            const voiceConfig = {
+                'azeri': { voiceId: 'pNInz6obpgDQGcFmaJgB', lang: 'aze' },   // Azerbaycanca
+                'hasan': { voiceId: 'ErXwobaYiN019PkySvjV', lang: 'tr' },    // Türkçe
+                'selim': { voiceId: 'VR6AewLTigWG4xSOukaG', lang: 'tr' },
+                'irem': { voiceId: 'EXAVITQu4vr4xnSDxMaL', lang: 'tr' },
+                'aleyna': { voiceId: 'MF3mGyEYCl7XYWbV9V6O', lang: 'tr' },
+                'riza': { voiceId: 'TxGEqnHWrfWFTfGW9XjX', lang: 'tr' }
             };
 
             let audioUrl = null;
             let isEleven = false;
 
-            if (elevenVoices[voice]) {
+            const vConfig = voiceConfig[voice];
+            if (vConfig) {
                 isEleven = true;
 
                 // --- ABONELİK KONTROLÜ (ELEVENLABS İÇİN) ---
@@ -4196,7 +4224,7 @@ app.post('/api/market/buy', transactionLimiter, verifySession, async (req, res) 
                 }
 
                 try {
-                    // ElevenLabs API Call
+                    // ElevenLabs V3 API Call
                     const elevenKey = process.env.ELEVENLABS_API_KEY;
 
                     if (!elevenKey || elevenKey.includes('sk_73928')) {
@@ -4204,14 +4232,18 @@ app.post('/api/market/buy', transactionLimiter, verifySession, async (req, res) 
                         throw new Error("Anahtar bulunamadı.");
                     }
 
-                    const voiceId = elevenVoices[voice];
-
                     const ttsResp = await axios.post(
-                        `https://api.elevenlabs.io/v1/text-to-speech/${voiceId}`,
+                        `https://api.elevenlabs.io/v1/text-to-speech/${vConfig.voiceId}`,
                         {
                             text: text,
-                            model_id: "eleven_multilingual_v2",
-                            voice_settings: { stability: 0.5, similarity_boost: 0.8 }
+                            model_id: "eleven_v3",            // V3 model - 70+ dil desteği
+                            language_code: vConfig.lang,      // Dil kodu (aze=Azerbaycanca, tr=Türkçe)
+                            voice_settings: {
+                                stability: 0.5,
+                                similarity_boost: 0.75,
+                                style: 0,
+                                use_speaker_boost: true
+                            }
                         },
                         {
                             headers: {
@@ -4226,10 +4258,14 @@ app.post('/api/market/buy', transactionLimiter, verifySession, async (req, res) 
                     const base64Audio = Buffer.from(ttsResp.data).toString('base64');
                     audioUrl = `data:audio/mpeg;base64,${base64Audio}`;
                 } catch (err) {
-                    console.error(`ElevenLabs Error [Voice: ${voice}]:`, err.message);
+                    console.error(`ElevenLabs V3 Error [Voice: ${voice}, Lang: ${vConfig.lang}]:`, err.message);
                     if (err.response) {
-                        const errText = err.response.data ? (err.response.data.toString() || 'binary') : 'no-data';
-                        console.error("ElevenLabs API Response Error:", errText);
+                        try {
+                            const errorData = JSON.parse(err.response.data.toString());
+                            console.error("ElevenLabs API Error Detail:", errorData);
+                        } catch {
+                            console.error("ElevenLabs API Response:", err.response.data?.toString());
+                        }
                     }
                     isEleven = false;
                 }
