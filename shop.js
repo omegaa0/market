@@ -5071,6 +5071,47 @@ async function loadWarehouseInfo() {
                     upgradeBtn.onclick = null;
                 }
             }
+
+            // Depo Envanter Listesi
+            const inventoryEl = document.getElementById('warehouse-inventory-list');
+            const inventory = data.inventory || [];
+
+            if (inventoryEl) {
+                if (inventory.length === 0) {
+                    inventoryEl.innerHTML = `
+                        <div style="text-align:center; padding:30px; color:#888;">
+                            <div style="font-size:3rem; margin-bottom:10px;">📭</div>
+                            <div>Depoda henüz ürün yok</div>
+                        </div>
+                    `;
+                } else {
+                    let html = '<div style="display:grid; gap:10px;">';
+                    for (const item of inventory) {
+                        const qualityColor = item.quality >= 80 ? '#4ade80' :
+                                            item.quality >= 60 ? '#60a5fa' :
+                                            item.quality >= 40 ? '#fbbf24' :
+                                            item.quality >= 20 ? '#f97316' : '#ef4444';
+
+                        html += `
+                            <div style="display:flex; align-items:center; justify-content:space-between; padding:12px; background:rgba(255,255,255,0.05); border-radius:8px; border:1px solid rgba(255,255,255,0.1);">
+                                <div style="display:flex; align-items:center; gap:10px;">
+                                    <span style="font-size:1.5rem;">${item.icon}</span>
+                                    <div>
+                                        <div style="font-weight:600;">${item.name}</div>
+                                        <div style="font-size:0.8rem; color:${qualityColor};">Kalite: %${item.quality}</div>
+                                    </div>
+                                </div>
+                                <div style="text-align:right;">
+                                    <div style="font-size:1.2rem; font-weight:700;">${item.amount.toLocaleString()}</div>
+                                    <div style="font-size:0.75rem; color:#888;">adet</div>
+                                </div>
+                            </div>
+                        `;
+                    }
+                    html += '</div>';
+                    inventoryEl.innerHTML = html;
+                }
+            }
         }
     } catch (e) {
         console.error('Depo yükleme hatası:', e);
@@ -5218,4 +5259,17 @@ async function buyRnDUpgrade(productCode, cost, duration) {
     } catch (e) {
         showToast('Hata: ' + e.message, 'error');
     }
+}
+
+// --- SHARED UTILS ---
+function calculateCityDistance(city1, city2) {
+    if (!city1 || !city2) return 500;
+    if (city1 === city2) return 0;
+    const findCity = (name) => EMLAK_CITIES.find(c => c.name === name || c.id === name.toUpperCase() || c.name.toLowerCase() === name.toLowerCase());
+    const c1 = findCity(city1);
+    const c2 = findCity(city2);
+    if (!c1 || !c2) return 500;
+    const dx = c1.x - c2.x;
+    const dy = c1.y - c2.y;
+    return Math.sqrt(dx * dx + dy * dy) * 15;
 }

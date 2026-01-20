@@ -11572,7 +11572,7 @@ app.get('/api/marketplace/listings', async (req, res) => {
 
         const ALL_CITIES_LIST = EMLAK_CITIES.map(c => c.name);
 
-        // Her şehir için sistem ilanlarını ekle
+        // Her şehir için sistem ilanlarını ekle (Kalite %10 - Düşük kalite)
         SYSTEM_BASE.forEach(p => {
             ALL_CITIES_LIST.forEach(c => {
                 listings.push({
@@ -11582,7 +11582,8 @@ app.get('/api/marketplace/listings', async (req, res) => {
                     quantity: p.qty,
                     pricePerUnit: p.price,
                     totalPrice: p.qty * p.price,
-                    quality: 0,
+                    quality: 10, // Sistem ürünleri %10 kalite
+                    qualityName: "Çok Düşük",
                     city: c,
                     isSystem: true,
                     createdAt: 0
@@ -11930,7 +11931,9 @@ app.post('/api/business/sell', transactionLimiter, async (req, res) => {
 app.get('/api/warehouse/info', async (req, res) => {
     try {
         const { username } = req.query;
-        const cleanUser = username ? username.toLowerCase() : "";
+        const cleanUser = sanitizeUsername(username);
+        if (!cleanUser) return res.json({ success: false, error: 'Geçersiz kullanıcı adı!' });
+
         const userSnap = await db.ref('users/' + cleanUser).once('value');
         const user = userSnap.val();
         if (!user) return res.json({ success: false, error: 'Kullanıcı bulunamadı!' });
@@ -11943,9 +11946,46 @@ app.get('/api/warehouse/info', async (req, res) => {
         const nextLevelCost = nextLevelData ? nextLevelData.cost : 0;
 
         const baseCity = user.warehouse?.baseCity || null;
-        const currentUsage = user.warehouse?.currentUsage || 0;
+        const inventory = user.warehouse?.inventory || {};
 
-        res.json({ success: true, level: warehouseLevel, capacity, baseCity, currentUsage, nextLevelCost });
+        // Toplam kullanım hesapla
+        let currentUsage = 0;
+        const inventoryList = [];
+
+        for (const key in inventory) {
+            const item = inventory[key];
+            const amount = typeof item === 'number' ? item : (item.amount || 0);
+            const quality = typeof item === 'object' ? (item.quality || 50) : 50;
+            const product = typeof item === 'object' ? (item.product || key) : key;
+
+            currentUsage += amount;
+
+            // Ürün bilgilerini al
+            const productInfo = PRODUCTS[product] || { name: product, icon: '📦' };
+
+            inventoryList.push({
+                key,
+                product,
+                name: productInfo.name,
+                icon: productInfo.icon || '📦',
+                amount,
+                quality
+            });
+        }
+
+        // Kaliteye göre sırala (yüksek kalite önce)
+        inventoryList.sort((a, b) => b.quality - a.quality);
+
+        res.json({
+            success: true,
+            level: warehouseLevel,
+            levelName: warehouseData.name,
+            capacity,
+            baseCity,
+            currentUsage,
+            nextLevelCost,
+            inventory: inventoryList
+        });
     } catch (e) {
         res.status(500).json({ success: false, error: e.message });
     }
