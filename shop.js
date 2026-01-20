@@ -899,19 +899,15 @@ async function finalizeTTSPurchase(price) {
 async function previewTTS() {
     const voice = document.getElementById('tts-voice-select').value;
     if (voice === 'standart') {
-        // Standart tarayıcı sesi ile test et
         const msg = new SpeechSynthesisUtterance("Merhaba, bu standart sistem sesidir.");
         msg.lang = 'tr-TR';
         window.speechSynthesis.speak(msg);
         return;
     }
-
     showToast('Ses örneği yükleniyor... ⏳', 'info');
-
     try {
         const res = await fetch(`/api/tts/preview?voice=${voice}`);
         const data = await res.json();
-
         if (data.success && data.audioUrl) {
             const audio = new Audio(data.audioUrl);
             audio.play();
@@ -922,6 +918,7 @@ async function previewTTS() {
         showToast('Bağlantı hatası!', 'error');
     }
 }
+window.previewTTS = previewTTS;
 
 function logout() {
     // 1. Local Storage
@@ -4622,7 +4619,7 @@ async function loadMarketListings(page = 1) {
             }
 
             // Kalite gösterimi
-            const quality = isSystem ? 10 : (listing.quality || 50);
+            const quality = isSystem ? 0 : (listing.quality || 0);
             const qualityColor = quality >= 75 ? '#00ff88' : quality >= 50 ? '#ffaa00' : quality >= 25 ? '#ff8800' : '#ff4444';
             const qualityName = quality >= 90 ? 'Mükemmel' : quality >= 75 ? 'İyi' : quality >= 50 ? 'Orta' : quality >= 25 ? 'Düşük' : 'Çok Düşük';
 
@@ -4788,9 +4785,8 @@ async function createMarketListing() {
     const productCode = document.getElementById('new-listing-product').value;
     const quantity = parseInt(document.getElementById('new-listing-quantity').value);
     const pricePerUnit = parseInt(document.getElementById('new-listing-price').value);
-    const city = document.getElementById('new-listing-city').value;
 
-    if (!productCode || !quantity || !pricePerUnit || !city) {
+    if (!productCode || !quantity || !pricePerUnit) {
         return showToast('Lütfen tüm alanları doldurun!', 'error');
     }
 
@@ -4803,7 +4799,7 @@ async function createMarketListing() {
                 productCode,
                 quantity,
                 pricePerUnit,
-                city
+                city: 'AUTO' // Server handled
             })
         });
         const data = await res.json();
@@ -4841,18 +4837,21 @@ async function buyMarketListing(listingId, listingCity, pricePerUnit, buyQty, pr
         const userBaseCity = whData.baseCity;
         const totalItemCost = pricePerUnit * qty;
 
-        // Kargo hesapla (Basit ön gösterim için, server asıl hesaplayacak)
-        let shippingMsg = "";
-        if (listingCity !== userBaseCity) {
-            shippingMsg = `<br><span style="color:#ffa500; font-size:0.8rem;">⚠️ ${listingCity} -> ${userBaseCity} arası nakliye ücreti uygulanacaktır.</span>`;
-        }
+        // Kargo hesapla (Basit ön gösterim için)
+        const distance = calculateCityDistance(listingCity, userBaseCity);
+        let weightFactor = qty / 100;
+        if (weightFactor < 1) weightFactor = 1;
+        const shippingFee = Math.round(distance * 25 * weightFactor); // LOGISTICS_COST_PER_KM = 25 varsayıldı
+        const finalShipping = listingCity === userBaseCity ? 0 : Math.max(500, shippingFee);
 
         const confirmed = await showConfirm(`🛒 Satın Alma Onayı`, `
             <div style="text-align:left;">
                 <p><b>${qty} ${prodUnit} ${prodName}</b></p>
                 <p>Birim Fiyat: ${pricePerUnit.toLocaleString()} 💰</p>
-                <p>Toplam Ürün: <b>${totalItemCost.toLocaleString()} 💰</b></p>
-                ${shippingMsg}
+                <p>Ürün Toplam: <b>${totalItemCost.toLocaleString()} 💰</b></p>
+                <p>Kargo (${listingCity} ➔ ${userBaseCity}): <b style="color:${finalShipping > 0 ? '#ffa500' : '#00ff88'};">${finalShipping > 0 ? finalShipping.toLocaleString() + ' 💰' : 'ÜCRETSİZ'}</b></p>
+                <hr style="border:1px solid rgba(255,255,255,0.1); margin:10px 0;">
+                <p>GENEL TOPLAM: <b style="font-size:1.2rem; color:var(--primary);">${(totalItemCost + finalShipping).toLocaleString()} 💰</b></p>
             </div>
         `);
 
@@ -5103,7 +5102,7 @@ async function loadRnDUpgrades() {
     try {
         const userData = await getUserData();
         const inventory = userData.inventory || {};
-        const productQualities = userData.productQualities || {};
+        const researchQualities = userData.researchQualities || {};
 
         const container = document.getElementById('rnd-upgrades-container');
         let html = '';
@@ -5117,7 +5116,7 @@ async function loadRnDUpgrades() {
 
         for (const [code, qty] of inventoryItems) {
             const product = productData[code] || { name: code, icon: '📦' };
-            const currentQuality = productQualities[code] || 50;
+            const currentQuality = researchQualities[code] || 0;
             const upgradeStep = 5;
 
             // Maliyet ve süre hesaplama (server ile senkron olmalı)

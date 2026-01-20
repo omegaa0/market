@@ -10555,17 +10555,9 @@ app.post('/api/business/produce', transactionLimiter, async (req, res) => {
         const warehouse_materials = user_materials.warehouse || { level: 1, inventory: {} };
 
         if (bizType.requires && bizType.requires.length > 0) {
+            const userInv = user_materials.inventory || {};
             for (const reqProduct of bizType.requires) {
-                // Depodaki toplam hammaddeyi hesapla (tüm kalitelerde)
-                let totalInStock = 0;
-                for (const key in warehouse_materials.inventory) {
-                    const item = warehouse_materials.inventory[key];
-                    const itemProduct = typeof item === 'object' ? item.product : key;
-                    if (itemProduct === reqProduct) {
-                        totalInStock += typeof item === 'number' ? item : item.amount;
-                    }
-                }
-
+                const totalInStock = userInv[reqProduct] || 0;
                 if (totalInStock < 10) {
                     const prodInfo = PRODUCTS[reqProduct];
                     return res.json({ success: false, error: `Yetersiz hammadde: ${prodInfo?.name || reqProduct} (Depoda: ${totalInStock})` });
@@ -10573,40 +10565,16 @@ app.post('/api/business/produce', transactionLimiter, async (req, res) => {
             }
 
             // Hammaddeleri tüket (depodan)
-            const newWarehouseMaterials = { ...warehouse_materials.inventory };
+            const newInventory = { ...userInv };
             for (const reqProduct of bizType.requires) {
-                let toConsume = 10;
-                // En düşük kaliteli ürünlerden başlayarak tüket
-                const keys = Object.keys(newWarehouseMaterials)
-                    .filter(k => {
-                        const item = newWarehouseMaterials[k];
-                        const itemProduct = typeof item === 'object' ? item.product : k;
-                        return itemProduct === reqProduct;
-                    })
-                    .sort((a, b) => {
-                        const qa = typeof newWarehouseMaterials[a] === 'object' ? newWarehouseMaterials[a].quality : 50;
-                        const qb = typeof newWarehouseMaterials[b] === 'object' ? newWarehouseMaterials[b].quality : 50;
-                        return qa - qb;
-                    });
-
-                for (const key of keys) {
-                    if (toConsume <= 0) break;
-                    const item = newWarehouseMaterials[key];
-                    const available = typeof item === 'number' ? item : item.amount;
-                    const consume = Math.min(toConsume, available);
-
-                    if (typeof item === 'number') {
-                        newWarehouseMaterials[key] -= consume;
-                        if (newWarehouseMaterials[key] <= 0) delete newWarehouseMaterials[key];
-                    } else {
-                        newWarehouseMaterials[key].amount -= consume;
-                        if (newWarehouseMaterials[key].amount <= 0) delete newWarehouseMaterials[key];
-                    }
-                    toConsume -= consume;
-                }
+                newInventory[reqProduct] -= 10;
+                if (newInventory[reqProduct] <= 0) delete newInventory[reqProduct];
             }
 
-            await db.ref('users/' + username.toLowerCase() + '/warehouse/inventory').set(newWarehouseMaterials);
+            await db.ref('users/' + username.toLowerCase()).update({
+                inventory: newInventory,
+                'warehouse/currentUsage': Math.max(0, (user_materials.warehouse?.currentUsage || 0) - (bizType.requires.length * 10))
+            });
         }
 
         // Üretim miktarı hesapla
@@ -10633,17 +10601,13 @@ app.post('/api/business/produce', transactionLimiter, async (req, res) => {
         const warehouse = user.warehouse || { level: 1, inventory: {} };
         const warehouseLevelInfo = WAREHOUSE_LEVELS[warehouse.level || 1];
 
-        const currentStock = Object.values(warehouse.inventory || {}).reduce((sum, item) => {
-            if (typeof item === 'number') return sum + item;
-            return sum + (item.amount || 0);
+        const currentStock = Object.values(user.inventory || {}).reduce((sum, item) => {
+            return sum + item;
         }, 0);
 
-        // Kalite hesapla (Temel: %50, AR-GE bonuslarıyla artabilir)
-        let baseQuality = 50;
-        if (rndBonus.qualityBoost) baseQuality += rndBonus.qualityBoost;
-        // Rastgele varyasyon ekle (-10 ile +10 arası)
-        const qualityVariation = Math.floor(Math.random() * 21) - 10;
-        const quality = Math.min(100, Math.max(10, baseQuality + qualityVariation));
+        // Kalite hesapla (Şahsi AR-GE seviyesine göre)
+        const researchQualities = user.researchQualities || {};
+        const quality = researchQualities[productToMake] || 0;
 
         // Üret (SEÇİLEN ÜRÜN)
         const baseAmount = 10 + (biz.level * 5);
@@ -10654,31 +10618,34 @@ app.post('/api/business/produce', transactionLimiter, async (req, res) => {
             return res.json({ success: false, error: `Merkezi depo dolu! Kapasite: ${warehouseLevelInfo.capacity}, Mevcut: ${currentStock}. Depo yükselt!` });
         }
 
-        // MERKEZI DEPOYA ekle - Kalite sistemli
-        const newWarehouse = { ...warehouse.inventory };
-        const productKey = `${productToMake}_q${quality}`;
+        // ENVANTERE EKLE (Ağırlıklı Ortalama Kalite)
+        const inventory = user.inventory || {};
+        const invQualities = user.inventoryQualities || {};
 
-        if (!newWarehouse[productKey]) {
-            newWarehouse[productKey] = { product: productToMake, amount: 0, quality };
-        }
-        newWarehouse[productKey].amount = (newWarehouse[productKey].amount || 0) + amount;
+        const oldQty = inventory[productToMake] || 0;
+        const oldQual = invQualities[productToMake] || 0;
+        const newQty = oldQty + amount;
+        const newQual = Math.round((oldQty * oldQual + amount * quality) / newQty);
+
+        inventory[productToMake] = newQty;
+        invQualities[productToMake] = newQual;
 
         // Sağlık düşür (her üretim %2-5)
         const healthLoss = 2 + Math.random() * 3;
 
-        // Güncelle - Depoyu ve işletmeyi
-        await db.ref('users/' + username.toLowerCase() + '/warehouse/inventory').set(newWarehouse);
+        // Güncelle
+        await db.ref('users/' + username.toLowerCase()).update({
+            inventory: inventory,
+            inventoryQualities: invQualities,
+            'warehouse/currentUsage': (user.warehouse?.currentUsage || 0) + amount
+        });
         await db.ref('businesses/' + businessId).update({
             health: Math.max(0, (biz.health || 100) - healthLoss),
             last_production: now
         });
 
-        const qualityName = Object.entries(QUALITY_LEVELS).reduce((prev, [q, data]) =>
-            Math.abs(parseInt(q) - quality) < Math.abs(parseInt(prev[0]) - quality) ? [q, data] : prev
-        )[1].name;
-
-        const producedText = `${PRODUCTS[productToMake]?.icon || ''} ${PRODUCTS[productToMake]?.name || productToMake}: +${amount} (Kalite: ${qualityName} %${quality})`;
-        res.json({ success: true, message: `Üretim tamamlandı! ${producedText} → Merkezi Depoya eklendi`, produced: { [productToMake]: amount }, quality });
+        const producedText = `${PRODUCTS[productToMake]?.icon || ''} ${PRODUCTS[productToMake]?.name || productToMake}: +${amount} (Kalite: %${quality})`;
+        res.json({ success: true, message: `Üretim tamamlandı! ${producedText} → Envantere eklendi`, produced: { [productToMake]: amount }, quality });
     } catch (e) {
         res.json({ success: false, error: e.message });
     }
@@ -10708,18 +10675,9 @@ app.post('/api/business/sell', transactionLimiter, async (req, res) => {
         const user_sell = userSnap_sell.val();
 
         if (bizType.category === 'retail') {
-            // Perakende: Tezgahtan sat
             inStock = (biz.inventory || {})[productCode] || 0;
         } else {
-            // Üretim: Depodan sat (tüm kaliteleri topla)
-            const warehouse_sell = user_sell.warehouse || { level: 1, inventory: {} };
-            for (const key in warehouse_sell.inventory) {
-                const item = warehouse_sell.inventory[key];
-                const itemProduct = typeof item === 'object' ? item.product : key;
-                if (itemProduct === productCode) {
-                    inStock += typeof item === 'number' ? item : item.amount;
-                }
-            }
+            inStock = (user_sell.inventory || {})[productCode] || 0;
         }
 
         if (inStock < amount) return res.json({ success: false, error: `Yetersiz stok! Mevcut: ${inStock}` });
@@ -10749,40 +10707,16 @@ app.post('/api/business/sell', transactionLimiter, async (req, res) => {
             if (newInventory[productCode] <= 0) delete newInventory[productCode];
             await db.ref('businesses/' + businessId + '/inventory').set(newInventory);
         } else {
-            // Üretim: Depodan düş (en düşük kaliteden başlayarak)
-            const warehouse_sell = user_sell.warehouse || { level: 1, inventory: {} };
-            const newWarehouseSell = { ...warehouse_sell.inventory };
-            let toSell = amount;
+            // Üretim: Depodan düş
+            const inventory = user_sell.inventory || {};
+            const newInventory = { ...inventory };
+            newInventory[productCode] -= amount;
+            if (newInventory[productCode] <= 0) delete newInventory[productCode];
 
-            const keys = Object.keys(newWarehouseSell)
-                .filter(k => {
-                    const item = newWarehouseSell[k];
-                    const itemProduct = typeof item === 'object' ? item.product : k;
-                    return itemProduct === productCode;
-                })
-                .sort((a, b) => {
-                    const qa = typeof newWarehouseSell[a] === 'object' ? newWarehouseSell[a].quality : 50;
-                    const qb = typeof newWarehouseSell[b] === 'object' ? newWarehouseSell[b].quality : 50;
-                    return qa - qb;
-                });
-
-            for (const key of keys) {
-                if (toSell <= 0) break;
-                const item = newWarehouseSell[key];
-                const available = typeof item === 'number' ? item : item.amount;
-                const sellAmount = Math.min(toSell, available);
-
-                if (typeof item === 'number') {
-                    newWarehouseSell[key] -= sellAmount;
-                    if (newWarehouseSell[key] <= 0) delete newWarehouseSell[key];
-                } else {
-                    newWarehouseSell[key].amount -= sellAmount;
-                    if (newWarehouseSell[key].amount <= 0) delete newWarehouseSell[key];
-                }
-                toSell -= sellAmount;
-            }
-
-            await db.ref('users/' + username.toLowerCase() + '/warehouse/inventory').set(newWarehouseSell);
+            await db.ref('users/' + username.toLowerCase()).update({
+                inventory: newInventory,
+                'warehouse/currentUsage': Math.max(0, (user_sell.warehouse?.currentUsage || 0) - amount)
+            });
         }
 
         // Kullanıcıya para ekle
@@ -10841,30 +10775,34 @@ app.post('/api/business/buy-materials', transactionLimiter, async (req, res) => 
         // Merkezi depo kapasitesi kontrolü
         const warehouse = user.warehouse || { level: 1, inventory: {} };
         const warehouseLevelInfo = WAREHOUSE_LEVELS[warehouse.level || 1];
-        const currentStock = Object.values(warehouse.inventory || {}).reduce((sum, item) => {
-            if (typeof item === 'number') return sum + item;
-            return sum + (item.amount || 0);
+        const currentStock = Object.values(user.inventory || {}).reduce((sum, item) => {
+            return sum + item;
         }, 0);
 
         if (currentStock + amount > warehouseLevelInfo.capacity) {
             return res.json({ success: false, error: `Merkezi depo dolu! Kapasite: ${warehouseLevelInfo.capacity}, Mevcut: ${currentStock}` });
         }
 
-        // İşlemi yap - malzemeleri merkezi depoya ekle
-        const newWarehouse = { ...warehouse.inventory };
-        if (newWarehouse[productCode]) {
-            if (typeof newWarehouse[productCode] === 'number') {
-                newWarehouse[productCode] += amount;
-            } else {
-                newWarehouse[productCode].amount = (newWarehouse[productCode].amount || 0) + amount;
-            }
-        } else {
-            newWarehouse[productCode] = amount;
-        }
+        // İşlemi yap - malzemeleri envantere ekle (Ağırlıklı Ortalama)
+        const inventory = user.inventory || {};
+        const invQualities = user.inventoryQualities || {};
+
+        const oldQty = inventory[productCode] || 0;
+        const oldQual = invQualities[productCode] || 0;
+        const addedQty = amount;
+        const addedQual = 10; // Sistem hammadde kalitesi %10
+
+        const newQty = oldQty + addedQty;
+        const newQual = Math.round((oldQty * oldQual + addedQty * addedQual) / newQty);
+
+        inventory[productCode] = newQty;
+        invQualities[productCode] = newQual;
 
         await db.ref('users/' + username.toLowerCase()).update({
             balance: (user.balance || 0) - totalCost,
-            'warehouse/inventory': newWarehouse
+            inventory: inventory,
+            inventoryQualities: invQualities,
+            'warehouse/currentUsage': (user.warehouse?.currentUsage || 0) + amount
         });
 
         const logText = logisticsCost > 0 ? ` (Kargo: ${logisticsCost.toLocaleString()})` : '';
@@ -11023,7 +10961,7 @@ app.get('/api/arge/info', async (req, res) => {
         const activeResearch = user.active_research || null;
 
         // Ürün kalite seviyeleri
-        const productQualities = user.product_qualities || {};
+        const productQualities = user.productQualities || {};
 
         // Tüm ürünler için kalite bilgisi oluştur
         const allProducts = [];
@@ -11086,8 +11024,8 @@ app.post('/api/arge/upgrade-quality', transactionLimiter, async (req, res) => {
         const argeLevel = user.arge_level || 1;
         const argeLevelData = ARGE_LEVELS[argeLevel];
 
-        const productQualities = user.product_qualities || {};
-        const currentQuality = productQualities[productCode] || 50;
+        const researchQualities = user.researchQualities || {};
+        const currentQuality = researchQualities[productCode] || 0;
 
         if (currentQuality >= 100) {
             return res.json({ success: false, error: "Bu ürün zaten maksimum kaliteye ulaşmış!" });
@@ -11152,11 +11090,11 @@ app.post('/api/arge/complete', async (req, res) => {
         }
 
         // Kaliteyi artır
-        const productQualities = user.product_qualities || {};
-        productQualities[research.productCode] = Math.min(100, research.targetQuality);
+        const researchQualities = user.researchQualities || {};
+        researchQualities[research.productCode] = Math.min(100, (research.targetQuality || 5));
 
         await db.ref('users/' + username.toLowerCase()).update({
-            product_qualities: productQualities,
+            researchQualities: researchQualities,
             active_research: null
         });
 
@@ -11644,7 +11582,7 @@ app.get('/api/marketplace/listings', async (req, res) => {
                     quantity: p.qty,
                     pricePerUnit: p.price,
                     totalPrice: p.qty * p.price,
-                    quality: 10,
+                    quality: 0,
                     city: c,
                     isSystem: true,
                     createdAt: 0
@@ -11716,7 +11654,7 @@ app.post('/api/marketplace/create-listing', async (req, res) => {
         }
 
         // Validasyon
-        if (!username || !productCode || !quantity || !pricePerUnit || !city) {
+        if (!username || !productCode || !quantity || !pricePerUnit) {
             return res.json({ success: false, error: 'Eksik bilgi!' });
         }
 
@@ -11724,8 +11662,9 @@ app.post('/api/marketplace/create-listing', async (req, res) => {
             return res.json({ success: false, error: 'Geçersiz miktar veya fiyat!' });
         }
 
+        const cleanUser = username.toLowerCase();
         // Kullanıcının ürünü var mı kontrol et
-        const userSnap = await db.ref('users/' + username).once('value');
+        const userSnap = await db.ref('users/' + cleanUser).once('value');
         const user = userSnap.val();
         if (!user) return res.json({ success: false, error: 'Kullanıcı bulunamadı!' });
 
@@ -11737,17 +11676,30 @@ app.post('/api/marketplace/create-listing', async (req, res) => {
         }
 
         // Stoktan düş
-        await db.ref('users/' + username + '/inventory/' + productCode).set(currentStock - quantity);
+        await db.ref('users/' + cleanUser + '/inventory/' + productCode).set(currentStock - quantity);
+
+        // Depo/Base City bilgisini al
+        const warehouseSnap = await db.ref('users/' + cleanUser + '/warehouse').once('value');
+        const warehouse = warehouseSnap.val();
+        if (!warehouse || !warehouse.baseCity) {
+            return res.json({ success: false, error: 'İlan verebilmek için önce DEPO sekmesinden bir ANA ÜS (Şehir) seçmelisin!' });
+        }
+
+        const listingCity = warehouse.baseCity;
 
         // İlan oluştur
-        const listingId = Date.now().toString() + '_' + username;
+        const listingId = Date.now().toString() + '_' + cleanUser;
+        const invQualities = user.inventoryQualities || {};
+        const currentQual = invQualities[productCode] || 0;
+
         await db.ref('marketplace/' + listingId).set({
-            seller: username,
+            seller: cleanUser,
             productCode,
             quantity,
             pricePerUnit,
             totalPrice: quantity * pricePerUnit,
-            city,
+            quality: currentQual,
+            city: listingCity,
             status: 'active',
             createdAt: Date.now()
         });
@@ -11772,6 +11724,8 @@ app.post('/api/marketplace/buy-listing', transactionLimiter, async (req, res) =>
 
         if (purchaseQty <= 0) return res.json({ success: false, error: 'Geçersiz miktar!' });
 
+        const cleanUser = username.toLowerCase();
+
         let listing;
         let isSystem = false;
 
@@ -11790,7 +11744,8 @@ app.post('/api/marketplace/buy-listing', transactionLimiter, async (req, res) =>
                 productCode: code,
                 city: city,
                 pricePerUnit: product.basePrice,
-                quantity: 99999999
+                quantity: 99999999,
+                quality: 0
             };
         } else {
             const snap = await db.ref('marketplace/' + listingId).once('value');
@@ -11800,12 +11755,12 @@ app.post('/api/marketplace/buy-listing', transactionLimiter, async (req, res) =>
 
         if (purchaseQty > listing.quantity) return res.json({ success: false, error: 'İlanda bu kadar stok yok!' });
 
-        const userSnap = await db.ref('users/' + username).once('value');
+        const userSnap = await db.ref('users/' + cleanUser).once('value');
         const user = userSnap.val();
         if (!user) return res.json({ success: false, error: 'Kullanıcı bulunamadı!' });
 
         // Depo/Base City bilgisini al
-        const warehouseSnap = await db.ref('users/' + username + '/warehouse').once('value');
+        const warehouseSnap = await db.ref('users/' + cleanUser + '/warehouse').once('value');
         const warehouse = warehouseSnap.val() || { level: 1, currentUsage: 0 };
 
         // Base City zorunluluğu (Sadece satın alırken)
@@ -11820,25 +11775,13 @@ app.post('/api/marketplace/buy-listing', transactionLimiter, async (req, res) =>
 
         // Kargo ücreti hesapla (Listing City -> User Base City)
         let shippingFee = 0;
-
-        // Eğer aynı şehirde değilse kargo ücreti ekle
         if (listing.city !== userBaseCity) {
-            if (CITY_DISTANCES[listing.city] && CITY_DISTANCES[listing.city][userBaseCity]) {
-                const distance = CITY_DISTANCES[listing.city][userBaseCity];
-                // Formül: Mesafe * Katsayı * (Adet / 100)
-                // 100 birim altı için minimum hesaplama (Adet/100 -> en az 1 gibi davranmaz, oranlar)
-                // Ama mantıklı olan: Ağırlık/Hacim olsa daha iyi ama şu an Adet üzerinden.
+            const distance = calculateCityDistance(listing.city, userBaseCity);
+            let weightFactor = purchaseQty / 100;
+            if (weightFactor < 1) weightFactor = 1;
 
-                let weightFactor = purchaseQty / 100;
-                if (weightFactor < 1) weightFactor = 1; // Minimum 1 paket ücreti
-
-                shippingFee = Math.round(distance * LOGISTICS_COST_PER_KM * weightFactor);
-
-                if (shippingFee < 500) shippingFee = 500; // Minimum kargo bedeli
-            } else {
-                // Mesafe bulunamadıysa (Hata durumu, ama güvenli olsun)
-                shippingFee = 5000;
-            }
+            shippingFee = Math.round(distance * 25 * weightFactor); // LOGISTICS_COST_PER_KM = 25
+            if (shippingFee < 500) shippingFee = 500;
         }
 
         const totalCost = itemCost + shippingFee;
@@ -11861,15 +11804,15 @@ app.post('/api/marketplace/buy-listing', transactionLimiter, async (req, res) =>
         }
 
         // İşlemleri gerçekleştir
-        await db.ref('users/' + username + '/balance').set(user.balance - totalCost);
+        await db.ref('users/' + cleanUser + '/balance').set(user.balance - totalCost);
 
         // Satıcıya ödeme yap (Sistem değilse)
         if (!isSystem) {
-            const sellerSnap = await db.ref('users/' + listing.seller).once('value');
+            const sellerSnap = await db.ref('users/' + listing.seller.toLowerCase()).once('value');
             const seller = sellerSnap.val();
             if (seller) {
-                await db.ref('users/' + listing.seller + '/balance').set(seller.balance + itemCost);
-                addLog('Pazar Satışı', `${listing.seller} kullanıcısının ${listing.productCode} ilanı ${username} tarafından satın alındı. Gelir: ${itemCost} 💰`);
+                await db.ref('users/' + listing.seller.toLowerCase() + '/balance').set(seller.balance + itemCost);
+                addLog('Pazar Satışı', `${listing.seller} kullanıcısının ${listing.productCode} ilanı ${cleanUser} tarafından satın alındı. Gelir: ${itemCost} 💰`);
             }
 
             // İlanı güncelle veya sil
@@ -11880,13 +11823,28 @@ app.post('/api/marketplace/buy-listing', transactionLimiter, async (req, res) =>
             }
         }
 
-        // Depoya ekle
+        // Depoya ekle (Ağırlıklı Ortalama)
         const inventory = user.inventory || {};
-        inventory[listing.productCode] = (inventory[listing.productCode] || 0) + purchaseQty;
-        await db.ref('users/' + username + '/inventory').set(inventory);
-        await db.ref('warehouses/' + username + '/currentUsage').set(warehouse.currentUsage + purchaseQty);
+        const qualities = user.inventoryQualities || {};
 
-        addLog('Pazar Alışı', `${username} kullanıcısı ${purchaseQty} ${listing.productCode} satın aldı. Toplam: ${totalCost.toLocaleString()} 💰 (Kargo: ${shippingFee.toLocaleString()})`);
+        const oldQty = inventory[listing.productCode] || 0;
+        const oldQual = qualities[listing.productCode] || 0;
+        const addedQty = purchaseQty;
+        const addedQual = listing.quality || 0;
+
+        const newQty = oldQty + addedQty;
+        const newQual = Math.round((oldQty * oldQual + addedQty * addedQual) / newQty);
+
+        inventory[listing.productCode] = newQty;
+        qualities[listing.productCode] = newQual;
+
+        await db.ref('users/' + cleanUser).update({
+            inventory: inventory,
+            inventoryQualities: qualities,
+            'warehouse/currentUsage': (user.warehouse?.currentUsage || 0) + purchaseQty
+        });
+
+        addLog('Pazar Alışı', `${cleanUser} kullanıcısı ${purchaseQty} ${listing.productCode} satın aldı. Toplam: ${totalCost.toLocaleString()} 💰 (Kargo: ${shippingFee.toLocaleString()})`);
 
         res.json({
             success: true,
@@ -11909,19 +11867,20 @@ app.post('/api/marketplace/cancel-listing', async (req, res) => {
             return res.json({ success: false, error: "Pazar Yeri şu an bakımda veya erişime kapalı! 🔒" });
         }
 
+        const cleanUser = username.toLowerCase();
         const listingSnap = await db.ref('marketplace/' + listingId).once('value');
         const listing = listingSnap.val();
 
         if (!listing) return res.json({ success: false, error: 'İlan bulunamadı!' });
-        if (listing.seller !== username) return res.json({ success: false, error: 'Bu ilanı iptal etme yetkin yok!' });
+        if (listing.seller !== cleanUser) return res.json({ success: false, error: 'Bu ilanı iptal etme yetkin yok!' });
         if (listing.status !== 'active') return res.json({ success: false, error: 'İlan zaten aktif değil!' });
 
         // Ürünü geri ver
-        const userSnap = await db.ref('users/' + username).once('value');
+        const userSnap = await db.ref('users/' + cleanUser).once('value');
         const user = userSnap.val();
         const currentStock = ((user.inventory || {})[listing.productCode] || 0);
 
-        await db.ref('users/' + username + '/inventory/' + listing.productCode).set(currentStock + listing.quantity);
+        await db.ref('users/' + cleanUser + '/inventory/' + listing.productCode).set(currentStock + listing.quantity);
 
         // İlanı kaldır
         await db.ref('marketplace/' + listingId).update({ status: 'cancelled', cancelledAt: Date.now() });
@@ -11971,7 +11930,8 @@ app.post('/api/business/sell', transactionLimiter, async (req, res) => {
 app.get('/api/warehouse/info', async (req, res) => {
     try {
         const { username } = req.query;
-        const userSnap = await db.ref('users/' + username).once('value');
+        const cleanUser = username ? username.toLowerCase() : "";
+        const userSnap = await db.ref('users/' + cleanUser).once('value');
         const user = userSnap.val();
         if (!user) return res.json({ success: false, error: 'Kullanıcı bulunamadı!' });
 
@@ -11997,7 +11957,8 @@ app.get('/api/warehouse/info', async (req, res) => {
 app.get('/api/rnd/upgrades', async (req, res) => {
     try {
         const { username } = req.query;
-        const userSnap = await db.ref('users/' + username).once('value');
+        const cleanUser = username ? username.toLowerCase() : "";
+        const userSnap = await db.ref('users/' + cleanUser).once('value');
         const user = userSnap.val();
         if (!user) return res.json({ success: false, error: 'Kullanıcı bulunamadı!' });
 
@@ -12012,6 +11973,7 @@ app.get('/api/rnd/upgrades', async (req, res) => {
 app.post('/api/rnd/buy-upgrade', async (req, res) => {
     try {
         const { username, upgradeType } = req.body;
+        const cleanUser = username ? username.toLowerCase() : "";
 
         const UPGRADES = {
             production_speed: { name: 'Üretim Hızı', cost: 100000, maxLevel: 10 },
@@ -12023,7 +11985,7 @@ app.post('/api/rnd/buy-upgrade', async (req, res) => {
             return res.json({ success: false, error: 'Geçersiz yükseltme tipi!' });
         }
 
-        const userSnap = await db.ref('users/' + username).once('value');
+        const userSnap = await db.ref('users/' + cleanUser).once('value');
         const user = userSnap.val();
         if (!user) return res.json({ success: false, error: 'Kullanıcı bulunamadı!' });
 
@@ -12042,7 +12004,7 @@ app.post('/api/rnd/buy-upgrade', async (req, res) => {
             return res.json({ success: false, error: 'Bakiye yetersiz!' });
         }
 
-        await db.ref('users/' + username).update({
+        await db.ref('users/' + cleanUser).update({
             balance: (user.balance || 0) - cost,
             ['productQualities/' + upgradeType]: currentLevel + upgradeStep
         });
