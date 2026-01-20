@@ -234,23 +234,33 @@
                             db.ref('channels/' + targetBroadcasterId + '/stream_events/tts/' + snap.key).update({ played: true });
 
                             const voiceType = data.voice || "standart";
-                            showNotification("TTS MESAJI", data.text, "🎙️");
+                            const voiceName = data.voiceName || voiceType;
+                            showNotification("TTS MESAJI", `🎙️ ${voiceName}: ${data.text}`, "🎙️");
 
-                            // ELEVENLABS (AI SES) KONTROLÜ
-                            if (data.isEleven && data.audioUrl) {
-                                console.log("🤖 ElevenLabs TTS Oynatılıyor...");
+                            // FAKEYOU / AI SES KONTROLÜ (audioUrl varsa)
+                            if ((data.isFakeYou || data.isEleven) && data.audioUrl) {
+                                console.log(`🎭 AI TTS Oynatılıyor (${voiceName})...`);
                                 const audio = new Audio(data.audioUrl);
                                 audio.volume = Number(ttsVol);
-                                audio.play().catch(e => console.error("ElevenLabs Play Error:", e));
+                                audio.play().catch(e => console.error("AI TTS Play Error:", e));
                             }
-                            // STANDART TARAYICI SESLERİ
+                            // HIZLI TARAYICI SESLERİ (voiceSettings varsa veya fallback)
                             else {
                                 window.speechSynthesis.cancel();
                                 const utterance = new SpeechSynthesisUtterance(data.text);
                                 utterance.lang = 'tr-TR';
                                 utterance.volume = Number(ttsVol);
-                                utterance.pitch = 1.0;
-                                utterance.rate = 0.9;
+
+                                // Özel ses ayarları varsa uygula
+                                if (data.voiceSettings) {
+                                    utterance.pitch = data.voiceSettings.pitch || 1.0;
+                                    utterance.rate = data.voiceSettings.rate || 1.0;
+                                } else {
+                                    utterance.pitch = 1.0;
+                                    utterance.rate = 0.9;
+                                }
+
+                                console.log(`⚡ Hızlı TTS Oynatılıyor (${voiceName})...`);
                                 window.speechSynthesis.speak(utterance);
                             }
                         });

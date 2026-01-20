@@ -4194,28 +4194,61 @@ app.post('/api/market/buy', transactionLimiter, verifySession, async (req, res) 
 
             eventPath = "tts";
 
-            // FakeYou AI TTS - Ünlü sesleri kullan
-            const voiceConfig = FAKEYOU_VOICES[voice] || FAKEYOU_VOICES['default'];
+            // Hızlı tarayıcı sesleri (anlık) - server tarafında sadece config gönder
+            const BROWSER_VOICES = ['standart', 'erkek', 'kadin', 'robot', 'yavas', 'hizli'];
+            const BROWSER_VOICE_CONFIG = {
+                'standart': { pitch: 1.0, rate: 1.0, name: 'Standart Türkçe' },
+                'erkek': { pitch: 0.7, rate: 1.0, name: 'Erkek Sesi' },
+                'kadin': { pitch: 1.4, rate: 1.0, name: 'Kadın Sesi' },
+                'robot': { pitch: 0.5, rate: 0.8, name: 'Robot Sesi' },
+                'yavas': { pitch: 1.0, rate: 0.6, name: 'Yavaş Ses' },
+                'hizli': { pitch: 1.0, rate: 1.5, name: 'Hızlı Ses' }
+            };
+
             let audioUrl = null;
             let isFakeYou = false;
+            let isBrowserVoice = false;
+            let voiceName = voice;
+            let voiceSettings = null;
 
-            try {
-                console.log(`[FakeYou] TTS başlatılıyor: ${voiceConfig.name} - "${text.substring(0, 50)}..."`);
-                audioUrl = await generateFakeYouTTS(voiceConfig.token, text);
-                isFakeYou = true;
-                console.log(`[FakeYou] TTS tamamlandı: ${audioUrl}`);
-            } catch (err) {
-                console.error(`[FakeYou] TTS Error [Voice: ${voice}]:`, err.message);
-                // Hata olursa standart TTS'e fallback yap
-                isFakeYou = false;
+            if (BROWSER_VOICES.includes(voice)) {
+                // Hızlı ses - tarayıcı TTS kullanacak
+                isBrowserVoice = true;
+                voiceSettings = BROWSER_VOICE_CONFIG[voice];
+                voiceName = voiceSettings.name;
+                console.log(`[TTS] Hızlı ses: ${voiceName}`);
+            } else if (FAKEYOU_VOICES[voice]) {
+                // FakeYou AI TTS - Ünlü sesleri kullan
+                const voiceConfig = FAKEYOU_VOICES[voice];
+                voiceName = voiceConfig.name;
+
+                try {
+                    console.log(`[FakeYou] TTS başlatılıyor: ${voiceName} - "${text.substring(0, 50)}..."`);
+                    audioUrl = await generateFakeYouTTS(voiceConfig.token, text);
+                    isFakeYou = true;
+                    console.log(`[FakeYou] TTS tamamlandı: ${audioUrl}`);
+                } catch (err) {
+                    console.error(`[FakeYou] TTS Error [Voice: ${voice}]:`, err.message);
+                    // Hata olursa standart TTS'e fallback yap
+                    isFakeYou = false;
+                    isBrowserVoice = true;
+                    voiceSettings = BROWSER_VOICE_CONFIG['standart'];
+                }
+            } else {
+                // Bilinmeyen ses - standart kullan
+                isBrowserVoice = true;
+                voiceSettings = BROWSER_VOICE_CONFIG['standart'];
+                voiceName = 'Standart';
             }
 
             eventPayload = {
                 text: `@${username} diyor ki: ${text}`,
-                voice: voice || "trump",
-                voiceName: voiceConfig.name,
+                voice: voice || "standart",
+                voiceName: voiceName,
                 audioUrl: audioUrl,
                 isFakeYou: isFakeYou,
+                isBrowserVoice: isBrowserVoice,
+                voiceSettings: voiceSettings,
                 played: false, notified: false, source: "market", timestamp: Date.now(), broadcasterId: channelId
             };
         }

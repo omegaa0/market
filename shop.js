@@ -896,21 +896,41 @@ async function finalizeTTSPurchase(price) {
     }
 }
 
+// Hızlı tarayıcı sesleri (anlık)
+const BROWSER_VOICES = {
+    'standart': { pitch: 1.0, rate: 1.0, text: 'Merhaba, bu standart Türkçe sestir.' },
+    'erkek': { pitch: 0.7, rate: 1.0, text: 'Merhaba, bu erkek sesidir.' },
+    'kadin': { pitch: 1.4, rate: 1.0, text: 'Merhaba, bu kadın sesidir.' },
+    'robot': { pitch: 0.5, rate: 0.8, text: 'Merhaba, ben bir robotum.' },
+    'yavas': { pitch: 1.0, rate: 0.6, text: 'Merhaba, bu yavaş sestir.' },
+    'hizli': { pitch: 1.0, rate: 1.5, text: 'Merhaba, bu hızlı sestir.' }
+};
+
 async function previewTTS() {
     const voice = document.getElementById('tts-voice-select').value;
-    if (voice === 'standart') {
-        const msg = new SpeechSynthesisUtterance("Merhaba, bu standart sistem sesidir.");
+
+    // Hızlı tarayıcı sesleri
+    if (BROWSER_VOICES[voice]) {
+        const config = BROWSER_VOICES[voice];
+        window.speechSynthesis.cancel();
+        const msg = new SpeechSynthesisUtterance(config.text);
         msg.lang = 'tr-TR';
+        msg.pitch = config.pitch;
+        msg.rate = config.rate;
         window.speechSynthesis.speak(msg);
+        showToast('⚡ Hızlı ses oynatılıyor!', 'success');
         return;
     }
-    showToast('Ses örneği yükleniyor... ⏳', 'info');
+
+    // FakeYou AI sesleri (yavaş)
+    showToast('🎭 AI ses oluşturuluyor (10-30 sn bekleyin)...', 'info');
     try {
         const res = await fetch(`/api/tts/preview?voice=${voice}`);
         const data = await res.json();
         if (data.success && data.audioUrl) {
             const audio = new Audio(data.audioUrl);
             audio.play();
+            showToast(`✅ ${data.voiceName || 'AI'} sesi hazır!`, 'success');
         } else {
             showToast(data.error || 'Örnek ses yüklenemedi!', 'error');
         }
