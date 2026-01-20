@@ -962,7 +962,7 @@ function switchTab(id) {
     // Kilitli (Bakım) Modu Kontrolü
     if (window.shopTabsConfig && window.shopTabsConfig[id] && window.shopTabsConfig[id].locked) {
         // Admin Bypass
-        const isAdmin = lastUserData && (lastUserData.is_admin || lastUserData.username.toLowerCase() === 'omegacyr');
+        const isAdmin = (lastUserData && lastUserData.is_admin) || (currentUser && currentUser.toLowerCase() === 'omegacyr');
 
         if (!isAdmin) {
             const target = document.getElementById('tab-' + id);
