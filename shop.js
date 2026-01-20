@@ -959,6 +959,32 @@ function switchTab(id) {
         if (targetBtn) targetBtn.classList.add('active');
     }
 
+    // Kilitli (Bakım) Modu Kontrolü
+    if (window.shopTabsConfig && window.shopTabsConfig[id] && window.shopTabsConfig[id].locked) {
+        const target = document.getElementById('tab-' + id);
+        if (target) {
+            target.innerHTML = `
+                <div style="display:flex; flex-direction:column; align-items:center; justify-content:center; height:500px; text-align:center; color:#ff4444; animation: fadeIn 0.5s;">
+                    <div style="font-size:5rem; margin-bottom:20px; animation: bounce 2s infinite;">🔒</div>
+                    <h2 style="font-size:2.5rem; margin-bottom:15px; text-transform:uppercase; letter-spacing:2px; font-weight:900;">BAKIMDA</h2>
+                    <p style="color:#aaa; font-size:1.1rem; max-width:400px; line-height:1.6;">Bu özellik şu anda teknik bir çalışma nedeniyle geçici olarak erişime kapalıdır. Daha sonra tekrar deneyin.</p>
+                </div>
+                <style>
+                    @keyframes bounce {
+                        0%, 20%, 50%, 80%, 100% {transform: translateY(0);}
+                        40% {transform: translateY(-20px);}
+                        60% {transform: translateY(-10px);}
+                    }
+                    @keyframes fadeIn {
+                        from { opacity: 0; transform: translateY(20px); }
+                        to { opacity: 1; transform: translateY(0); }
+                    }
+                </style>
+            `;
+        }
+        return; // Normal yüklemeyi durdur
+    }
+
     if (id === 'leaderboard') loadLeaderboard();
     if (id === 'borsa') loadBorsa();
     if (id === 'emlak') loadEmlak();
@@ -4908,6 +4934,9 @@ async function renderDynamicTabs() {
 
         const nav = document.querySelector('.tabs-nav');
         if (!nav) return;
+
+        // Global config'e kaydet (Lock kontrolü için)
+        window.shopTabsConfig = data.tabs;
 
         const tabs = Object.entries(data.tabs)
             .sort((a, b) => (a[1].order || 0) - (b[1].order || 0));
