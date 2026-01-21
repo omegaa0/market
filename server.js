@@ -121,6 +121,121 @@ function validateUrl(url) {
 const processedTransactions = new Map(); // { key: timestamp }
 const TRANSACTION_TTL = 5 * 60 * 1000; // 5 dakika
 
+// EMLAK ŞEHİRLERİ (Source of Truth with Coords) - HOISTED
+const EMLAK_CITIES = [
+    { "id": "ADANA", "name": "Adana", "x": 50, "y": 81 },
+    { "id": "ADIYAMAN", "name": "Adıyaman", "x": 66, "y": 72 },
+    { "id": "AFYONKARAHISAR", "name": "Afyon", "x": 25, "y": 53 },
+    { "id": "AGRI", "name": "Ağrı", "x": 91, "y": 38 },
+    { "id": "AMASYA", "name": "Amasya", "x": 53, "y": 23 },
+    { "id": "ANKARA", "name": "Ankara", "x": 38, "y": 34 },
+    { "id": "ANTALYA", "name": "Antalya", "x": 26, "y": 83 },
+    { "id": "ARTVIN", "name": "Artvin", "x": 84, "y": 15 },
+    { "id": "AYDIN", "name": "Aydın", "x": 11, "y": 68 },
+    { "id": "BALIKESIR", "name": "Balıkesir", "x": 12, "y": 39 },
+    { "id": "BILECIK", "name": "Bilecik", "x": 23, "y": 31 },
+    { "id": "BINGOL", "name": "Bingöl", "x": 77, "y": 51 },
+    { "id": "BITLIS", "name": "Bitlis", "x": 86, "y": 59 },
+    { "id": "BOLU", "name": "Bolu", "x": 31, "y": 22 },
+    { "id": "BURDUR", "name": "Burdur", "x": 24, "y": 70 },
+    { "id": "BURSA", "name": "Bursa", "x": 18, "y": 30 },
+    { "id": "CANAKKALE", "name": "Çanakkale", "x": 4, "y": 31 },
+    { "id": "CANKIRI", "name": "Çankırı", "x": 42, "y": 24 },
+    { "id": "CORUM", "name": "Çorum", "x": 49, "y": 25 },
+    { "id": "DENIZLI", "name": "Denizli", "x": 18, "y": 69 },
+    { "id": "DIYARBAKIR", "name": "Diyarbakır", "x": 76, "y": 66 },
+    { "id": "EDIRNE", "name": "Edirne", "x": 5, "y": 7 },
+    { "id": "ELAZIG", "name": "Elazığ", "x": 71, "y": 54 },
+    { "id": "ERZINCAN", "name": "Erzincan", "x": 72, "y": 37 },
+    { "id": "ERZURUM", "name": "Erzurum", "x": 81, "y": 35 },
+    { "id": "ESKISEHIR", "name": "Eskişehir", "x": 25, "y": 37 },
+    { "id": "GAZIANTEP", "name": "Gaziantep", "x": 61, "y": 80 },
+    { "id": "GIRESUN", "name": "Giresun", "x": 66, "y": 19 },
+    { "id": "GUMUSHANE", "name": "Gümüşhane", "x": 72, "y": 26 },
+    { "id": "HAKKARI", "name": "Hakkari", "x": 94, "y": 72 },
+    { "id": "HATAY", "name": "Hatay", "x": 55, "y": 94 },
+    { "id": "ISPARTA", "name": "Isparta", "x": 26, "y": 69 },
+    { "id": "MERSIN", "name": "Mersin", "x": 47, "y": 84 },
+    { "id": "ISTANBUL", "name": "İstanbul", "x": 17, "y": 17 },
+    { "id": "IZMIR", "name": "İzmir", "x": 8, "y": 58 },
+    { "id": "KARS", "name": "Kars", "x": 91, "y": 24 },
+    { "id": "KASTAMONU", "name": "Kastamonu", "x": 42, "y": 12 },
+    { "id": "KAYSERI", "name": "Kayseri", "x": 52, "y": 48 },
+    { "id": "KIRKLARELI", "name": "Kırklareli", "x": 8, "y": 6 },
+    { "id": "KIRSEHIR", "name": "Kırşehir", "x": 44, "y": 47 },
+    { "id": "KOCAELI", "name": "Kocaeli", "x": 22, "y": 21 },
+    { "id": "KONYA", "name": "Konya", "x": 36, "y": 67 },
+    { "id": "KUTAHYA", "name": "Kütahya", "x": 23, "y": 43 },
+    { "id": "MALATYA", "name": "Malatya", "x": 66, "y": 60 },
+    { "id": "MANISA", "name": "Manisa", "x": 9, "y": 55 },
+    { "id": "KAHRAMANMARAS", "name": "Kahramanmaraş", "x": 59, "y": 72 },
+    { "id": "MARDIN", "name": "Mardin", "x": 79, "y": 76 },
+    { "id": "MUGLA", "name": "Muğla", "x": 14, "y": 78 },
+    { "id": "MUS", "name": "Muş", "x": 83, "y": 54 },
+    { "id": "NEVSEHIR", "name": "Nevşehir", "x": 47, "y": 55 },
+    { "id": "NIGDE", "name": "Niğde", "x": 47, "y": 66 },
+    { "id": "ORDU", "name": "Ordu", "x": 64, "y": 18 },
+    { "id": "RIZE", "name": "Rize", "x": 78, "y": 17 },
+    { "id": "SAKARYA", "name": "Sakarya", "x": 25, "y": 21 },
+    { "id": "SAMSUN", "name": "Samsun", "x": 56, "y": 13 },
+    { "id": "SIIRT", "name": "Siirt", "x": 85, "y": 66 },
+    { "id": "SINOP", "name": "Sinop", "x": 50, "y": 1 },
+    { "id": "SIVAS", "name": "Sivas", "x": 59, "y": 37 },
+    { "id": "TEKIRDAG", "name": "Tekirdağ", "x": 10, "y": 18 },
+    { "id": "TOKAT", "name": "Tokat", "x": 57, "y": 28 },
+    { "id": "TRABZON", "name": "Trabzon", "x": 73, "y": 17 },
+    { "id": "TUNCELI", "name": "Tunceli", "x": 72, "y": 48 },
+    { "id": "SANLIURFA", "name": "Şanlıurfa", "x": 69, "y": 78 },
+    { "id": "USAK", "name": "Uşak", "x": 20, "y": 54 },
+    { "id": "VAN", "name": "Van", "x": 92, "y": 57 },
+    { "id": "YOZGAT", "name": "Yozgat", "x": 48, "y": 36 },
+    { "id": "ZONGULDAK", "name": "Zonguldak", "x": 32, "y": 10 },
+    { "id": "AKSARAY", "name": "Aksaray", "x": 44, "y": 59 },
+    { "id": "BAYBURT", "name": "Bayburt", "x": 76, "y": 29 },
+    { "id": "KARAMAN", "name": "Karaman", "x": 39, "y": 78 },
+    { "id": "KIRIKKALE", "name": "Kırıkkale", "x": 41, "y": 36 },
+    { "id": "BATMAN", "name": "Batman", "x": 81, "y": 67 },
+    { "id": "SIRNAK", "name": "Şırnak", "x": 88, "y": 73 },
+    { "id": "BARTIN", "name": "Bartın", "x": 35, "y": 7 },
+    { "id": "ARDAHAN", "name": "Ardahan", "x": 89, "y": 16 },
+    { "id": "IGDIR", "name": "Iğdır", "x": 96, "y": 35 },
+    { "id": "YALOVA", "name": "Yalova", "x": 19, "y": 23 },
+    { "id": "KARABUK", "name": "Karabük", "x": 36, "y": 14 },
+    { "id": "KILIS", "name": "Kilis", "x": 60, "y": 86 },
+    { "id": "OSMANIYE", "name": "Osmaniye", "x": 55, "y": 80 },
+    { "id": "DUZCE", "name": "Düzce", "x": 29, "y": 20 }
+];
+
+// Dinamik mesafe hesaplama fonksiyonu (EMLAK_CITIES koordinatlarından) - HOISTED
+function calculateCityDistance(city1, city2) {
+    if (!city1 || !city2) return 500; // Varsayılan mesafe
+    if (city1 === city2) return 0;
+
+    const findCity = (name) => {
+        if (typeof EMLAK_CITIES === 'undefined') return null;
+        return EMLAK_CITIES.find(c =>
+            c.name === name ||
+            c.id === name.toUpperCase() ||
+            c.name.toLowerCase() === name.toLowerCase()
+        );
+    };
+
+    const c1 = findCity(city1);
+    const c2 = findCity(city2);
+
+    if (!c1 || !c2) return 500; // Şehir bulunamazsa varsayılan
+
+    // Harita koordinatlarından yaklaşık km hesapla (Türkiye haritası ölçeği)
+    // Harita x:0-100, y:0-100 - Türkiye yaklaşık 1600km x 600km
+    const xScale = 16; // 1 birim = 16 km
+    const yScale = 6;  // 1 birim = 6 km
+
+    const dx = (c2.x - c1.x) * xScale;
+    const dy = (c2.y - c1.y) * yScale;
+
+    return Math.round(Math.sqrt(dx * dx + dy * dy));
+}
+
 function checkIdempotency(key) {
     const now = Date.now();
 
@@ -1899,35 +2014,7 @@ const ADVERTISING_LEVELS = {
 const LOGISTICS_COST_PER_KM = 5; // Birim başına km başına maliyet
 
 // Dinamik mesafe hesaplama fonksiyonu (EMLAK_CITIES koordinatlarından)
-function calculateCityDistance(city1, city2) {
-    if (!city1 || !city2) return 500; // Varsayılan mesafe
-    if (city1 === city2) return 0;
 
-    // EMLAK_CITIES'dan koordinatları bul (lazy load - tanımlandıktan sonra çalışır)
-    const findCity = (name) => {
-        if (typeof EMLAK_CITIES === 'undefined') return null;
-        return EMLAK_CITIES.find(c =>
-            c.name === name ||
-            c.id === name.toUpperCase() ||
-            c.name.toLowerCase() === name.toLowerCase()
-        );
-    };
-
-    const c1 = findCity(city1);
-    const c2 = findCity(city2);
-
-    if (!c1 || !c2) return 500; // Şehir bulunamazsa varsayılan
-
-    // Harita koordinatlarından yaklaşık km hesapla (Türkiye haritası ölçeği)
-    // Harita x:0-100, y:0-100 - Türkiye yaklaşık 1600km x 600km
-    const xScale = 16; // 1 birim = 16 km
-    const yScale = 6;  // 1 birim = 6 km
-
-    const dx = (c2.x - c1.x) * xScale;
-    const dy = (c2.y - c1.y) * yScale;
-
-    return Math.round(Math.sqrt(dx * dx + dy * dy));
-}
 
 // Geriye uyumluluk için CITY_DISTANCES proxy objesi
 const CITY_DISTANCES = new Proxy({}, {
@@ -2578,90 +2665,7 @@ app.post('/admin-api/add-news', authAdmin, hasPerm('stocks'), async (req, res) =
 
 // ... (rest of the file)
 
-// EMLAK ŞEHİRLERİ (Source of Truth with Coords)
-const EMLAK_CITIES = [
-    { "id": "ADANA", "name": "Adana", "x": 50, "y": 81 },
-    { "id": "ADIYAMAN", "name": "Adıyaman", "x": 66, "y": 72 },
-    { "id": "AFYONKARAHISAR", "name": "Afyon", "x": 25, "y": 53 },
-    { "id": "AGRI", "name": "Ağrı", "x": 91, "y": 38 },
-    { "id": "AMASYA", "name": "Amasya", "x": 53, "y": 23 },
-    { "id": "ANKARA", "name": "Ankara", "x": 38, "y": 34 },
-    { "id": "ANTALYA", "name": "Antalya", "x": 26, "y": 83 },
-    { "id": "ARTVIN", "name": "Artvin", "x": 84, "y": 15 },
-    { "id": "AYDIN", "name": "Aydın", "x": 11, "y": 68 },
-    { "id": "BALIKESIR", "name": "Balıkesir", "x": 12, "y": 39 },
-    { "id": "BILECIK", "name": "Bilecik", "x": 23, "y": 31 },
-    { "id": "BINGOL", "name": "Bingöl", "x": 77, "y": 51 },
-    { "id": "BITLIS", "name": "Bitlis", "x": 86, "y": 59 },
-    { "id": "BOLU", "name": "Bolu", "x": 31, "y": 22 },
-    { "id": "BURDUR", "name": "Burdur", "x": 24, "y": 70 },
-    { "id": "BURSA", "name": "Bursa", "x": 18, "y": 30 },
-    { "id": "CANAKKALE", "name": "Çanakkale", "x": 4, "y": 31 },
-    { "id": "CANKIRI", "name": "Çankırı", "x": 42, "y": 24 },
-    { "id": "CORUM", "name": "Çorum", "x": 49, "y": 25 },
-    { "id": "DENIZLI", "name": "Denizli", "x": 18, "y": 69 },
-    { "id": "DIYARBAKIR", "name": "Diyarbakır", "x": 76, "y": 66 },
-    { "id": "EDIRNE", "name": "Edirne", "x": 5, "y": 7 },
-    { "id": "ELAZIG", "name": "Elazığ", "x": 71, "y": 54 },
-    { "id": "ERZINCAN", "name": "Erzincan", "x": 72, "y": 37 },
-    { "id": "ERZURUM", "name": "Erzurum", "x": 81, "y": 35 },
-    { "id": "ESKISEHIR", "name": "Eskişehir", "x": 25, "y": 37 },
-    { "id": "GAZIANTEP", "name": "Gaziantep", "x": 61, "y": 80 },
-    { "id": "GIRESUN", "name": "Giresun", "x": 66, "y": 19 },
-    { "id": "GUMUSHANE", "name": "Gümüşhane", "x": 72, "y": 26 },
-    { "id": "HAKKARI", "name": "Hakkari", "x": 94, "y": 72 },
-    { "id": "HATAY", "name": "Hatay", "x": 55, "y": 94 },
-    { "id": "ISPARTA", "name": "Isparta", "x": 26, "y": 69 },
-    { "id": "MERSIN", "name": "Mersin", "x": 47, "y": 84 },
-    { "id": "ISTANBUL", "name": "İstanbul", "x": 17, "y": 17 },
-    { "id": "IZMIR", "name": "İzmir", "x": 8, "y": 58 },
-    { "id": "KARS", "name": "Kars", "x": 91, "y": 24 },
-    { "id": "KASTAMONU", "name": "Kastamonu", "x": 42, "y": 12 },
-    { "id": "KAYSERI", "name": "Kayseri", "x": 52, "y": 48 },
-    { "id": "KIRKLARELI", "name": "Kırklareli", "x": 8, "y": 6 },
-    { "id": "KIRSEHIR", "name": "Kırşehir", "x": 44, "y": 47 },
-    { "id": "KOCAELI", "name": "Kocaeli", "x": 22, "y": 21 },
-    { "id": "KONYA", "name": "Konya", "x": 36, "y": 67 },
-    { "id": "KUTAHYA", "name": "Kütahya", "x": 23, "y": 43 },
-    { "id": "MALATYA", "name": "Malatya", "x": 66, "y": 60 },
-    { "id": "MANISA", "name": "Manisa", "x": 9, "y": 55 },
-    { "id": "KAHRAMANMARAS", "name": "Kahramanmaraş", "x": 59, "y": 72 },
-    { "id": "MARDIN", "name": "Mardin", "x": 79, "y": 76 },
-    { "id": "MUGLA", "name": "Muğla", "x": 14, "y": 78 },
-    { "id": "MUS", "name": "Muş", "x": 83, "y": 54 },
-    { "id": "NEVSEHIR", "name": "Nevşehir", "x": 47, "y": 55 },
-    { "id": "NIGDE", "name": "Niğde", "x": 47, "y": 66 },
-    { "id": "ORDU", "name": "Ordu", "x": 64, "y": 18 },
-    { "id": "RIZE", "name": "Rize", "x": 78, "y": 17 },
-    { "id": "SAKARYA", "name": "Sakarya", "x": 25, "y": 21 },
-    { "id": "SAMSUN", "name": "Samsun", "x": 56, "y": 13 },
-    { "id": "SIIRT", "name": "Siirt", "x": 85, "y": 66 },
-    { "id": "SINOP", "name": "Sinop", "x": 50, "y": 1 },
-    { "id": "SIVAS", "name": "Sivas", "x": 59, "y": 37 },
-    { "id": "TEKIRDAG", "name": "Tekirdağ", "x": 10, "y": 18 },
-    { "id": "TOKAT", "name": "Tokat", "x": 57, "y": 28 },
-    { "id": "TRABZON", "name": "Trabzon", "x": 73, "y": 17 },
-    { "id": "TUNCELI", "name": "Tunceli", "x": 72, "y": 48 },
-    { "id": "SANLIURFA", "name": "Şanlıurfa", "x": 69, "y": 78 },
-    { "id": "USAK", "name": "Uşak", "x": 20, "y": 54 },
-    { "id": "VAN", "name": "Van", "x": 92, "y": 57 },
-    { "id": "YOZGAT", "name": "Yozgat", "x": 48, "y": 36 },
-    { "id": "ZONGULDAK", "name": "Zonguldak", "x": 32, "y": 10 },
-    { "id": "AKSARAY", "name": "Aksaray", "x": 44, "y": 59 },
-    { "id": "BAYBURT", "name": "Bayburt", "x": 76, "y": 29 },
-    { "id": "KARAMAN", "name": "Karaman", "x": 39, "y": 78 },
-    { "id": "KIRIKKALE", "name": "Kırıkkale", "x": 41, "y": 36 },
-    { "id": "BATMAN", "name": "Batman", "x": 81, "y": 67 },
-    { "id": "SIRNAK", "name": "Şırnak", "x": 88, "y": 73 },
-    { "id": "BARTIN", "name": "Bartın", "x": 35, "y": 7 },
-    { "id": "ARDAHAN", "name": "Ardahan", "x": 89, "y": 16 },
-    { "id": "IGDIR", "name": "Iğdır", "x": 96, "y": 35 },
-    { "id": "YALOVA", "name": "Yalova", "x": 19, "y": 23 },
-    { "id": "KARABUK", "name": "Karabük", "x": 36, "y": 14 },
-    { "id": "KILIS", "name": "Kilis", "x": 60, "y": 86 },
-    { "id": "OSMANIYE", "name": "Osmaniye", "x": 55, "y": 80 },
-    { "id": "DUZCE", "name": "Düzce", "x": 29, "y": 20 }
-];
+
 
 const REAL_ESTATE_TYPES = [
     // KONUTLAR (Kira Geliri)
@@ -3110,7 +3114,7 @@ app.post('/api/borsa/sell', transactionLimiter, async (req, res) => {
 
         // GÜVENLİK: Stock code validation
         code = (code || '').toUpperCase().trim();
-        if (!/^[A-Z0-9]{2,10}$/.test(code)) {
+        if (!/^[A-Z0-9\s\-_]{2,20}$/.test(code)) {
             return res.status(400).json({ success: false, error: "Geçersiz hisse kodu!" });
         }
 
@@ -3270,59 +3274,7 @@ app.get('/api/devlog', async (req, res) => {
     res.json(Object.values(data).map(d => ({ version: "DUYURU", date: new Date(d.timestamp).toLocaleDateString(), text: d.text })));
 });
 
-app.post('/admin-api/remove-property', async (req, res) => {
-    try {
-        const { username, propertyId } = req.body;
-        if (!username || !propertyId) return res.json({ success: false, error: "Eksik veri" });
 
-        const cleanUser = username.toLowerCase();
-        const userRef = db.ref('users/' + cleanUser);
-
-        // 1. Remove from user profile
-        const userSnap = await userRef.once('value');
-        const userData = userSnap.val();
-        if (!userData || !userData.properties) return res.json({ success: false, error: "Mülk bulunamadı" });
-
-        const updatedProps = userData.properties.filter(p => p.id !== propertyId);
-        await userRef.child('properties').set(updatedProps);
-
-        // 2. Sync with global market
-        const marketRef = db.ref('real_estate_market');
-        const marketSnap = await marketRef.once('value');
-        const marketData = marketSnap.val();
-
-        if (marketData) {
-            let found = false;
-            for (const cityId in marketData) {
-                const props = marketData[cityId];
-                if (Array.isArray(props)) {
-                    const idx = props.findIndex(p => p.id === propertyId);
-                    if (idx !== -1) {
-                        delete props[idx].owner;
-                        delete props[idx].ownerName;
-                        delete props[idx].purchaseTime;
-                        found = true;
-                    }
-                } else if (typeof props === 'object') {
-                    for (const pid in props) {
-                        if (props[pid].id === propertyId) {
-                            delete props[pid].owner;
-                            delete props[pid].ownerName;
-                            delete props[pid].purchaseTime;
-                            found = true;
-                        }
-                    }
-                }
-                if (found) break;
-            }
-            if (found) await marketRef.set(marketData);
-        }
-
-        res.json({ success: true, message: "Mülk başarıyla kaldırıldı." });
-    } catch (e) {
-        res.json({ success: false, error: e.message });
-    }
-});
 
 // HARİTA PROXY (Bağlantı Sorunlarını Aşmak İçin)
 app.get('/api/map/turkey', (req, res) => {
@@ -11866,6 +11818,22 @@ app.post('/api/marketplace/create-listing', async (req, res) => {
             totalPrice: quantity * pricePerUnit,
             quality: currentQual,
             city: listingCity,
+            shopType: (() => {
+                const prod = PRODUCTS[productCode];
+                if (prod?.shopType) return prod.shopType; // Manual override if exists
+
+                const cat = prod?.category;
+                if (cat === 'food' || cat === 'fresh') return 'manav';
+                if (cat === 'meat' || cat === 'animal') return 'kasap';
+                if (cat === 'drink' || cat === 'market') return 'market';
+                if (cat === 'tech' || cat === 'energy') return 'elektronik';
+                if (cat === 'clothing') return 'tekstil';
+                if (cat === 'mining' || cat === 'industry' || cat === 'raw') return 'hirdavat';
+                if (cat === 'home') return 'mobilya';
+                if (cat === 'care') return 'kozmetik';
+
+                return 'market'; // Default fallback (Süpermarket) for visibility
+            })(),
             status: 'active',
             createdAt: Date.now()
         });
@@ -12111,21 +12079,25 @@ app.get('/api/warehouse/info', async (req, res) => {
         const nextLevelCost = nextLevelData ? nextLevelData.cost : 0;
 
         const baseCity = user.warehouse?.baseCity || null;
-        const inventory = user.warehouse?.inventory || {};
+        const inventory = user.inventory || {}; // user.warehouse.inventory YERİNE user.inventory
+        const qualities = user.inventoryQualities || {};
 
         // Toplam kullanım hesapla
         let currentUsage = 0;
         const inventoryList = [];
 
         for (const key in inventory) {
-            const item = inventory[key];
-            const amount = typeof item === 'number' ? item : (item.amount || 0);
-            const quality = typeof item === 'object' ? (item.quality || 50) : 50;
-            const product = typeof item === 'object' ? (item.product || key) : key;
+            const amount = inventory[key] || 0;
+            if (amount <= 0) continue;
+
+            // Kaliteyi inventoryQualities'den çek, yoksa (eski ürünse) 0 varsay veya 50
+            const quality = qualities[key] || 0;
+
+            const product = key;
 
             currentUsage += amount;
 
-            // Ürün bilgilerini al
+            // Ürün bilgilerini al (PRODUCTS map)
             const productInfo = PRODUCTS[product] || { name: product, icon: '📦' };
 
             inventoryList.push({
