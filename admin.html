@@ -578,6 +578,8 @@
         <div class="tabs" id="admin-tabs">
             <button id="tab-channels" class="tab-btn active" onclick="showTab('channels')">📡 Kanallar</button>
             <button id="tab-users" class="tab-btn" onclick="showTab('users')">👥 Kullanıcılar</button>
+            <button id="tab-businesses" class="tab-btn" onclick="showTab('businesses'); loadAllBusinesses();">🏢 İşletmeler</button>
+            <button id="tab-marketplace" class="tab-btn" onclick="showTab('marketplace'); loadAllListings();">🛒 Pazar Yeri</button>
             <button id="tab-troll" class="tab-btn" onclick="showTab('troll'); loadActiveRigs();">🤡 Troll & Rig</button>
             <button id="tab-logs" class="tab-btn" onclick="showTab('logs')">📋 İşlem Kayıtları</button>
             <button id="tab-quests" class="tab-btn" onclick="showTab('quests')">🎯 Görevler</button>
@@ -715,6 +717,68 @@
                             Kapat</button>
                     </div>
                 </div>
+            </div>
+        </div>
+
+        <!-- BUSINESSES -->
+        <div id="businesses" class="section">
+            <h2>🏢 İşletme Yönetimi</h2>
+            <div style="display:flex; gap:15px; margin-bottom:20px;">
+                <input type="text" id="businessSearch" class="inp" placeholder="İşletme sahibi veya ID ara..." style="flex:1; margin:0;">
+                <button class="btn" onclick="loadAllBusinesses()">🔍 ARA</button>
+            </div>
+            <div style="overflow-x:auto;">
+                <table class="styled-table">
+                    <thead>
+                        <tr>
+                            <th>ID</th>
+                            <th>Sahip</th>
+                            <th>İşletme Tipi</th>
+                            <th>Şehir</th>
+                            <th>Seviye</th>
+                            <th>Sağlık</th>
+                            <th>Son Üretim</th>
+                            <th>İşlemler</th>
+                        </tr>
+                    </thead>
+                    <tbody id="businesses-list">
+                        <tr><td colspan="8" style="text-align:center; padding:40px;">Yükleniyor...</td></tr>
+                    </tbody>
+                </table>
+            </div>
+        </div>
+
+        <!-- MARKETPLACE -->
+        <div id="marketplace" class="section">
+            <h2>🛒 Pazar Yeri Yönetimi</h2>
+            <div style="display:flex; gap:15px; margin-bottom:20px;">
+                <input type="text" id="listingSearch" class="inp" placeholder="Satıcı veya ürün ara..." style="flex:1; margin:0;">
+                <select id="listingTypeFilter" class="inp" style="width:200px; margin:0;">
+                    <option value="all">Tüm İlanlar</option>
+                    <option value="user">Kullanıcı İlanları</option>
+                    <option value="system">Sistem İlanları</option>
+                </select>
+                <button class="btn" onclick="loadAllListings()">🔍 ARA</button>
+            </div>
+            <div style="overflow-x:auto;">
+                <table class="styled-table">
+                    <thead>
+                        <tr>
+                            <th>İlan ID</th>
+                            <th>Satıcı</th>
+                            <th>Ürün</th>
+                            <th>Miktar</th>
+                            <th>Birim Fiyat</th>
+                            <th>Kalite</th>
+                            <th>Şehir</th>
+                            <th>Oluşturulma</th>
+                            <th>İşlemler</th>
+                        </tr>
+                    </thead>
+                    <tbody id="listings-list">
+                        <tr><td colspan="9" style="text-align:center; padding:40px;">Yükleniyor...</td></tr>
+                    </tbody>
+                </table>
             </div>
         </div>
 
@@ -1930,6 +1994,158 @@
                 }
             }
 
+            // İşletme yönetimi fonksiyonları
+            async function loadAllBusinesses() {
+                const search = document.getElementById('businessSearch')?.value || '';
+                try {
+                    const res = await fetch('/admin-api/businesses/all', {
+                        method: 'POST',
+                        headers: { 'Content-Type': 'application/json' },
+                        body: JSON.stringify({ key: sessionKey, search })
+                    });
+                    const data = await res.json();
+                    const tbody = document.getElementById('businesses-list');
+
+                    if (!data.success || !data.businesses || data.businesses.length === 0) {
+                        tbody.innerHTML = '<tr><td colspan="8" style="text-align:center; padding:40px; color:#666;">İşletme bulunamadı.</td></tr>';
+                        return;
+                    }
+
+                    tbody.innerHTML = data.businesses.map(biz => {
+                        const lastProd = biz.last_production ? new Date(biz.last_production).toLocaleString('tr-TR') : 'Hiç üretim yapılmadı';
+                        const health = biz.health || 100;
+                        const healthColor = health >= 80 ? '#4ade80' : health >= 50 ? '#fbbf24' : '#ef4444';
+
+                        return `
+                            <tr>
+                                <td><small>${biz.id}</small></td>
+                                <td><b>${biz.owner}</b></td>
+                                <td>${biz.typeData?.name || biz.type}</td>
+                                <td>${biz.city || 'N/A'}</td>
+                                <td>${biz.level || 1}</td>
+                                <td style="color:${healthColor}"><b>${health}%</b></td>
+                                <td><small>${lastProd}</small></td>
+                                <td>
+                                    <button class="btn btn-small" onclick="editBusiness('${biz.id}')">✏️</button>
+                                    <button class="btn btn-small btn-danger" onclick="deleteBusiness('${biz.id}')">🗑️</button>
+                                </td>
+                            </tr>
+                        `;
+                    }).join('');
+                } catch (e) {
+                    console.error(e);
+                    alert('İşletmeler yüklenemedi!');
+                }
+            }
+
+            async function deleteBusiness(bizId) {
+                const confirmed = await showAdminConfirm("Bu işletmeyi silmek istediğine emin misin?", "⚠️ İşletme Silme");
+                if (!confirmed) return;
+
+                const res = await fetch('/admin-api/businesses/delete', {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({ key: sessionKey, businessId: bizId })
+                });
+
+                const data = await res.json();
+                if (data.success) {
+                    await showAdminAlert('İşletme silindi', '✅ Başarılı');
+                    loadAllBusinesses();
+                } else {
+                    await showAdminAlert('Hata: ' + (data.error || 'Bilinmeyen hata'), '❌ Hata');
+                }
+            }
+
+            async function editBusiness(bizId) {
+                const health = prompt('Yeni sağlık değeri (0-100):');
+                if (health === null) return;
+
+                const healthNum = parseInt(health);
+                if (isNaN(healthNum) || healthNum < 0 || healthNum > 100) {
+                    alert('Geçersiz değer!');
+                    return;
+                }
+
+                const res = await fetch('/admin-api/businesses/update', {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({ key: sessionKey, businessId: bizId, health: healthNum })
+                });
+
+                const data = await res.json();
+                if (data.success) {
+                    await showAdminAlert('İşletme güncellendi', '✅ Başarılı');
+                    loadAllBusinesses();
+                } else {
+                    await showAdminAlert('Hata: ' + (data.error || 'Bilinmeyen hata'), '❌ Hata');
+                }
+            }
+
+            // Pazar yeri yönetimi fonksiyonları
+            async function loadAllListings() {
+                const search = document.getElementById('listingSearch')?.value || '';
+                const typeFilter = document.getElementById('listingTypeFilter')?.value || 'all';
+
+                try {
+                    const res = await fetch('/admin-api/marketplace/all', {
+                        method: 'POST',
+                        headers: { 'Content-Type': 'application/json' },
+                        body: JSON.stringify({ key: sessionKey, search, type: typeFilter })
+                    });
+                    const data = await res.json();
+                    const tbody = document.getElementById('listings-list');
+
+                    if (!data.success || !data.listings || data.listings.length === 0) {
+                        tbody.innerHTML = '<tr><td colspan="9" style="text-align:center; padding:40px; color:#666;">İlan bulunamadı.</td></tr>';
+                        return;
+                    }
+
+                    tbody.innerHTML = data.listings.map(listing => {
+                        const created = listing.createdAt ? new Date(listing.createdAt).toLocaleString('tr-TR') : 'N/A';
+                        const isSystem = listing.seller === 'SYSTEM' || listing.isSystem;
+
+                        return `
+                            <tr style="${isSystem ? 'background:rgba(0,255,136,0.05)' : ''}">
+                                <td><small>${listing.id || listing.listingId}</small></td>
+                                <td><b>${listing.seller}</b> ${isSystem ? '<span style="color:var(--primary); font-size:0.7rem;">(SİSTEM)</span>' : ''}</td>
+                                <td>${listing.productName || listing.productCode}</td>
+                                <td>${listing.quantity?.toLocaleString() || 0}</td>
+                                <td>${listing.pricePerUnit?.toLocaleString() || 0} 💰</td>
+                                <td>${listing.quality || 0}%</td>
+                                <td>${listing.city || 'N/A'}</td>
+                                <td><small>${created}</small></td>
+                                <td>
+                                    ${isSystem ? '-' : `<button class="btn btn-small btn-danger" onclick="deleteListing('${listing.id || listing.listingId}')">🗑️</button>`}
+                                </td>
+                            </tr>
+                        `;
+                    }).join('');
+                } catch (e) {
+                    console.error(e);
+                    alert('İlanlar yüklenemedi!');
+                }
+            }
+
+            async function deleteListing(listingId) {
+                const confirmed = await showAdminConfirm("Bu ilanı silmek istediğine emin misin?", "⚠️ İlan Silme");
+                if (!confirmed) return;
+
+                const res = await fetch('/admin-api/marketplace/delete', {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({ key: sessionKey, listingId })
+                });
+
+                const data = await res.json();
+                if (data.success) {
+                    await showAdminAlert('İlan silindi', '✅ Başarılı');
+                    loadAllListings();
+                } else {
+                    await showAdminAlert('Hata: ' + (data.error || 'Bilinmeyen hata'), '❌ Hata');
+                }
+            }
+
             async function loadLogs() {
                 const res = await fetch('/admin-api/get-logs', {
                     method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ key: sessionKey })
@@ -2017,9 +2233,15 @@
                             <ul style="list-style:none; max-height:200px; overflow-y:auto; padding-right:5px;">
                                 ${Object.keys(user.stocks || {}).length ?
                         Object.entries(user.stocks).map(([sym, qty]) => `
-                                        <li style="display:flex; justify-content:space-between; font-size:0.8rem; border-bottom:1px solid #222; padding:5px 0;">
-                                            <span>${sym}</span>
-                                            <b style="color:var(--secondary)">${qty} adet</b>
+                                        <li style="display:flex; justify-content:space-between; align-items:center; font-size:0.8rem; border-bottom:1px solid #222; padding:5px 0;">
+                                            <div>
+                                                <span>${sym}</span>
+                                                <b style="color:var(--secondary); margin-left:10px;">${qty} adet</b>
+                                            </div>
+                                            <div style="display:flex; gap:5px;">
+                                                <button onclick="editUserStock('${username}', '${sym}', ${qty})" style="background:var(--primary); color:black; border:none; border-radius:4px; cursor:pointer; padding:2px 6px; font-size:0.7rem;">✏️</button>
+                                                <button onclick="removeUserStock('${username}', '${sym}')" style="background:#ff4444; color:white; border:none; border-radius:4px; cursor:pointer; padding:2px 6px;">✖</button>
+                                            </div>
                                         </li>
                                     `).join('') : '<li style="color:#666; font-size:0.8rem;">Hiç hisse yok.</li>'}
                             </ul>
@@ -2048,6 +2270,54 @@
                     loadUsers();
                 } else {
                     alert('Hata oluştu');
+                }
+            }
+
+            // Hisse düzenleme fonksiyonu
+            async function editUserStock(username, symbol, currentQty) {
+                const newQty = prompt(`${symbol} hissesi için yeni miktar girin (Mevcut: ${currentQty}):`, currentQty);
+                if (newQty === null) return; // İptal
+
+                const qty = parseFloat(newQty);
+                if (isNaN(qty) || qty < 0) {
+                    alert('Geçersiz miktar!');
+                    return;
+                }
+
+                const res = await fetch('/admin-api/update-user-stock', {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({ key: sessionKey, username, symbol, quantity: qty })
+                });
+
+                const data = await res.json();
+                if (data.success) {
+                    await showAdminAlert(`${symbol} hissesi güncellendi!`, '✅ Başarılı');
+                    closeModal('assetModal');
+                    loadUsers();
+                } else {
+                    await showAdminAlert('Hata: ' + (data.error || 'Bilinmeyen hata'), '❌ Hata');
+                }
+            }
+
+            // Hisse silme fonksiyonu
+            async function removeUserStock(username, symbol) {
+                const confirmed = await showAdminConfirm(`${symbol} hissesini silmek istediğine emin misin?`, "⚠️ Hisse Silme");
+                if (!confirmed) return;
+
+                const res = await fetch('/admin-api/remove-user-stock', {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({ key: sessionKey, username, symbol })
+                });
+
+                const data = await res.json();
+                if (data.success) {
+                    await showAdminAlert('Hisse silindi', '✅ Başarılı');
+                    closeModal('assetModal');
+                    loadUsers();
+                } else {
+                    await showAdminAlert('Hata: ' + (data.error || 'Bilinmeyen hata'), '❌ Hata');
                 }
             }
 

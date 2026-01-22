@@ -4153,10 +4153,12 @@ async function generateFakeYouTTS(modelToken, text) {
                 throw new Error(inferenceResp.data.error_reason || 'Bilinmeyen API hatası');
             }
         } catch (e) {
-            const isRateLimit = e.message.includes('rate limited') || (e.response && e.response.status === 429);
+            const isRateLimit = e.message.includes('rate limited') ||
+                               e.message.includes('Too Many Requests') ||
+                               (e.response && (e.response.status === 429 || e.response.status === 503));
 
             if (isRateLimit && attempt < maxRetries) {
-                const waitTime = attempt * 4000; // 4, 8, 12, 16 saniye bekle
+                const waitTime = attempt * 6000; // 6, 12, 18, 24, 30 saniye bekle (daha uzun)
                 console.log(`[FakeYou] Rate limit! ${waitTime / 1000}sn bekleniyor... (Deneme ${attempt}/${maxRetries})`);
                 await new Promise(r => setTimeout(r, waitTime));
                 continue;
@@ -4164,6 +4166,7 @@ async function generateFakeYouTTS(modelToken, text) {
 
             if (attempt === maxRetries) {
                 const authMsg = auth ? '' : ' (Giriş yapılmamış - .env dosyasını kontrol et)';
+                console.log(`[FakeYou] ${maxRetries} deneme sonrası başarısız. Fallback'e geçiliyor.`);
                 throw new Error(isRateLimit ? `FakeYou Sunucuları çok yoğun!${authMsg}` : e.message);
             }
         }
@@ -7464,6 +7467,20 @@ EK TALİMAT: ${aiInst}`;
                 return await reply(`@${user}, Geçersiz seçenek numarası!`);
             }
 
+            // Çift oylama kontrolü - kullanıcı daha önce oy kullandı mı?
+            const userLower = user.toLowerCase();
+            let alreadyVoted = false;
+            for (const optionBets of Object.values(pred.bets)) {
+                if (optionBets.some(bet => bet.user === userLower)) {
+                    alreadyVoted = true;
+                    break;
+                }
+            }
+
+            if (alreadyVoted) {
+                return await reply(`@${user}, Bu tahminde zaten oy kullandın! Her kişi sadece 1 kez oy kullanabilir.`);
+            }
+
             // Bakiye kontrolü
             const snap = await userRef.once('value');
             const data = snap.val() || {};
@@ -7477,7 +7494,7 @@ EK TALİMAT: ${aiInst}`;
             }
 
             // Bahsi kaydet
-            pred.bets[optNo].push({ user: user.toLowerCase(), amount });
+            pred.bets[optNo].push({ user: userLower, amount });
             pred.optionPools[optNo] += amount;
             pred.totalPool += amount;
 
@@ -7647,6 +7664,7 @@ EK TALİMAT: ${aiInst}`;
             const snap = await userRef.once('value');
             const d = snap.val() || {};
             const watchTime = d.channel_watch_time?.[broadcasterId] || 0;
+            const messageCount = d.channel_m?.[broadcasterId] || 0;
             await reply(`📊 @${user} Verilerin:\n🕒 İzleme: ${watchTime} dakika\n💬 Mesaj: ${messageCount}`);
         }
 
@@ -9731,6 +9749,179 @@ app.post('/admin-api/remove-property', authAdmin, hasPerm('users'), async (req, 
     } catch (e) {
         console.error("Remove Property Error:", e);
         res.status(500).json({ error: e.message });
+    }
+});
+
+// Admin - Kullanıcı hissesi güncelleme
+app.post('/admin-api/update-user-stock', authAdmin, hasPerm('users'), async (req, res) => {
+    const { username, symbol, quantity } = req.body;
+    if (!username || !symbol || quantity === undefined) {
+        return res.status(400).json({ success: false, error: "Eksik bilgi" });
+    }
+
+    try {
+        const cleanUser = username.toLowerCase();
+        const qty = parseFloat(quantity);
+
+        if (isNaN(qty) || qty < 0) {
+            return res.status(400).json({ success: false, error: "Geçersiz miktar" });
+        }
+
+        const userRef = db.ref(`users/${cleanUser}`);
+
+        if (qty === 0) {
+            // Miktar 0 ise hisseyi sil
+            await userRef.child(`stocks/${symbol}`).remove();
+            await userRef.child(`stock_costs/${symbol}`).remove();
+        } else {
+            // Miktar 0 değilse güncelle
+            await userRef.child(`stocks/${symbol}`).set(qty);
+        }
+
+        addLog("Hisse Güncelleme", `${username} kullanıcısının ${symbol} hissesi ${qty} olarak güncellendi.`);
+        res.json({ success: true });
+    } catch (e) {
+        console.error("Update Stock Error:", e);
+        res.status(500).json({ success: false, error: e.message });
+    }
+});
+
+// Admin - Kullanıcı hissesi silme
+app.post('/admin-api/remove-user-stock', authAdmin, hasPerm('users'), async (req, res) => {
+    const { username, symbol } = req.body;
+    if (!username || !symbol) {
+        return res.status(400).json({ success: false, error: "Eksik bilgi" });
+    }
+
+    try {
+        const cleanUser = username.toLowerCase();
+        const userRef = db.ref(`users/${cleanUser}`);
+
+        await userRef.child(`stocks/${symbol}`).remove();
+        await userRef.child(`stock_costs/${symbol}`).remove();
+
+        addLog("Hisse Silme", `${username} kullanıcısından ${symbol} hissesi silindi.`);
+        res.json({ success: true });
+    } catch (e) {
+        console.error("Remove Stock Error:", e);
+        res.status(500).json({ success: false, error: e.message });
+    }
+});
+
+// Admin - İşletme yönetimi API'leri
+app.post('/admin-api/businesses/all', authAdmin, async (req, res) => {
+    const { search } = req.body;
+    try {
+        const bizSnap = await db.ref('businesses').once('value');
+        const allBiz = bizSnap.val() || {};
+
+        let businesses = Object.entries(allBiz).map(([id, data]) => ({
+            id,
+            ...data
+        }));
+
+        // Arama filtresi
+        if (search && search.trim()) {
+            const q = search.toLowerCase();
+            businesses = businesses.filter(b =>
+                b.owner?.toLowerCase().includes(q) ||
+                b.id?.toLowerCase().includes(q) ||
+                b.type?.toLowerCase().includes(q)
+            );
+        }
+
+        // En son üretim yapılanlara göre sırala
+        businesses.sort((a, b) => (b.last_production || 0) - (a.last_production || 0));
+
+        res.json({ success: true, businesses });
+    } catch (e) {
+        console.error('Businesses load error:', e);
+        res.status(500).json({ success: false, error: e.message });
+    }
+});
+
+app.post('/admin-api/businesses/delete', authAdmin, async (req, res) => {
+    const { businessId } = req.body;
+    if (!businessId) return res.status(400).json({ success: false, error: 'Eksik bilgi' });
+
+    try {
+        await db.ref(`businesses/${businessId}`).remove();
+        addLog('İşletme Silme', `İşletme silindi: ${businessId}`);
+        res.json({ success: true });
+    } catch (e) {
+        console.error('Business delete error:', e);
+        res.status(500).json({ success: false, error: e.message });
+    }
+});
+
+app.post('/admin-api/businesses/update', authAdmin, async (req, res) => {
+    const { businessId, health } = req.body;
+    if (!businessId || health === undefined) {
+        return res.status(400).json({ success: false, error: 'Eksik bilgi' });
+    }
+
+    try {
+        await db.ref(`businesses/${businessId}`).update({ health: parseInt(health) });
+        addLog('İşletme Güncelleme', `İşletme ${businessId} sağlığı ${health}% olarak güncellendi`);
+        res.json({ success: true });
+    } catch (e) {
+        console.error('Business update error:', e);
+        res.status(500).json({ success: false, error: e.message });
+    }
+});
+
+// Admin - Pazar yeri yönetimi API'leri
+app.post('/admin-api/marketplace/all', authAdmin, async (req, res) => {
+    const { search, type } = req.body;
+    try {
+        const listingsSnap = await db.ref('marketplace').once('value');
+        const allListings = listingsSnap.val() || {};
+
+        let listings = Object.entries(allListings).map(([id, data]) => ({
+            id,
+            ...data,
+            productName: PRODUCTS[data.productCode]?.name || data.productCode
+        }));
+
+        // Sistem/kullanıcı filtresi
+        if (type === 'user') {
+            listings = listings.filter(l => l.seller !== 'SYSTEM');
+        } else if (type === 'system') {
+            listings = listings.filter(l => l.seller === 'SYSTEM');
+        }
+
+        // Arama filtresi
+        if (search && search.trim()) {
+            const q = search.toLowerCase();
+            listings = listings.filter(l =>
+                l.seller?.toLowerCase().includes(q) ||
+                l.productCode?.toLowerCase().includes(q) ||
+                l.productName?.toLowerCase().includes(q)
+            );
+        }
+
+        // En yeni önce
+        listings.sort((a, b) => (b.createdAt || 0) - (a.createdAt || 0));
+
+        res.json({ success: true, listings });
+    } catch (e) {
+        console.error('Listings load error:', e);
+        res.status(500).json({ success: false, error: e.message });
+    }
+});
+
+app.post('/admin-api/marketplace/delete', authAdmin, async (req, res) => {
+    const { listingId } = req.body;
+    if (!listingId) return res.status(400).json({ success: false, error: 'Eksik bilgi' });
+
+    try {
+        // İlanı sil
+        await db.ref(`marketplace/${listingId}`).remove();
+        addLog('Pazar İlan Silme', `İlan silindi: ${listingId}`);
+        res.json({ success: true });
+    } catch (e) {
+        console.error('Listing delete error:', e);
+        res.status(500).json({ success: false, error: e.message });
     }
 });
 
@@ -11892,7 +12083,7 @@ app.post('/api/marketplace/buy-listing', transactionLimiter, async (req, res) =>
                 city: city,
                 pricePerUnit: product.basePrice,
                 quantity: 99999999,
-                quality: 0
+                quality: 10 // Sistem ürünleri %10 kalite
             };
         } else {
             const snap = await db.ref('marketplace/' + listingId).once('value');

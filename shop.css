@@ -412,6 +412,13 @@ header {
     margin-bottom: 10px !important;
     text-align: center;
     border-radius: 8px !important;
+    color: #fff !important; /* Beyaz metin rengi */
+}
+
+.borsa-input option {
+    background: #1a1a1a !important; /* Koyu arka plan */
+    color: #fff !important; /* Beyaz metin */
+    padding: 8px !important;
 }
 
 /* TURKEY MAP STYLING */

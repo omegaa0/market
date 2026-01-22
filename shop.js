@@ -1702,11 +1702,21 @@ async function loadProfile() {
 
     container.style.cssText = `position:static; transform:none; width:100%; text-align:left; transition: all 0.5s ease; ${profileStyle}`;
 
+    // Kick profil fotoğrafını yükle
+    const kickUserId = u.kick_id || null;
+    const avatarHtml = kickUserId
+        ? `<img src="https://files.kick.com/images/user/${kickUserId}/profile_image/conversion/4ba8e27e-5e0b-4e61-ac65-8aba00d79ea8-fullsize.webp"
+               style="width:80px; height:80px; border-radius:50%; object-fit:cover; border:4px solid rgba(255,255,255,0.1);"
+               onerror="this.onerror=null; this.outerHTML='<div style=\\'width:80px; height:80px; background:var(--primary); color:black; border-radius:50%; display:flex; align-items:center; justify-content:center; font-size:2rem; font-weight:800; border:4px solid rgba(255,255,255,0.1);\\'>${currentUser[0].toUpperCase()}</div>';" />`
+        : `<div style="width:80px; height:80px; background:var(--primary); color:black; border-radius:50%; display:flex; align-items:center; justify-content:center; font-size:2rem; font-weight:800; border:4px solid rgba(255,255,255,0.1);">
+               ${currentUser[0].toUpperCase()}
+           </div>`;
+
     container.innerHTML = `
             <div style="display:flex; flex-direction:column; gap:25px; padding: 30px;">
                 <div style="display:flex; align-items:center; gap:20px; border-bottom:1px solid rgba(255,255,255,0.1); padding-bottom:20px;">
-                    <div id="p-avatar" style="width:80px; height:80px; background:var(--primary); color:black; border-radius:50%; display:flex; align-items:center; justify-content:center; font-size:2rem; font-weight:800; border:4px solid rgba(255,255,255,0.1);">
-                        ${currentUser[0].toUpperCase()}
+                    <div id="p-avatar">
+                        ${avatarHtml}
                     </div>
                     <div>
                         <h2 style="${nameStyle} font-size:2rem; margin:0;">${currentUser.toUpperCase()}</h2>
@@ -4785,7 +4795,7 @@ async function loadMarketListings(page = 1) {
             }
 
             // Kalite gösterimi
-            const quality = isSystem ? 0 : (listing.quality || 0);
+            const quality = listing.quality || 0;
             const qualityColor = quality >= 75 ? '#00ff88' : quality >= 50 ? '#ffaa00' : quality >= 25 ? '#ff8800' : '#ff4444';
             const qualityName = quality >= 90 ? 'Mükemmel' : quality >= 75 ? 'İyi' : quality >= 50 ? 'Orta' : quality >= 25 ? 'Düşük' : 'Çok Düşük';
 
@@ -4795,7 +4805,7 @@ async function loadMarketListings(page = 1) {
                         <div style="font-size:2rem;">${product.icon}</div>
                         <div style="display:flex; flex-direction:column; align-items:flex-end; gap:5px;">
                             ${isSystem ? '<span style="background:var(--primary); color:black; font-size:0.6rem; padding:3px 8px; border-radius:10px; font-weight:900;">SİSTEM</span>' : ''}
-                            <span style="background:${qualityColor}22; color:${qualityColor}; font-size:0.6rem; padding:3px 8px; border-radius:10px; font-weight:700;">%${quality} ${qualityName}</span>
+                            <span style="background:${qualityColor}22; color:${qualityColor}; font-size:0.6rem; padding:3px 8px; border-radius:10px; font-weight:700;">Kalite: %${quality}</span>
                         </div>
                     </div>
                     <h4 style="margin:0 0 5px 0;">${product.name}</h4>
@@ -5398,11 +5408,11 @@ async function buyRnDUpgrade(productCode, cost, duration) {
 function calculateCityDistance(city1, city2) {
     if (!city1 || !city2) return 500;
     if (city1 === city2) return 0;
-    const findCity = (name) => EMLAK_CITIES.find(c => c.name === name || c.id === name.toUpperCase() || c.name.toLowerCase() === name.toLowerCase());
+    const findCity = (name) => CLIENT_CITIES.find(c => c.name === name || c.id === name.toUpperCase() || c.name.toLowerCase() === name.toLowerCase());
     const c1 = findCity(city1);
     const c2 = findCity(city2);
     if (!c1 || !c2) return 500;
-    const dx = c1.x - c2.x;
-    const dy = c1.y - c2.y;
-    return Math.sqrt(dx * dx + dy * dy) * 15;
+    const dx = (c2.x - c1.x) * 16; // xScale
+    const dy = (c2.y - c1.y) * 6;  // yScale
+    return Math.round(Math.sqrt(dx * dx + dy * dy));
 }
