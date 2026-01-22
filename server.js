@@ -5342,7 +5342,13 @@ app.post('/webhook/kick', async (req, res) => {
                 const thumbnail = livestream.thumbnail?.url || "";
 
                 // Discord Webhook Belirle (Kanal Ayarı > Global Env)
-                const targetWebhook = (channelData.settings && channelData.settings.discord_live_webhook) || process.env.DISCORD_WEBHOOK;
+                const channelWebhook = channelData.settings && channelData.settings.discord_live_webhook;
+                const targetWebhook = channelWebhook || process.env.DISCORD_WEBHOOK;
+
+                console.log(`[Webhook Debug] Yayın durumu: ${isLive ? 'AÇIK' : 'KAPALI'}`);
+                console.log(`[Webhook Debug] Kanal webhook: ${channelWebhook ? channelWebhook.substring(0, 40) + '...' : 'YOK'}`);
+                console.log(`[Webhook Debug] Env webhook: ${process.env.DISCORD_WEBHOOK ? 'VAR' : 'YOK'}`);
+                console.log(`[Webhook Debug] Kullanılacak webhook: ${targetWebhook ? 'VAR' : 'YOK'}`);
 
                 if (targetWebhook) {
                     try {
@@ -7976,14 +7982,6 @@ app.post('/admin-api/channels', authAdmin, hasPerm('channels'), async (req, res)
     res.json(channels);
 });
 
-// KOMUT TOGGLE
-app.post('/admin-api/toggle-command', authAdmin, hasPerm('channels'), async (req, res) => {
-    const { channelId, command, value } = req.body;
-    await db.ref(`channels/${channelId}/settings`).update({ [command]: value });
-    addLog("Ayar Güncelleme", `${command} -> ${value}`, channelId);
-    res.json({ success: true });
-});
-
 // KANAL SİL
 app.post('/admin-api/delete-channel', authAdmin, hasPerm('channels'), async (req, res) => {
     addLog("Kanal Silme", `Channel ID: ${req.body.channelId}`, req.body.channelId);
@@ -8163,12 +8161,15 @@ app.post('/admin-api/lottery', authAdmin, hasPerm('troll'), async (req, res) => 
 app.post('/admin-api/toggle-command', authAdmin, hasPerm('channels'), async (req, res) => {
     const { channelId, command, value } = req.body;
     try {
+        console.log(`[Admin API] Ayar güncelleniyor: channels/${channelId}/settings/${command} = ${value}`);
         await db.ref(`channels/${channelId}/settings`).update({ [command]: value });
         // Log, sensitive datayı gizle (uzunsa)
         const valStr = String(value).length > 50 ? String(value).substring(0, 50) + "..." : value;
         addLog("Ayar Değişimi", `${channelId} -> ${command}: ${valStr}`, channelId);
+        console.log(`[Admin API] ✅ Ayar kaydedildi: ${command}`);
         res.json({ success: true });
     } catch (e) {
+        console.error(`[Admin API] ❌ Ayar kayıt hatası:`, e);
         res.json({ success: false, error: e.message });
     }
 });
@@ -11922,10 +11923,9 @@ app.get('/api/marketplace/listings', async (req, res) => {
         if (city && city !== 'all') {
             listings = listings.filter(l => l.city === city);
         }
-        if (shopType && shopType !== 'all') {
+        if (shopType && shopType !== 'all' && shopType !== '') {
             listings = listings.filter(l => {
-                if (l.isSystem) return true; // Sistem ilanları her yere uyar (veya belki belli dükkanlara?)
-                // Normal ilanlar için satıcı dükkan tipini kontrol et
+                // Hem sistem hem kullanıcı ilanları için shopType kontrolü yap
                 return l.shopType === shopType;
             });
         }
@@ -12118,8 +12118,8 @@ app.post('/api/marketplace/buy-listing', transactionLimiter, async (req, res) =>
             let weightFactor = purchaseQty / 100;
             if (weightFactor < 1) weightFactor = 1;
 
-            shippingFee = Math.round(distance * 25 * weightFactor); // LOGISTICS_COST_PER_KM = 25
-            if (shippingFee < 500) shippingFee = 500;
+            shippingFee = Math.round(distance * 8 * weightFactor); // LOGISTICS_COST_PER_KM = 8 (25'ten düşürüldü)
+            if (shippingFee < 150) shippingFee = 150; // Minimum kargo 150₺ (500'den düşürüldü)
         }
 
         const totalCost = itemCost + shippingFee;
