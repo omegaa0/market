@@ -4154,8 +4154,8 @@ async function generateFakeYouTTS(modelToken, text) {
             }
         } catch (e) {
             const isRateLimit = e.message.includes('rate limited') ||
-                               e.message.includes('Too Many Requests') ||
-                               (e.response && (e.response.status === 429 || e.response.status === 503));
+                e.message.includes('Too Many Requests') ||
+                (e.response && (e.response.status === 429 || e.response.status === 503));
 
             if (isRateLimit && attempt < maxRetries) {
                 const waitTime = attempt * 6000; // 6, 12, 18, 24, 30 saniye bekle (daha uzun)
@@ -12486,6 +12486,32 @@ app.post('/api/rnd/buy-upgrade', async (req, res) => {
     }
 });
 
+
+
+// --- OVERLAY EVENT MARK AS PLAYED API ---
+app.post('/api/overlay/mark-played', async (req, res) => {
+    try {
+        const { channelId, eventType, eventKey } = req.body;
+
+        if (!channelId || !eventType || !eventKey) {
+            return res.status(400).json({ success: false, error: 'Eksik parametre' });
+        }
+
+        // Geçerli event türleri
+        const validTypes = ['tts', 'sound', 'fireworks', 'alerts', 'song_requests', 'horse_race', 'mute', 'troll'];
+        if (!validTypes.includes(eventType)) {
+            return res.status(400).json({ success: false, error: 'Geçersiz event türü' });
+        }
+
+        // Event'i played olarak işaretle
+        await db.ref(`channels/${channelId}/stream_events/${eventType}/${eventKey}`).update({ played: true });
+
+        res.json({ success: true });
+    } catch (e) {
+        console.error('[Overlay Mark Played Error]', e.message);
+        res.status(500).json({ success: false, error: e.message });
+    }
+});
 
 // --- SERVER START ---
 const PORT = process.env.PORT || 3000;

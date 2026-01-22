@@ -110,6 +110,19 @@
     </div>
 
     <script>
+        // --- API ÜZERİNDEN EVENT GÜNCELLEME ---
+        async function markEventPlayed(channelId, eventType, eventKey) {
+            try {
+                await fetch('/api/overlay/mark-played', {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({ channelId, eventType, eventKey })
+                });
+            } catch (e) {
+                console.warn('Event güncelleme hatası:', e);
+            }
+        }
+
         function logDebug(msg) {
             console.log("[DEBUG]", msg);
             const el = document.getElementById('debug-log');
@@ -231,7 +244,7 @@
                         .on('child_added', function (snap) {
                             const data = snap.val();
                             if (!data || data.played) return;
-                            db.ref('channels/' + targetBroadcasterId + '/stream_events/tts/' + snap.key).update({ played: true });
+                            markEventPlayed(targetBroadcasterId, 'tts', snap.key);
 
                             const voiceType = data.voice || "standart";
                             const voiceName = data.voiceName || voiceType;
@@ -272,7 +285,7 @@
                         .on('child_added', function (snap) {
                             const data = snap.val();
                             if (!data || data.played) return;
-                            db.ref('channels/' + targetBroadcasterId + '/stream_events/sound/' + snap.key).update({ played: true });
+                            markEventPlayed(targetBroadcasterId, 'sound', snap.key);
                             if (data.url) {
                                 playSound('custom', data.url, (data.volume ? data.volume / 100 : 1), data.duration);
                             }
@@ -285,7 +298,7 @@
                         .on('child_added', function (snap) {
                             const data = snap.val();
                             if (!data || data.played) return;
-                            db.ref('channels/' + targetBroadcasterId + '/stream_events/fireworks/' + snap.key).update({ played: true });
+                            markEventPlayed(targetBroadcasterId, 'fireworks', snap.key);
                             startFireworks();
                         });
 
@@ -296,7 +309,7 @@
                         .on('child_added', function (snap) {
                             const data = snap.val();
                             if (!data || data.played) return;
-                            db.ref('channels/' + targetBroadcasterId + '/stream_events/alerts/' + snap.key).update({ played: true });
+                            markEventPlayed(targetBroadcasterId, 'alerts', snap.key);
                             showNotification(data.title, data.text, data.icon);
                         });
 
@@ -368,7 +381,7 @@
                             const data = snap.val();
                             if (!data || data.played) return;
                             logDebug("Yeni şarkı isteği alındı: " + data.query);
-                            db.ref('channels/' + targetBroadcasterId + '/stream_events/song_requests/' + snap.key).update({ played: true });
+                            markEventPlayed(targetBroadcasterId, 'song_requests', snap.key);
                             songQueue.push(data);
                             processQueue();
                         });
