@@ -4973,7 +4973,7 @@ async function sendChatMessage(message, broadcasterId) {
         }
 
         const channelSlug = chan?.slug || chan?.username || broadcasterId;
-        console.log(`[Chat Debug] V10 (Bot Kimliği) Başlatılıyor... Kanal: ${channelSlug}`);
+        // Debug log kaldırıldı - çok fazla spam yapıyordu
 
         const HEADERS = {
             'Authorization': `Bearer ${finalToken}`,
@@ -5025,11 +5025,11 @@ async function sendChatMessage(message, broadcasterId) {
                 const res = await axios.post(t.url, t.body, { headers: HEADERS });
                 if (res.status >= 200 && res.status < 300) {
                     success = true;
-                    console.log(`[Chat] ✅ MESAJ GÖNDERİLDİ! (${t.name}) - Bot hesabı kullanıldı.`);
+                    // Başarılı mesaj logu kaldırıldı - spam yapıyordu
                     break;
                 }
             } catch (err) {
-                console.warn(`[Chat Debug] ${t.name} -> ${err.response?.status}`);
+                // Debug log kapatıldı
             }
         }
 
