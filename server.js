@@ -8150,7 +8150,18 @@ app.post('/dashboard-api/test-sub', authDashboard, async (req, res) => {
 
 app.post('/admin-api/reload-overlay', authAdmin, hasPerm('channels'), async (req, res) => {
     const { channelId } = req.body;
+    console.log(`[Admin API] Overlay yenileniyor: ${channelId}`);
+
+    // Reload flag'ini true yap
     await db.ref(`channels/${channelId}/commands`).update({ reload: true });
+
+    // 3 saniye sonra otomatik olarak false yap (client'lar zaten yenilenmiş olacak)
+    setTimeout(async () => {
+        await db.ref(`channels/${channelId}/commands`).update({ reload: false });
+        console.log(`[Admin API] Reload flag sıfırlandı: ${channelId}`);
+    }, 3000);
+
+    addLog('Overlay Yenileme', `Kanal ${channelId} overlay'i yenilendi`, channelId);
     res.json({ success: true });
 });
 

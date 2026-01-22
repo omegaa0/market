@@ -374,10 +374,17 @@
                         });
 
                     // UZAKTAN YENİLEME DİNLE (Remote Reload)
+                    let reloadListenerActive = false;
                     db.ref('channels/' + targetBroadcasterId + '/commands/reload').on('value', function (snap) {
+                        // İlk dinleme tetiklenmesini atla (sayfa yüklenirken)
+                        if (!reloadListenerActive) {
+                            reloadListenerActive = true;
+                            return;
+                        }
+
                         if (snap.val() === true) {
-                            db.ref('channels/' + targetBroadcasterId + '/commands/reload').set(false);
                             console.log("🔄 Uzaktan yenileme sinyali alındı, sayfa yenileniyor...");
+                            // Flag'i server otomatik olarak false yapacak, client yapmaya çalışmasın
                             location.reload();
                         }
                     });
