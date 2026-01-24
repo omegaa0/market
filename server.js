@@ -12810,14 +12810,15 @@ app.post('/api/marketplace/buy-listing', transactionLimiter, async (req, res) =>
             const distance = calculateCityDistance(listing.city, userBaseCity);
             // Sabit kargo: mesafeye göre ama çok düşük
             // 0-200km: 5₺, 200-500km: 10₺, 500-1000km: 15₺, 1000km+: 20₺
+            // Sabit kargo: mesafeye göre (150-1500 💰 arası)
             if (distance < 200) {
-                shippingFee = 5;
+                shippingFee = 150;
             } else if (distance < 500) {
-                shippingFee = 10;
+                shippingFee = 350;
             } else if (distance < 1000) {
-                shippingFee = 15;
+                shippingFee = 750;
             } else {
-                shippingFee = 20;
+                shippingFee = 1500;
             }
         }
 
@@ -12969,9 +12970,14 @@ app.post('/api/business/sell', transactionLimiter, async (req, res) => {
 // Satış slotu ekle
 app.post('/api/business/add-slot', transactionLimiter, async (req, res) => {
     try {
-        const { username, bizId, productCode, price } = req.body;
-        if (!username || !bizId || !productCode || !price) {
+        const { username, bizId, productCode, price, amount } = req.body;
+        if (!username || !bizId || !productCode || !price || !amount) {
             return res.json({ success: false, error: 'Eksik bilgi!' });
+        }
+
+        const addAmount = parseInt(amount);
+        if (isNaN(addAmount) || addAmount <= 0) {
+            return res.json({ success: false, error: 'Geçersiz miktar!' });
         }
 
         // İşletme kontrolü
@@ -12995,15 +13001,16 @@ app.post('/api/business/add-slot', transactionLimiter, async (req, res) => {
         }
 
         // Envanter kontrolü - inventory doğrudan users altında
-        const userSnap = await db.ref(`users/${username}/inventory/${productCode}`).once('value');
-        const stock = userSnap.val() || 0;
-        if (stock <= 0) {
-            return res.json({ success: false, error: 'Depoda bu ürün yok!' });
+        const userSnap = await db.ref(`users/${username}`).once('value');
+        const user = userSnap.val();
+        const stock = (user.inventory || {})[productCode] || 0;
+
+        if (stock < addAmount) {
+            return res.json({ success: false, error: `Depoda yeterli ürün yok! Mevcut: ${stock}` });
         }
 
         // Kalite kontrolü - inventoryQualities doğrudan users altında
-        const qualitySnap = await db.ref(`users/${username}/inventoryQualities/${productCode}`).once('value');
-        const quality = qualitySnap.val() || 50;
+        const quality = (user.inventoryQualities || {})[productCode] || 50;
 
         // Slot limiti kontrolü (seviyeye göre)
         const maxSlots = (biz.level || 1) * 2 + 2; // Seviye 1 = 4 slot, Seviye 5 = 12 slot
@@ -13027,9 +13034,18 @@ app.post('/api/business/add-slot', transactionLimiter, async (req, res) => {
         // Firebase güncelle
         await db.ref(`businesses/${bizId}/sales_slots/${slotId}`).set(slotData);
 
-        // Depodan ürünleri çıkar - inventory doğrudan users altında
-        await db.ref(`users/${username}/inventory/${productCode}`).set(0);
-        await db.ref(`users/${username}/inventoryQualities/${productCode}`).remove();
+        // Depodan ürünleri çıkar ve kapasiteyi güncelle
+        const newStock = stock - addAmount;
+        if (newStock <= 0) {
+            await db.ref(`users/${username}/inventory/${productCode}`).remove();
+            await db.ref(`users/${username}/inventoryQualities/${productCode}`).remove();
+        } else {
+            await db.ref(`users/${username}/inventory/${productCode}`).set(newStock);
+        }
+
+        // Depo kullanımını azalt
+        const currentUsage = user.warehouse?.currentUsage || 0;
+        await db.ref(`users/${username}/warehouse/currentUsage`).set(Math.max(0, currentUsage - addAmount));
 
         res.json({
             success: true,
@@ -13062,10 +13078,17 @@ app.post('/api/business/remove-slot', transactionLimiter, async (req, res) => {
             return res.json({ success: false, error: 'Slot bulunamadı!' });
         }
 
-        // Kalan ürünleri depoya geri koy - inventory doğrudan users altında
+        // Kalan ürünleri depoya geri koy ve kapasiteyi güncelle
         if (slot.stock > 0) {
+            const userSnap = await db.ref(`users/${username}`).once('value');
+            const user = userSnap.val();
+
             await db.ref(`users/${username}/inventory/${slot.productCode}`).transaction(val => (val || 0) + slot.stock);
             await db.ref(`users/${username}/inventoryQualities/${slot.productCode}`).set(slot.quality);
+
+            // Depo kullanımını arttır
+            const currentUsage = user.warehouse?.currentUsage || 0;
+            await db.ref(`users/${username}/warehouse/currentUsage`).set(currentUsage + slot.stock);
         }
 
         // Slotu sil

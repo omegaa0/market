@@ -3999,6 +3999,9 @@ async function loadMyBusinesses() {
                                 <div style="font-size:0.75rem; font-weight:600; margin-bottom:3px;">${product?.name || slot.productCode}</div>
                                 <div style="font-size:0.7rem; color:#888;">Stok: ${slot.stock} • Fiyat: ${slot.price}💰</div>
                                 <div style="font-size:0.7rem; color:#aaa;">Kalite: %${slot.quality} • Satılan: ${slot.totalSold || 0}</div>
+                                <div style="font-size:0.65rem; color:var(--primary); margin-top:3px; font-weight:700;">
+                                    ⏱️ Yaklaşık ${calculateSaleTime(biz.type, slot.productCode, slot.price, slot.quality, maintenance, biz.advertising || 0)} dk / satış
+                                </div>
                             </div>
                         `;
                     } else {
@@ -5183,14 +5186,14 @@ async function buyMarketListing(listingId, listingCity, pricePerUnit, buyQty, pr
         const userBaseCity = whData.baseCity;
         const totalItemCost = pricePerUnit * qty;
 
-        // Kargo hesapla (Backend ile uyumlu - Çok ucuz!)
+        // Kargo hesapla (Backend ile uyumlu - Bir tık daha arttırıldı)
         const distance = calculateCityDistance(listingCity, userBaseCity);
         let shippingFee = 0;
         if (distance > 0) {
-            if (distance < 200) shippingFee = 5;
-            else if (distance < 500) shippingFee = 10;
-            else if (distance < 1000) shippingFee = 15;
-            else shippingFee = 20;
+            if (distance < 200) shippingFee = 150;
+            else if (distance < 500) shippingFee = 350;
+            else if (distance < 1000) shippingFee = 750;
+            else shippingFee = 1500;
         }
         const finalShipping = listingCity === userBaseCity ? 0 : shippingFee;
 
@@ -5672,6 +5675,10 @@ async function selectProductForSlot(bizId, productCode, maxStock, marketPrice) {
 
             <label style="display:block; text-align:left; margin-bottom:5px; font-size:0.9rem;">Satış Fiyatı:</label>
             <input type="number" id="slot-price-input" value="${marketPrice}" min="1" max="999999"
+                   style="width:100%; padding:12px; background:rgba(0,0,0,0.5); border:1px solid rgba(255,255,255,0.2); border-radius:8px; color:white; font-size:1rem; margin-bottom:15px;">
+
+            <label style="display:block; text-align:left; margin-bottom:5px; font-size:0.9rem;">Miktar (Maks ${maxStock}):</label>
+            <input type="number" id="slot-amount-input" value="${maxStock}" min="1" max="${maxStock}"
                    style="width:100%; padding:12px; background:rgba(0,0,0,0.5); border:1px solid rgba(255,255,255,0.2); border-radius:8px; color:white; font-size:1rem; margin-bottom:10px;">
 
             <div style="font-size:0.75rem; color:#aaa;">
@@ -5683,10 +5690,18 @@ async function selectProductForSlot(bizId, productCode, maxStock, marketPrice) {
     if (!confirmed) return;
 
     const priceInput = document.getElementById('slot-price-input');
+    const amountInput = document.getElementById('slot-amount-input');
+
     const price = parseInt(priceInput?.value) || marketPrice;
+    const amount = parseInt(amountInput?.value) || maxStock;
 
     if (price < 1) {
         showToast('Fiyat en az 1💰 olmalı', 'error');
+        return;
+    }
+
+    if (amount < 1 || amount > maxStock) {
+        showToast('Geçersiz miktar!', 'error');
         return;
     }
 
@@ -5699,7 +5714,8 @@ async function selectProductForSlot(bizId, productCode, maxStock, marketPrice) {
                 username: currentUser,
                 bizId: bizId,
                 productCode: productCode,
-                price: price
+                price: price,
+                amount: amount
             })
         });
 
@@ -5872,6 +5888,61 @@ async function showRepairModal(bizId, currentMaintenance) {
 }
 
 // --- SHARED UTILS ---
+
+const PRODUCT_SALE_SPEED_MULTIPLIERS = {
+    'domates': 1.5, 'biber': 1.5, 'salatalik': 1.5, 'ekmek': 1.8, 'sut': 1.4,
+    'altin': 0.5, 'mucevher': 0.4, 'inci': 0.6, 'araba': 0.3, 'at': 0.4,
+    'elektronik': 0.8, 'telefon': 1.1, 'tablet': 0.9, 'bilgisayar': 0.7
+};
+
+function getBaseSaleTime(businessType, productCode) {
+    const bizType = businessTypes[businessType];
+    if (!bizType) return 60;
+    const product = productData[productCode];
+    if (!product) return 60;
+    let baseTime = 60;
+    if (bizType.category === 'retail') {
+        const foodProducts = ['domates', 'biber', 'salatalik', 'et', 'tavuk', 'balik', 'ekmek', 'pasta', 'sut'];
+        const luxuryProducts = ['altin', 'mucevher', 'inci', 'araba', 'at'];
+        const electronicsProducts = ['elektronik', 'telefon', 'tablet', 'bilgisayar'];
+        const furnitureProducts = ['mobilya', 'masa', 'sandalye', 'koltuk', 'dolap'];
+        if (foodProducts.includes(productCode)) baseTime = 20;
+        else if (luxuryProducts.includes(productCode)) baseTime = 60;
+        else if (electronicsProducts.includes(productCode)) baseTime = 45;
+        else if (furnitureProducts.includes(productCode)) baseTime = 50;
+        else baseTime = 30;
+    } else if (bizType.category === 'production') baseTime = 120;
+    else if (bizType.category === 'farming' || bizType.category === 'livestock') baseTime = 180;
+    return baseTime;
+}
+
+function calculateSaleTime(businessType, productCode, price, quality, maintenance, advertising = 0) {
+    const baseTime = getBaseSaleTime(businessType, productCode);
+    const product = productData[productCode];
+    const marketPrice = product?.price || 100;
+    const priceMultiplier = price / marketPrice;
+    const qualityBonus = (quality / 100) * 0.5;
+    const maintenancePenalty = (1 - maintenance / 100) * 0.3;
+    const adLevel = advertisingData[advertising || 0];
+    const adBonus = adLevel ? adLevel.salesBonus : 0;
+    const productSpeedMultiplier = PRODUCT_SALE_SPEED_MULTIPLIERS[productCode] || 1.0;
+    const finalTime = (baseTime * priceMultiplier * (1 - qualityBonus) * (1 + maintenancePenalty)) / (productSpeedMultiplier * (1 + adBonus));
+    return Math.max(5, Math.min(180, Math.round(finalTime)));
+}
+
+async function loadUserBalance() {
+    if (!currentUser) return;
+    try {
+        const res = await fetch('/api/user/' + currentUser);
+        const data = await res.json();
+        if (data && !data.error) {
+            updateUserUI(data);
+        }
+    } catch (e) {
+        console.error("Balance update failed:", e);
+    }
+}
+
 function calculateCityDistance(city1, city2) {
     if (!city1 || !city2) return 500;
     if (city1 === city2) return 0;
