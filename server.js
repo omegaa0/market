@@ -11093,7 +11093,14 @@ app.get('/api/business/my-businesses', async (req, res) => {
             }
         }
 
-        res.json({ success: true, businesses, licenses: user.licenses || [] });
+        // Kullanıcı envanterini de ekle (işletme slotları için gerekli)
+        res.json({
+            success: true,
+            businesses,
+            licenses: user.licenses || [],
+            userInventory: user.inventory || {},
+            userInventoryQualities: user.inventoryQualities || {}
+        });
     } catch (e) {
         res.json({ success: false, error: e.message });
     }
@@ -12794,15 +12801,21 @@ app.post('/api/marketplace/buy-listing', transactionLimiter, async (req, res) =>
         // Maliyet hesapla
         const itemCost = listing.pricePerUnit * purchaseQty;
 
-        // Kargo ücreti hesapla (Listing City -> User Base City) - ÇOK UCUZ!
+        // Kargo ücreti hesapla (Listing City -> User Base City) - ÇOK ÇOK UCUZ!
         let shippingFee = 0;
         if (listing.city !== userBaseCity) {
             const distance = calculateCityDistance(listing.city, userBaseCity);
-            let weightFactor = purchaseQty / 500; // 500 ürün için 1x çarpan (çok düşük!)
-            if (weightFactor < 0.3) weightFactor = 0.3; // Minimum çarpan 0.3
-
-            shippingFee = Math.round(distance * 0.5 * weightFactor); // km başına 0.5₺ (çok ucuz!)
-            if (shippingFee < 10) shippingFee = 10; // Minimum kargo 10₺
+            // Sabit kargo: mesafeye göre ama çok düşük
+            // 0-200km: 5₺, 200-500km: 10₺, 500-1000km: 15₺, 1000km+: 20₺
+            if (distance < 200) {
+                shippingFee = 5;
+            } else if (distance < 500) {
+                shippingFee = 10;
+            } else if (distance < 1000) {
+                shippingFee = 15;
+            } else {
+                shippingFee = 20;
+            }
         }
 
         const totalCost = itemCost + shippingFee;

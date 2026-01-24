@@ -5501,8 +5501,8 @@ async function showAddSlotModal(bizId) {
             return;
         }
 
-        // Depodaki uygun ürünleri filtrele
-        const inventory = biz.inventory || {};
+        // KULLANICI envanterini kullan (işletme envanteri değil!)
+        const inventory = data.userInventory || {};
         const availableProducts = allowedProducts.filter(code => (inventory[code] || 0) > 0);
 
         if (availableProducts.length === 0) {
