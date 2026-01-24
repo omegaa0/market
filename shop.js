@@ -1,11 +1,21 @@
 // shop.js - Dynamic Channel Market Implementation
 let db = null;
 
-// Firebase initialization promise
+// Firebase initialization - Config loaded from server (not hardcoded)
+// Güvenlik: API anahtarları sunucudan dinamik olarak yüklenir
 const dbReady = (async function initFirebase() {
     try {
-        const response = await fetch('/api/firebase-config');
-        const firebaseConfig = await response.json();
+        // Config'i sunucudan al (kaynak kodda görünmez)
+        const configRes = await fetch('/api/client-init');
+        if (!configRes.ok) throw new Error('Config yüklenemedi');
+
+        const configData = await configRes.json();
+        if (!configData.success || !configData.c) {
+            throw new Error('Geçersiz config verisi');
+        }
+
+        // Obfuscated config'i decode et
+        const firebaseConfig = JSON.parse(atob(configData.c));
 
         if (!firebase.apps.length) {
             firebase.initializeApp(firebaseConfig);

@@ -419,9 +419,12 @@ app.use((req, res, next) => {
 
 app.use('/uploads', express.static(path.join(__dirname, 'uploads')));
 
-// Firebase config endpoint (Güvenli)
-app.get('/api/firebase-config', (req, res) => {
-    res.json({
+// ===== CLIENT INIT ENDPOINT (Güvenli Firebase Config) =====
+// API anahtarları kaynak kodda görünmez, runtime'da base64 decoded edilir
+app.get('/api/client-init', (req, res) => {
+    // Firebase config'i base64 encoded olarak döndür
+    // Bu sayede F12 > Sources'da düz metin olarak görünmez
+    const clientConfig = {
         apiKey: process.env.FIREBASE_API_KEY,
         authDomain: "kickbot-market.firebaseapp.com",
         databaseURL: process.env.FIREBASE_DB_URL,
@@ -429,6 +432,15 @@ app.get('/api/firebase-config', (req, res) => {
         storageBucket: "kickbot-market.firebasestorage.app",
         messagingSenderId: "301464297024",
         appId: "1:301464297024:web:7cdf849aa950b8ba0649a5"
+    };
+
+    // Base64 encode et (obfuscation)
+    const encoded = Buffer.from(JSON.stringify(clientConfig)).toString('base64');
+
+    res.json({
+        success: true,
+        c: encoded,
+        t: Date.now() // Cache-busting
     });
 });
 
