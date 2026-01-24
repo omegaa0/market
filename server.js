@@ -680,6 +680,10 @@ function initializeBackgroundTasks() {
     // Stok limitlerini kontrol et
     enforceStockLimitsNow();
 
+    // Otomatik işletme satışları (Her 5 dakikada bir kontrol)
+    setInterval(processBusinessSales, 300000); // 5 dakika = 300000ms
+    setTimeout(processBusinessSales, 60000); // İlk satış 1 dakika sonra
+
     console.log("✅ Tüm arka plan görevleri kuyruğa alındı.");
 }
 
@@ -1470,9 +1474,112 @@ const RETAIL_COUNTER_LEVELS = {
 };
 
 // --- İŞLETME TÜRLERİ ---
+// Kategori bazlı satış süreleri (dakika)
+const CATEGORY_SALE_TIMES = {
+    "retail_food": 20,        // Gıda perakende (Manav, Kasap, Balık, Fırın, Market)
+    "retail_luxury": 60,      // Lüks perakende (Kuyumcu, Galeri)
+    "retail_electronics": 45, // Elektronik
+    "retail_furniture": 50,   // Mobilya, Yapı Market
+    "retail_standard": 30,    // Diğer perakende
+    "production": 120,        // Fabrika üretimleri
+    "farming": 180           // Tarım ürünleri
+};
+
+// Ürün bazlı satış hız çarpanları (düşük = hızlı satış, yüksek = yavaş satış)
+// Çarpan 1.0 = normal, 2.0 = 2x hızlı, 0.5 = 2x yavaş
+const PRODUCT_SALE_SPEED_MULTIPLIERS = {
+    // HIZLI TÜKETİM GIDA (2.5x - 3.0x çok hızlı)
+    "ekmek": 3.0, "su": 3.0, "sut": 2.8, "yumurta": 2.5, "domates": 2.5, "salatalik": 2.5,
+    "biber": 2.5, "patlican": 2.5, "patates": 2.8, "sogan": 2.8, "sarimsak": 2.5,
+    "elma": 2.5, "muz": 2.5, "portakal": 2.5, "limon": 2.5, "mandalina": 2.5,
+    "kavun": 2.8, "karpuz": 2.8, "kola": 2.5, "meyve_suyu": 2.5, "meşrubat": 2.5,
+    "cikolata": 2.5, "cips": 2.5, "biskuvi": 2.5, "gazete": 3.0,
+
+    // SEBZE & MEYVELER (2.0x - 2.5x hızlı)
+    "armut": 2.2, "uzum": 2.0, "seftali": 2.0, "kiraz": 2.0, "zeytin": 1.8,
+    "findik": 1.5, "ceviz": 1.5, "badem": 1.5, "antep_fistigi": 1.5, "cekirdek": 1.8,
+
+    // TAZE ET & BALIK (1.8x - 2.0x hızlı)
+    "tavuk": 2.0, "et": 1.8, "balik": 1.8, "yumurta": 2.5, "karides": 1.5,
+    "hindi_eti": 1.5, "ordek_eti": 1.5, "tavsan_eti": 1.5, "kaz_eti": 1.5,
+
+    // SÜT ÜRÜNLERİ (2.0x - 2.5x hızlı)
+    "peynir": 2.0, "yogurt": 2.0, "tereyagi": 1.8, "keci_sutu": 1.8, "keci_peyniri": 1.5,
+
+    // HAZIR GIDA (1.8x - 2.2x hızlı)
+    "yemek": 2.2, "kahve": 2.5, "tatli": 2.0, "dondurma": 2.0, "pasta": 1.8,
+    "makarna": 1.8, "spagetti": 1.8, "konserve": 1.5, "salam": 1.5, "sucuk": 1.5, "sosis": 1.5,
+
+    // TEMIZLIK & KOZMETİK (1.5x)
+    "deterjan": 1.5, "sabun": 1.8, "sampuan": 1.5, "kozmetik": 1.2, "parfum": 1.0,
+
+    // GİYİM (1.2x - 1.5x)
+    "tisort": 1.5, "pantolon": 1.3, "giysi": 1.2, "ayakkabi": 1.2, "mont": 1.0,
+    "sapka": 1.5, "kumas": 1.0, "perde": 0.8, "nevresim": 1.0, "havlu": 1.2,
+
+    // EV EŞYALARI (1.0x - 1.5x)
+    "mutfak_esyasi": 1.2, "tabak": 1.3, "bardak": 1.3, "fincan": 1.2, "vazo": 1.0,
+
+    // KÜÇÜK ELEKTRONİK (1.2x - 1.5x)
+    "kulaklik": 1.3, "saat": 1.0, "gozluk": 1.2, "lamba": 1.5, "oyuncak": 1.5,
+
+    // ORTA ELEKTRONİK (1.0x normal)
+    "telefon": 1.0, "tablet": 1.0, "bilgisayar": 1.0, "elektronik": 1.0,
+
+    // BEYAZ EŞYA (0.8x yavaş)
+    "camasir_makinesi": 0.8, "buzdolabi": 0.8, "bulasik_makinesi": 0.8,
+
+    // MOBİLYA (0.6x - 0.8x yavaş)
+    "sandalye": 1.0, "masa": 0.8, "koltuk": 0.6, "dolap": 0.7, "mobilya": 0.7,
+    "avize": 0.8, "hali": 0.5, "kilim": 0.5,
+
+    // YAPI MALZEMESİ (1.0x - 1.5x) - hammadde hızlı
+    "kereste": 1.5, "cimento": 1.3, "cam": 1.0, "boya": 1.2, "beton": 1.0,
+    "kum": 1.8, "kireç": 1.8, "kil": 1.5, "civi": 1.5, "vida": 1.5,
+
+    // HAMMADDELER (1.2x - 1.8x hızlı)
+    "bugday": 1.5, "misir": 1.5, "arpa": 1.5, "pamuk": 1.2, "saman": 1.8,
+    "yem": 1.5, "sut_ham": 1.5, "metal": 1.2, "demir": 1.2, "bakir": 1.0,
+    "plastik": 1.3, "kimyasal": 1.0, "lastik": 0.8, "petrol": 1.0, "benzin": 1.5, "mazot": 1.5,
+    "odun": 1.8, "kagit": 1.3, "iplik": 1.2, "deri": 1.0, "yun": 1.2,
+
+    // İLAÇ (1.2x)
+    "ilac": 1.2,
+
+    // LÜKS/KIYMETLİ (0.3x - 0.5x çok yavaş)
+    "altin": 0.4, "mucevher": 0.3, "inci": 0.3, "araba": 0.2, "at": 0.3,
+
+    // ÖZEL ÜRÜNLER (0.5x - 1.0x)
+    "havyar": 0.5, "salyangoz": 0.7, "istiridye": 0.8, "cay": 1.5, "bal": 1.2,
+    "lavanta": 1.0, "cicek": 1.5, "demet": 1.5, "hediyelik": 1.2,
+
+    // HAYVANSAL (1.0x - 1.5x)
+    "bildircin_yumurtasi": 1.5, "bildircin_eti": 1.3, "deve_sutu": 1.0, "deve_yunu": 0.8,
+    "kaz_tuyu": 1.0, "ordek_tuy": 1.0, "tavsan_tuy": 1.0, "balmumu": 1.2,
+
+    // EĞİTİM & KÜLTÜR
+    "kitap": 1.3, "spor_ekipman": 1.2,
+
+    // OTO YEDEK PARÇA (0.8x - 1.0x)
+    "aku": 1.0, "fren_balatasi": 1.0,
+
+    // BAHARATLAR (1.5x)
+    "baharatlar": 1.5, "susam": 1.5, "esans": 1.0,
+
+    // TÜTÜN & DİĞER (1.0x)
+    "tutun": 1.0, "keten": 1.2,
+
+    // DİĞER İŞLENMİŞ (1.0x - 1.5x)
+    "un": 1.5, "seker": 1.5, "yag": 1.3, "gofret": 1.8,
+    "kaucuk": 1.0, "komur": 1.2, "murekkep": 1.0,
+
+    // PET SHOP
+    "evcil_hayvan": 0.7
+};
+
 const BUSINESS_TYPES = {
     // ==================== PERAKENDE (Satış Noktaları) ====================
-    "manav": { name: "Manav", category: "retail", setupCost: 300000, icon: "🥬", taxRate: 0.05, baseMaintenance: 5000, products: ["domates", "biber", "salatalik", "patlican", "elma", "armut", "uzum", "kiraz", "seftali", "portakal", "limon", "mandalina", "muz", "kavun", "karpuz", "patates", "sogan", "sarimsak"], requiredLicense: null, requiredShopType: "Küçük Dükkan" },
+    "manav": { name: "Manav", category: "retail", saleCategory: "retail_food", setupCost: 300000, icon: "🥬", taxRate: 0.05, baseMaintenance: 5000, products: ["domates", "biber", "salatalik", "patlican", "elma", "armut", "uzum", "kiraz", "seftali", "portakal", "limon", "mandalina", "muz", "kavun", "karpuz", "patates", "sogan", "sarimsak"], requiredLicense: null, requiredShopType: "Küçük Dükkan" },
     "kasap": { name: "Kasap", category: "retail", setupCost: 500000, icon: "🥩", taxRate: 0.06, baseMaintenance: 8000, products: ["et", "tavuk", "hindi_eti", "ordek_eti", "tavsan_eti", "kaz_eti", "deri"], requiredLicense: "gida_lisansi", requiredShopType: "Küçük Dükkan" },
     "balik": { name: "Balıkçı", category: "retail", setupCost: 400000, icon: "🐟", taxRate: 0.05, baseMaintenance: 7000, products: ["balik", "havyar", "karides", "istiridye", "salyangoz"], requiredLicense: "gida_lisansi", requiredShopType: "Küçük Dükkan" },
     "firinci": { name: "Fırın", category: "retail", setupCost: 600000, icon: "🥖", taxRate: 0.04, baseMaintenance: 10000, products: ["ekmek", "pasta"], requiredLicense: null, requiredShopType: "Orta Boy Dükkan" },
@@ -1640,6 +1747,140 @@ const BUSINESS_TYPES = {
     "kaz_ciftligi": { name: "Kaz Çiftliği", category: "livestock", setupCost: 1000000, icon: "🦆", taxRate: 0.04, baseMaintenance: 6000, produces: ["kaz_eti", "kaz_tuyu"], requires: ["yem"], requiredLicense: null },
     "bildircin_ciftligi": { name: "Bıldırcın Çiftliği", category: "livestock", setupCost: 800000, icon: "🐦", taxRate: 0.04, baseMaintenance: 5000, produces: ["bildircin_yumurtasi", "bildircin_eti"], requires: ["yem"], requiredLicense: null }
 };
+
+// --- SATIŞ SÜRESİ HESAPLAMA ---
+// İşletme tipi ve ürüne göre base satış süresini hesapla (dakika)
+function getBaseSaleTime(businessType, productCode) {
+    const bizType = BUSINESS_TYPES[businessType];
+    if (!bizType) return 60; // Fallback
+
+    const product = PRODUCTS[productCode];
+    if (!product) return 60;
+
+    // İşletme kategorisine göre base time (dakika)
+    let baseTime = 60;
+
+    if (bizType.category === 'retail') {
+        // Perakende kategorileri
+        const foodProducts = ['domates', 'biber', 'salatalik', 'et', 'tavuk', 'balik', 'ekmek', 'pasta', 'sut'];
+        const luxuryProducts = ['altin', 'mucevher', 'inci', 'araba', 'at'];
+        const electronicsProducts = ['elektronik', 'telefon', 'tablet', 'bilgisayar'];
+        const furnitureProducts = ['mobilya', 'masa', 'sandalye', 'koltuk', 'dolap'];
+
+        if (foodProducts.some(p => bizType.products?.includes(p))) {
+            baseTime = 20; // Gıda = 20 dakika
+        } else if (luxuryProducts.some(p => bizType.products?.includes(p))) {
+            baseTime = 60; // Lüks = 60 dakika
+        } else if (electronicsProducts.some(p => bizType.products?.includes(p))) {
+            baseTime = 45; // Elektronik = 45 dakika
+        } else if (furnitureProducts.some(p => bizType.products?.includes(p))) {
+            baseTime = 50; // Mobilya = 50 dakika
+        } else {
+            baseTime = 30; // Diğer perakende = 30 dakika
+        }
+    } else if (bizType.category === 'production') {
+        baseTime = 120; // Fabrika = 120 dakika
+    } else if (bizType.category === 'farming' || bizType.category === 'livestock') {
+        baseTime = 180; // Tarım/Hayvancılık = 180 dakika
+    }
+
+    return baseTime;
+}
+
+// Satış süresini hesapla (fiyat, kalite, bakım, ÜRÜN BAZLI etkisi ile)
+function calculateSaleTime(businessType, productCode, price, quality, maintenance) {
+    const baseTime = getBaseSaleTime(businessType, productCode);
+    const product = PRODUCTS[productCode];
+    const marketPrice = product?.price || 100;
+
+    // Fiyat etkisi: Pahalı = yavaş, ucuz = hızlı
+    const priceMultiplier = price / marketPrice;
+
+    // Kalite bonusu: Yüksek kalite = hızlı satış (max %50 hızlandırma)
+    const qualityBonus = (quality / 100) * 0.5;
+
+    // Bakım cezası: Düşük bakım = yavaş satış (max %30 yavaşlatma)
+    const maintenancePenalty = (1 - maintenance / 100) * 0.3;
+
+    // ÜRÜN BAZLI HIZ ÇARPANI: Bazı ürünler doğal olarak daha hızlı/yavaş satılır
+    // Çarpan > 1.0 = daha hızlı (süreyi böler), çarpan < 1.0 = daha yavaş (süreyi çarpar)
+    const productSpeedMultiplier = PRODUCT_SALE_SPEED_MULTIPLIERS[productCode] || 1.0;
+
+    // Final süre hesapla - ÜRÜN ÇARPANI EKLENDI
+    const finalTime = (baseTime * priceMultiplier * (1 - qualityBonus) * (1 + maintenancePenalty)) / productSpeedMultiplier;
+
+    // Minimum 20 dakika, maksimum 240 dakika
+    return Math.max(20, Math.min(240, Math.round(finalTime)));
+}
+
+// Otomatik işletme satışlarını işle
+async function processBusinessSales() {
+    try {
+        console.log('[Business Sales] 🛒 Satış kontrolü başlatılıyor...');
+        const now = Date.now();
+
+        // Tüm işletmeleri çek
+        const bizSnap = await db.ref('businesses').once('value');
+        const businesses = bizSnap.val() || {};
+
+        let salesCount = 0;
+
+        for (const [bizId, biz] of Object.entries(businesses)) {
+            if (!biz.is_active) continue; // Kapalı işletmeyi atla
+            if (!biz.sales_slots || Object.keys(biz.sales_slots).length === 0) continue; // Slot yoksa atla
+
+            const maintenance = biz.maintenance || biz.health || 100;
+            if (maintenance < 10) continue; // Çok kötü durumda, satış yapamaz
+
+            // Her slot'u kontrol et
+            for (const [slotId, slot] of Object.entries(biz.sales_slots)) {
+                if (!slot.productCode || !slot.price) continue; // Eksik bilgi
+                if (slot.stock <= 0) continue; // Stok yok
+
+                const lastSale = slot.lastSale || 0;
+                const quality = slot.quality || 50;
+
+                // Satış süresi hesapla
+                const saleInterval = calculateSaleTime(biz.type, slot.productCode, slot.price, quality, maintenance);
+                const millisSinceLastSale = now - lastSale;
+                const requiredMillis = saleInterval * 60 * 1000;
+
+                // Satış zamanı geldiyse
+                if (millisSinceLastSale >= requiredMillis) {
+                    // Satış yap - Daha fazla miktar sat (5-20 adet)
+                    const saleAmount = Math.min(slot.stock, Math.floor(Math.random() * 16) + 5); // 5-20 adet sat
+                    const revenue = saleAmount * slot.price;
+
+                    // Güncellemeler
+                    const updates = {};
+                    updates[`businesses/${bizId}/sales_slots/${slotId}/stock`] = slot.stock - saleAmount;
+                    updates[`businesses/${bizId}/sales_slots/${slotId}/lastSale`] = now;
+                    updates[`businesses/${bizId}/sales_slots/${slotId}/totalSold`] = (slot.totalSold || 0) + saleAmount;
+                    updates[`businesses/${bizId}/balance`] = (biz.balance || 0) + revenue;
+                    updates[`businesses/${bizId}/total_revenue`] = (biz.total_revenue || 0) + revenue;
+                    updates[`businesses/${bizId}/total_sales`] = (biz.total_sales || 0) + saleAmount;
+
+                    // Bakım düşür (her satışta -0.5%)
+                    const newMaintenance = Math.max(0, maintenance - 0.5);
+                    updates[`businesses/${bizId}/maintenance`] = newMaintenance;
+
+                    await db.ref().update(updates);
+
+                    salesCount++;
+                    console.log(`[Business Sales] ✅ ${biz.type} (${bizId}) - ${saleAmount}x ${slot.productCode} satıldı (+${revenue}₺)`);
+                }
+            }
+        }
+
+        if (salesCount > 0) {
+            console.log(`[Business Sales] 🎉 Toplam ${salesCount} satış işlendi!`);
+        } else {
+            console.log(`[Business Sales] ⏳ Henüz satış zamanı gelmedi.`);
+        }
+    } catch (e) {
+        console.error('[Business Sales] ❌ Hata:', e);
+    }
+}
 
 // --- KALİTE SİSTEMİ ---
 const QUALITY_LEVELS = {
@@ -12195,74 +12436,153 @@ app.get('/api/marketplace/listings', async (req, res) => {
                         const code = p.code.toLowerCase();
 
                         // Manav - Taze sebze meyve (fresh kategorisi)
-                        if (cat === 'fresh') return 'manav';
+                        if (cat === 'fresh') {
+                            // Çiçek ürünleri çiçekçiye
+                            if (name.includes('çiçek') || name.includes('demet') || name.includes('lavanta') || code.includes('cicek')) return 'cicekci';
+                            // Kuruyemişler kuruyemişçiye
+                            if (name.includes('fındık') || name.includes('ceviz') || name.includes('badem') || name.includes('antep') ||
+                                code.includes('findik') || code.includes('ceviz') || code.includes('badem') || code.includes('antep_fistigi')) return 'kuruyemis';
+                            // Diğer taze ürünler manava
+                            return 'manav';
+                        }
 
                         // Kasap - Et ve hayvansal ürünler (animal kategorisi)
-                        if (cat === 'animal') return 'kasap';
+                        if (cat === 'animal') {
+                            // Balık ürünleri balıkçıya
+                            if (name.includes('balık') || name.includes('havyar') || name.includes('karides') || name.includes('istiridye') ||
+                                code.includes('balik') || code.includes('havyar') || code.includes('karides') || code.includes('istiridye') || code.includes('inci')) return 'balik';
+                            // Yumurta kasaba (tavuk eti ile birlikte)
+                            // Diğer et ürünleri kasaba
+                            return 'kasap';
+                        }
 
                         // Restoran - Hazır yemekler (ready kategorisi)
-                        if (cat === 'ready') return 'restoran';
+                        if (cat === 'ready') {
+                            // Kahve kafede
+                            if (name.includes('kahve') || code.includes('kahve')) return 'kafe';
+                            // Tatlı/dondurma tatlıcıda
+                            if (name.includes('tatlı') || name.includes('dondurma') || code.includes('tatli') || code.includes('dondurma')) return 'tatlici';
+                            // Su/meşrubat içecek marketinde
+                            if (name.includes('su') || name.includes('meşrubat') || name.includes('meyve suyu') ||
+                                code === 'su' || code.includes('mesrubat')) return 'icecek';
+                            // Yemek restorana
+                            return 'restoran';
+                        }
 
-                        // Premium ürünler - Elektronik/Mücevher
+                        // Premium ürünler - Elektronik/Mücevher/Araba
                         if (cat === 'premium') {
                             if (name.includes('elektronik') || name.includes('cihaz')) return 'elektronik';
-                            if (name.includes('altın') || name.includes('mücevher')) return 'optik';
-                            if (name.includes('araba') || name.includes('otomobil')) return 'market';
-                            if (name.includes('ilaç')) return 'eczane';
+                            if (name.includes('altın') || name.includes('mücevher') || code.includes('altin') || code.includes('mucevher') || code.includes('inci')) return 'kuyumcu';
+                            if (name.includes('araba') || name.includes('otomobil') || code.includes('araba') || code.includes('at')) return 'galeri';
+                            if (name.includes('ilaç') || code.includes('ilac')) return 'eczane';
                             return 'market';
                         }
 
-                        // Ham maddeler (raw kategorisi) -> Hırdavat
-                        if (cat === 'raw') return 'hirdavat';
+                        // Ham maddeler (raw kategorisi)
+                        if (cat === 'raw') {
+                            // Yapı malzemeleri
+                            if (name.includes('kereste') || name.includes('kum') || name.includes('kireç') || name.includes('kil') ||
+                                code.includes('kereste') || code.includes('kum') || code.includes('kirec') || code.includes('kil')) return 'yapi_market';
+                            // Metal/demir ürünleri
+                            if (name.includes('metal') || name.includes('demir') || name.includes('bakır') || name.includes('çivi') || name.includes('vida') ||
+                                code.includes('metal') || code.includes('demir') || code.includes('bakir') || code.includes('civi') || code.includes('vida')) return 'hirdavat';
+                            // Tekstil hammaddeleri
+                            if (name.includes('iplik') || name.includes('düğme') || name.includes('pamuk') || name.includes('ipek') ||
+                                code.includes('iplik') || code.includes('dugme') || code.includes('pamuk') || code.includes('ipek')) return 'tuhafiye';
+                            // Tarım ürünleri (buğday, mısır, arpa, yem vs.)
+                            if (name.includes('buğday') || name.includes('mısır') || name.includes('arpa') || name.includes('saman') || name.includes('yem') ||
+                                code.includes('bugday') || code.includes('misir') || code.includes('arpa') || code.includes('saman') || code.includes('yem')) return 'tarim_market';
+                            // Hayvansal hammadde
+                            if (name.includes('süt') || name.includes('deri') || name.includes('yün') || code.includes('sut_ham') || code.includes('deri') || code.includes('yun')) return 'hayvan_urun';
+                            // Kimyasallar
+                            if (name.includes('kimyasal') || name.includes('plastik') || code.includes('kimyasal') || code.includes('plastik')) return 'kimyasal';
+                            // Oto yedek parça
+                            if (name.includes('lastik') || name.includes('kauçuk') || code.includes('lastik') || code.includes('kaucuk')) return 'oto_yedek';
+                            // Petrol ürünleri
+                            if (name.includes('petrol') || name.includes('benzin') || name.includes('mazot') || code.includes('petrol') || code.includes('benzin') || code.includes('mazot')) return 'akaryakit';
+                            // Kağıt/baskı
+                            if (name.includes('kağıt') || name.includes('mürekkep') || code.includes('kagit') || code.includes('murekkep')) return 'kirtasiye';
+                            // Diğer hammaddeler hırdavata
+                            return 'hirdavat';
+                        }
 
                         // İşlenmiş ürünler (processed) - İsme göre dağıt
                         if (cat === 'processed') {
                             // Mobilya ürünleri
                             if (name.includes('masa') || name.includes('sandalye') || name.includes('koltuk') ||
-                                name.includes('dolap') || name.includes('mobilya')) return 'mobilya';
+                                name.includes('dolap') || name.includes('mobilya') || name.includes('avize') || name.includes('lamba')) return 'mobilya';
 
                             // Giyim ürünleri
                             if (name.includes('giysi') || name.includes('tişört') || name.includes('pantolon') ||
                                 name.includes('mont') || name.includes('şapka') || name.includes('ayakkabı') ||
-                                name.includes('kumaş')) return 'tekstil';
+                                name.includes('kumaş') || code.includes('tisort') || code.includes('pantolon') || code.includes('mont')) return 'giyim';
+
+                            // Ev tekstili
+                            if (name.includes('perde') || name.includes('tül') || name.includes('nevresim') || name.includes('havlu') ||
+                                name.includes('halı') || name.includes('kilim') || code.includes('perde') || code.includes('hali') || code.includes('kilim')) return 'ev_tekstil';
 
                             // Elektronik ürünler
                             if (name.includes('telefon') || name.includes('tablet') || name.includes('bilgisayar') ||
-                                name.includes('kulaklık')) return 'elektronik';
+                                name.includes('kulaklık') || code.includes('telefon') || code.includes('tablet') || code.includes('bilgisayar')) return 'elektronik';
+
+                            // Beyaz eşya
+                            if (name.includes('çamaşır') || name.includes('buzdolabı') || name.includes('bulaşık') ||
+                                code.includes('camasir_makinesi') || code.includes('buzdolabi') || code.includes('bulasik')) return 'beyaz_esya';
 
                             // Optik & Saat
-                            if (name.includes('gözlük') || name.includes('saat')) return 'optik';
+                            if (name.includes('gözlük') || name.includes('saat') || code.includes('gozluk') || code.includes('saat')) return 'optik';
 
-                            // Kozmetik
-                            if (name.includes('parfüm') || name.includes('kozmetik')) return 'kozmetik';
+                            // Kozmetik & Parfüm
+                            if (name.includes('parfüm') || name.includes('kozmetik') || code.includes('parfum') || code.includes('kozmetik')) return 'kozmetik';
+
+                            // Temizlik ürünleri
+                            if (name.includes('deterjan') || name.includes('sabun') || name.includes('şampuan') ||
+                                code.includes('deterjan') || code.includes('sabun') || code.includes('sampuan')) return 'temizlik';
 
                             // Oyuncak
-                            if (name.includes('oyuncak')) return 'oyuncak';
+                            if (name.includes('oyuncak') || code.includes('oyuncak')) return 'oyuncak';
 
                             // Kırtasiye
                             if (name.includes('kitap') || name.includes('gazete') || name.includes('kağıt') ||
-                                name.includes('mürekkep')) return 'kirtasiye';
+                                name.includes('mürekkep') || code.includes('kitap') || code.includes('gazete')) return 'kirtasiye';
 
                             // Spor
-                            if (name.includes('spor')) return 'spor';
+                            if (name.includes('spor') || code.includes('spor')) return 'spor';
 
-                            // Şarküteri
-                            if (name.includes('peynir') || name.includes('yoğurt') || name.includes('sucuk') ||
-                                name.includes('sosis') || name.includes('salam') || name.includes('tereyağ')) return 'sarkuteri';
+                            // Şarküteri/Kasarcı
+                            if (name.includes('peynir') || name.includes('yoğurt') || name.includes('tereyağ') ||
+                                code.includes('peynir') || code.includes('yogurt') || code.includes('tereyagi')) return 'kasarci';
 
-                            // Pastane
-                            if (name.includes('pasta') || name.includes('ekmek') || name.includes('çikolata') ||
-                                name.includes('bisküvi')) return 'pastane';
+                            // Şarküteri (et ürünleri)
+                            if (name.includes('sucuk') || name.includes('sosis') || name.includes('salam') ||
+                                code.includes('sucuk') || code.includes('sosis') || code.includes('salam')) return 'sarkuteri';
 
-                            // Kuruyemiş
-                            if (name.includes('çekirdek') || name.includes('baharat')) return 'kuruyemis';
+                            // Fırın/Pastane
+                            if (name.includes('ekmek') || code === 'ekmek') return 'firin';
+                            if (name.includes('pasta') || name.includes('çikolata') || name.includes('bisküvi') || name.includes('gofret') ||
+                                code.includes('pasta') || code.includes('cikolata') || code.includes('biskuvi') || code.includes('gofret')) return 'tatlici';
+
+                            // Kuruyemiş & Baharat
+                            if (name.includes('çekirdek') || name.includes('baharat') || code.includes('cekirdek') || code.includes('baharatlar')) return 'kuruyemis';
 
                             // Züccaciye
-                            if (name.includes('mutfak') || name.includes('tabak') || name.includes('bardak') ||
-                                name.includes('cam')) return 'züccaciye';
+                            if (name.includes('mutfak') || name.includes('tabak') || name.includes('bardak') || name.includes('fincan') || name.includes('vazo') ||
+                                code.includes('mutfak') || code.includes('tabak') || code.includes('bardak') || code.includes('vazo')) return 'zuccaciye';
 
                             // Hediyelik
-                            if (name.includes('hediyelik')) return 'hediyelik';
+                            if (name.includes('hediyelik') || code.includes('hediyelik')) return 'hediyelik';
+
+                            // Süt ürünleri
+                            if (name.includes('süt') || code === 'sut') return 'market';
+
+                            // Makarna, konserve gibi temel gıdalar
+                            if (name.includes('makarna') || name.includes('spagetti') || name.includes('konserve') ||
+                                name.includes('şeker') || name.includes('yağ') || name.includes('un') ||
+                                code.includes('makarna') || code.includes('konserve') || code.includes('seker') || code.includes('yag') || code === 'un') return 'market';
+
+                            // Yapı malzemeleri
+                            if (name.includes('çimento') || name.includes('cam') || name.includes('boya') || name.includes('beton') ||
+                                code.includes('cimento') || code.includes('cam') || code.includes('boya') || code.includes('beton')) return 'yapi_market';
 
                             // Diğer işlenmiş ürünler market'e
                             return 'market';
@@ -12623,6 +12943,203 @@ app.post('/api/business/sell', transactionLimiter, async (req, res) => {
         });
 
         res.json({ success: true, message: `İşletme ${sellPrice.toLocaleString()} 💰 karşılığında satıldı!` });
+    } catch (e) {
+        res.status(500).json({ success: false, error: e.message });
+    }
+});
+
+// ===== YENİ İŞLETME SATIŞ SİSTEMİ API'LERİ =====
+
+// Satış slotu ekle
+app.post('/api/business/add-slot', transactionLimiter, async (req, res) => {
+    try {
+        const { username, bizId, productCode, price } = req.body;
+        if (!username || !bizId || !productCode || !price) {
+            return res.json({ success: false, error: 'Eksik bilgi!' });
+        }
+
+        // İşletme kontrolü
+        const bizSnap = await db.ref(`businesses/${bizId}`).once('value');
+        const biz = bizSnap.val();
+        if (!biz || biz.owner !== username) {
+            return res.json({ success: false, error: 'İşletme bulunamadı veya size ait değil!' });
+        }
+
+        // Ürün kontrolü
+        const product = PRODUCTS[productCode];
+        if (!product) {
+            return res.json({ success: false, error: 'Geçersiz ürün!' });
+        }
+
+        // İşletme tipi bu ürünü satabilir mi?
+        const bizType = BUSINESS_TYPES[biz.type];
+        const canSell = bizType.products?.includes(productCode) || bizType.produces?.includes(productCode);
+        if (!canSell) {
+            return res.json({ success: false, error: 'Bu işletme bu ürünü satamaz!' });
+        }
+
+        // Envanter kontrolü
+        const userSnap = await db.ref(`users/${username}/warehouse/inventory/${productCode}`).once('value');
+        const stock = userSnap.val() || 0;
+        if (stock <= 0) {
+            return res.json({ success: false, error: 'Depoda bu ürün yok!' });
+        }
+
+        // Kalite kontrolü
+        const qualitySnap = await db.ref(`users/${username}/warehouse/inventoryQualities/${productCode}`).once('value');
+        const quality = qualitySnap.val() || 50;
+
+        // Slot limiti kontrolü (seviyeye göre)
+        const maxSlots = (biz.level || 1) * 2 + 2; // Seviye 1 = 4 slot, Seviye 5 = 12 slot
+        const currentSlots = Object.keys(biz.sales_slots || {}).length;
+        if (currentSlots >= maxSlots) {
+            return res.json({ success: false, error: `Maksimum ${maxSlots} slot kullanabilirsiniz!` });
+        }
+
+        // Yeni slot oluştur
+        const slotId = `slot_${Date.now()}`;
+        const slotData = {
+            productCode,
+            price: parseInt(price),
+            stock,
+            quality,
+            lastSale: 0,
+            totalSold: 0,
+            createdAt: Date.now()
+        };
+
+        // Firebase güncelle
+        await db.ref(`businesses/${bizId}/sales_slots/${slotId}`).set(slotData);
+
+        // Depodan ürünleri çıkar
+        await db.ref(`users/${username}/warehouse/inventory/${productCode}`).set(0);
+        await db.ref(`users/${username}/warehouse/inventoryQualities/${productCode}`).remove();
+
+        res.json({
+            success: true,
+            message: `${product.name} satışa eklendi! (${stock} adet, Kalite: %${quality})`,
+            slotId
+        });
+    } catch (e) {
+        res.status(500).json({ success: false, error: e.message });
+    }
+});
+
+// Satış slotu kaldır
+app.post('/api/business/remove-slot', transactionLimiter, async (req, res) => {
+    try {
+        const { username, bizId, slotId } = req.body;
+        if (!username || !bizId || !slotId) {
+            return res.json({ success: false, error: 'Eksik bilgi!' });
+        }
+
+        // İşletme kontrolü
+        const bizSnap = await db.ref(`businesses/${bizId}`).once('value');
+        const biz = bizSnap.val();
+        if (!biz || biz.owner !== username) {
+            return res.json({ success: false, error: 'İşletme bulunamadı veya size ait değil!' });
+        }
+
+        // Slot kontrolü
+        const slot = biz.sales_slots?.[slotId];
+        if (!slot) {
+            return res.json({ success: false, error: 'Slot bulunamadı!' });
+        }
+
+        // Kalan ürünleri depoya geri koy
+        if (slot.stock > 0) {
+            await db.ref(`users/${username}/warehouse/inventory/${slot.productCode}`).transaction(val => (val || 0) + slot.stock);
+            await db.ref(`users/${username}/warehouse/inventoryQualities/${slot.productCode}`).set(slot.quality);
+        }
+
+        // Slotu sil
+        await db.ref(`businesses/${bizId}/sales_slots/${slotId}`).remove();
+
+        res.json({ success: true, message: 'Slot kaldırıldı ve ürünler depoya geri kondu!' });
+    } catch (e) {
+        res.status(500).json({ success: false, error: e.message });
+    }
+});
+
+// İşletme kasasından para çek
+app.post('/api/business/withdraw', transactionLimiter, async (req, res) => {
+    try {
+        const { username, bizId, amount } = req.body;
+        if (!username || !bizId || !amount) {
+            return res.json({ success: false, error: 'Eksik bilgi!' });
+        }
+
+        const withdrawAmount = parseInt(amount);
+        if (withdrawAmount <= 0) {
+            return res.json({ success: false, error: 'Geçersiz miktar!' });
+        }
+
+        // İşletme kontrolü
+        const bizSnap = await db.ref(`businesses/${bizId}`).once('value');
+        const biz = bizSnap.val();
+        if (!biz || biz.owner !== username) {
+            return res.json({ success: false, error: 'İşletme bulunamadı veya size ait değil!' });
+        }
+
+        const bizBalance = biz.balance || 0;
+        if (bizBalance < withdrawAmount) {
+            return res.json({ success: false, error: 'İşletme kasasında yeterli para yok!' });
+        }
+
+        // Para transferi
+        await db.ref(`businesses/${bizId}/balance`).set(bizBalance - withdrawAmount);
+        await db.ref(`users/${username}/balance`).transaction(val => (val || 0) + withdrawAmount);
+
+        res.json({
+            success: true,
+            message: `${withdrawAmount.toLocaleString()}₺ çekildi!`,
+            newBalance: bizBalance - withdrawAmount
+        });
+    } catch (e) {
+        res.status(500).json({ success: false, error: e.message });
+    }
+});
+
+// İşletme bakımını onar
+app.post('/api/business/repair', transactionLimiter, async (req, res) => {
+    try {
+        const { username, bizId } = req.body;
+        if (!username || !bizId) {
+            return res.json({ success: false, error: 'Eksik bilgi!' });
+        }
+
+        // İşletme kontrolü
+        const bizSnap = await db.ref(`businesses/${bizId}`).once('value');
+        const biz = bizSnap.val();
+        if (!biz || biz.owner !== username) {
+            return res.json({ success: false, error: 'İşletme bulunamadı veya size ait değil!' });
+        }
+
+        const currentMaintenance = biz.maintenance || biz.health || 100;
+        if (currentMaintenance >= 100) {
+            return res.json({ success: false, error: 'Bakım zaten maksimumda!' });
+        }
+
+        // Onarım maliyeti: Her %1 için 1000₺
+        const repairNeeded = 100 - currentMaintenance;
+        const repairCost = Math.ceil(repairNeeded * 1000);
+
+        // Kullanıcı bakiyesi kontrolü
+        const userSnap = await db.ref(`users/${username}/balance`).once('value');
+        const userBalance = userSnap.val() || 0;
+        if (userBalance < repairCost) {
+            return res.json({ success: false, error: `Yetersiz bakiye! (Gerekli: ${repairCost.toLocaleString()}₺)` });
+        }
+
+        // Bakiye düş ve bakımı yap
+        await db.ref(`users/${username}/balance`).set(userBalance - repairCost);
+        await db.ref(`businesses/${bizId}/maintenance`).set(100);
+
+        res.json({
+            success: true,
+            message: `Bakım tamamlandı! (${repairCost.toLocaleString()}₺)`,
+            newMaintenance: 100
+        });
     } catch (e) {
         res.status(500).json({ success: false, error: e.message });
     }

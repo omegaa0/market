@@ -3936,7 +3936,8 @@ async function loadMyBusinesses() {
                 card.className = 'glass-panel';
                 card.style.cssText = 'padding:20px; border-radius:16px;';
 
-                const healthColor = biz.health > 70 ? '#00ff88' : biz.health > 30 ? '#ffaa00' : '#ff4444';
+                const maintenance = biz.maintenance !== undefined ? biz.maintenance : (biz.health || 100);
+                const maintenanceColor = maintenance > 70 ? '#00ff88' : maintenance > 30 ? '#ffaa00' : '#ff4444';
                 const typeInfo = biz.typeData || {};
                 const lvlInfo = biz.levelData || {};
 
@@ -3945,6 +3946,41 @@ async function loadMyBusinesses() {
                     .filter(([k, v]) => v > 0)
                     .map(([k, v]) => `${productData[k]?.icon || ''} ${v}`)
                     .slice(0, 5).join(' ');
+
+                // Slot limiti hesapla
+                const maxSlots = (biz.level || 1) * 2 + 2;
+                const salesSlots = biz.sales_slots || {};
+                const currentSlots = Object.keys(salesSlots).length;
+
+                // Slot HTML'lerini oluştur
+                let slotsHTML = '';
+                for (let i = 0; i < maxSlots; i++) {
+                    const slotEntries = Object.entries(salesSlots);
+                    if (i < slotEntries.length) {
+                        const [slotId, slot] = slotEntries[i];
+                        const product = productData[slot.productCode];
+                        slotsHTML += `
+                            <div style="background:rgba(0,255,136,0.1); border:1px solid rgba(0,255,136,0.3); padding:10px; border-radius:8px;">
+                                <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:5px;">
+                                    <div style="font-size:1.2rem;">${product?.icon || '📦'}</div>
+                                    <button onclick="removeBusinessSlot('${biz.id}', '${slotId}')" style="background:rgba(255,68,68,0.2); border:none; color:#ff4444; padding:4px 8px; border-radius:4px; cursor:pointer; font-size:0.7rem;">✕</button>
+                                </div>
+                                <div style="font-size:0.75rem; font-weight:600; margin-bottom:3px;">${product?.name || slot.productCode}</div>
+                                <div style="font-size:0.7rem; color:#888;">Stok: ${slot.stock} • Fiyat: ${slot.price}💰</div>
+                                <div style="font-size:0.7rem; color:#aaa;">Kalite: %${slot.quality} • Satılan: ${slot.totalSold || 0}</div>
+                            </div>
+                        `;
+                    } else {
+                        slotsHTML += `
+                            <div onclick="showAddSlotModal('${biz.id}')" style="background:rgba(255,255,255,0.05); border:1px dashed rgba(255,255,255,0.2); padding:10px; border-radius:8px; cursor:pointer; display:flex; align-items:center; justify-content:center; min-height:80px; transition:all 0.2s;" onmouseover="this.style.background='rgba(255,255,255,0.1)'" onmouseout="this.style.background='rgba(255,255,255,0.05)'">
+                                <div style="text-align:center; color:#888;">
+                                    <div style="font-size:1.5rem; margin-bottom:5px;">➕</div>
+                                    <div style="font-size:0.7rem;">Ürün Ekle</div>
+                                </div>
+                            </div>
+                        `;
+                    }
+                }
 
                 card.innerHTML = `
                 <div style="display:flex; justify-content:space-between; align-items:flex-start; margin-bottom:15px;">
@@ -3958,28 +3994,47 @@ async function loadMyBusinesses() {
                         <div style="font-size:1.5rem; font-weight:900; color:var(--primary);">${biz.level}</div>
                     </div>
                 </div>
-                
-                <div style="display:grid; grid-template-columns: 1fr 1fr; gap:10px; margin-bottom:15px;">
+
+                <div style="display:grid; grid-template-columns: 1fr 1fr 1fr; gap:10px; margin-bottom:15px;">
                     <div style="background:rgba(0,0,0,0.3); padding:10px; border-radius:8px;">
-                        <div style="font-size:0.7rem; color:#888;">🔧 SAĞLIK</div>
+                        <div style="font-size:0.7rem; color:#888;">💰 KASA</div>
+                        <div style="font-size:0.9rem; font-weight:700; color:#ffcc00; margin-top:3px;">${(biz.balance || 0).toLocaleString()}</div>
+                    </div>
+                    <div style="background:rgba(0,0,0,0.3); padding:10px; border-radius:8px;">
+                        <div style="font-size:0.7rem; color:#888;">🔧 BAKIM</div>
                         <div style="height:6px; background:#333; border-radius:3px; margin-top:5px; overflow:hidden;">
-                            <div style="height:100%; width:${biz.health}%; background:${healthColor}; border-radius:3px;"></div>
+                            <div style="height:100%; width:${maintenance}%; background:${maintenanceColor}; border-radius:3px;"></div>
                         </div>
-                        <div style="font-size:0.75rem; color:${healthColor}; margin-top:3px;">${Math.floor(biz.health)}%</div>
+                        <div style="font-size:0.75rem; color:${maintenanceColor}; margin-top:3px;">${Math.floor(maintenance)}%</div>
                     </div>
                     <div style="background:rgba(0,0,0,0.3); padding:10px; border-radius:8px;">
                         <div style="font-size:0.7rem; color:#888;">📦 DEPO</div>
-                        <div style="font-size:0.85rem; margin-top:5px;">${inventoryItems || 'Boş'}</div>
+                        <div style="font-size:0.75rem; margin-top:5px;">${inventoryItems || 'Boş'}</div>
                     </div>
                 </div>
-                
+
+                <div style="margin-bottom:15px; padding:10px; background:rgba(0,0,0,0.2); border-radius:8px;">
+                    <div style="font-size:0.75rem; color:#888; margin-bottom:8px; font-weight:600;">📦 SATIŞ SLOTLARI (${currentSlots}/${maxSlots})</div>
+                    <div style="display:grid; grid-template-columns: repeat(auto-fill, minmax(140px, 1fr)); gap:8px;">
+                        ${slotsHTML}
+                    </div>
+                </div>
+
+                <div style="display:grid; grid-template-columns: 1fr 1fr; gap:8px; margin-bottom:10px;">
+                    <button onclick="showWithdrawModal('${biz.id}', ${biz.balance || 0})" class="btn-sm" style="background:linear-gradient(135deg, #ffcc00, #ff9900); ${(biz.balance || 0) === 0 ? 'opacity:0.5; cursor:not-allowed;' : ''}">
+                        💰 Para Çek
+                    </button>
+                    <button onclick="showRepairModal('${biz.id}', ${maintenance})" class="btn-sm" style="background:linear-gradient(135deg, #ff8800, #cc6600); ${maintenance >= 100 ? 'opacity:0.5; cursor:not-allowed;' : ''}">
+                        🔧 Bakım Yap
+                    </button>
+                </div>
+
                 <div style="display:flex; gap:8px; flex-wrap:wrap;">
                     ${typeInfo.produces ? `<button onclick="businessProduce('${biz.id}')" class="btn-sm" style="background:linear-gradient(135deg, #00ff88, #00cc66);">⚙️ Üret</button>` : ''}
-                    <button onclick="showBusinessSellModal('${biz.id}')" class="btn-sm" style="background:linear-gradient(135deg, #4488ff, #2266cc);">💰 Sat</button>
-                    <button onclick="businessMaintain('${biz.id}')" class="btn-sm" style="background:linear-gradient(135deg, #ff8800, #cc6600);">🔧 Bakım</button>
                     <button onclick="businessUpgrade('${biz.id}')" class="btn-sm" style="background:linear-gradient(135deg, #aa44ff, #8822cc);">⬆️ Yükselt</button>
+                    <button disabled class="btn-sm" style="background:#333; color:#666; cursor:not-allowed; opacity:0.5;">🎯 Reklam (Yakında)</button>
                 </div>
-                
+
                 <div style="margin-top:15px; padding-top:15px; border-top:1px solid rgba(255,255,255,0.1); font-size:0.75rem; color:#666;">
                     Toplam Satış: ${(biz.total_sales || 0).toLocaleString()} adet • Gelir: ${(biz.total_revenue || 0).toLocaleString()} 💰
                 </div>
@@ -5413,6 +5468,299 @@ async function buyRnDUpgrade(productCode, cost, duration) {
         showToast(data.message || data.error, data.success ? 'success' : 'error');
         if (data.success) loadRnDUpgrades();
     } catch (e) {
+        showToast('Hata: ' + e.message, 'error');
+    }
+}
+
+// --- İŞLETME SATIŞ SLOT FONKSİYONLARI ---
+
+// Slot ekleme modalı
+async function showAddSlotModal(bizId) {
+    if (!currentUser) return;
+
+    try {
+        // İşletme bilgilerini al
+        const res = await fetch(`/api/business/my-businesses?username=${encodeURIComponent(currentUser)}`);
+        const data = await res.json();
+
+        if (!data.success) {
+            showToast('İşletme bilgileri yüklenemedi', 'error');
+            return;
+        }
+
+        const biz = data.businesses.find(b => b.id === bizId);
+        if (!biz) {
+            showToast('İşletme bulunamadı', 'error');
+            return;
+        }
+
+        const typeInfo = biz.typeData || {};
+        const allowedProducts = typeInfo.products || [];
+
+        if (!allowedProducts || allowedProducts.length === 0) {
+            showToast('Bu işletme satış yapamaz', 'error');
+            return;
+        }
+
+        // Depodaki uygun ürünleri filtrele
+        const inventory = biz.inventory || {};
+        const availableProducts = allowedProducts.filter(code => (inventory[code] || 0) > 0);
+
+        if (availableProducts.length === 0) {
+            showToast('Deponda satılacak ürün yok', 'error');
+            return;
+        }
+
+        // Modal içeriği oluştur
+        let productsHTML = availableProducts.map(code => {
+            const product = productData[code];
+            const stock = inventory[code] || 0;
+            const marketPrice = product?.price || 100;
+
+            return `
+                <div onclick="selectProductForSlot('${bizId}', '${code}', ${stock}, ${marketPrice})"
+                     style="background:rgba(0,0,0,0.3); padding:15px; border-radius:8px; cursor:pointer; transition:all 0.2s;"
+                     onmouseover="this.style.background='rgba(0,255,136,0.1)'"
+                     onmouseout="this.style.background='rgba(0,0,0,0.3)'">
+                    <div style="display:flex; align-items:center; gap:10px;">
+                        <div style="font-size:2rem;">${product?.icon || '📦'}</div>
+                        <div style="flex:1;">
+                            <div style="font-weight:700; margin-bottom:3px;">${product?.name || code}</div>
+                            <div style="font-size:0.8rem; color:#888;">Depoda: ${stock} • Piyasa: ${marketPrice}💰</div>
+                        </div>
+                    </div>
+                </div>
+            `;
+        }).join('');
+
+        showCustomModal(`
+            <h3 style="margin:0 0 20px 0;">📦 Satış Slotuna Ürün Ekle</h3>
+            <div style="font-size:0.85rem; color:#aaa; margin-bottom:15px;">Satmak istediğin ürünü seç:</div>
+            <div style="display:grid; gap:10px; max-height:400px; overflow-y:auto;">
+                ${productsHTML}
+            </div>
+        `);
+
+    } catch (e) {
+        console.error('Add slot modal error:', e);
+        showToast('Hata: ' + e.message, 'error');
+    }
+}
+
+// Ürün seçildiğinde fiyat girme modalı
+async function selectProductForSlot(bizId, productCode, maxStock, marketPrice) {
+    closeModal();
+
+    const product = productData[productCode];
+
+    const confirmed = await showConfirmDialog(`
+        <div style="text-align:center;">
+            <div style="font-size:3rem; margin-bottom:10px;">${product?.icon || '📦'}</div>
+            <h3 style="margin:0 0 20px 0;">${product?.name || productCode}</h3>
+
+            <div style="text-align:left; background:rgba(0,0,0,0.3); padding:15px; border-radius:8px; margin-bottom:15px;">
+                <div style="margin-bottom:8px;">📦 Depoda: <b>${maxStock}</b></div>
+                <div style="margin-bottom:8px;">💰 Piyasa Fiyatı: <b>${marketPrice}💰</b></div>
+                <div style="font-size:0.8rem; color:#888;">Önerilen: ${Math.round(marketPrice * 0.9)}-${Math.round(marketPrice * 1.3)}💰</div>
+            </div>
+
+            <label style="display:block; text-align:left; margin-bottom:5px; font-size:0.9rem;">Satış Fiyatı:</label>
+            <input type="number" id="slot-price-input" value="${marketPrice}" min="1" max="999999"
+                   style="width:100%; padding:12px; background:rgba(0,0,0,0.5); border:1px solid rgba(255,255,255,0.2); border-radius:8px; color:white; font-size:1rem; margin-bottom:10px;">
+
+            <div style="font-size:0.75rem; color:#aaa;">
+                💡 Fiyat ne kadar düşükse satış o kadar hızlı olur
+            </div>
+        </div>
+    `);
+
+    if (!confirmed) return;
+
+    const priceInput = document.getElementById('slot-price-input');
+    const price = parseInt(priceInput?.value) || marketPrice;
+
+    if (price < 1) {
+        showToast('Fiyat en az 1💰 olmalı', 'error');
+        return;
+    }
+
+    // Slot ekle
+    try {
+        const res = await fetch('/api/business/add-slot', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({
+                username: currentUser,
+                bizId: bizId,
+                productCode: productCode,
+                price: price
+            })
+        });
+
+        const data = await res.json();
+        showToast(data.message || data.error, data.success ? 'success' : 'error');
+
+        if (data.success) {
+            loadMyBusinesses(); // Listeyi yenile
+        }
+    } catch (e) {
+        console.error('Add slot error:', e);
+        showToast('Hata: ' + e.message, 'error');
+    }
+}
+
+// Slot kaldırma
+async function removeBusinessSlot(bizId, slotId) {
+    const confirmed = await showConfirmDialog(`
+        <div style="text-align:center;">
+            <h3 style="margin:0 0 15px 0;">🗑️ Slotu Kaldır</h3>
+            <p>Bu satış slotunu kaldırmak istediğinden emin misin?</p>
+            <p style="font-size:0.85rem; color:#888;">Satılmayan ürünler depona geri dönecek.</p>
+        </div>
+    `);
+
+    if (!confirmed) return;
+
+    try {
+        const res = await fetch('/api/business/remove-slot', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({
+                username: currentUser,
+                bizId: bizId,
+                slotId: slotId
+            })
+        });
+
+        const data = await res.json();
+        showToast(data.message || data.error, data.success ? 'success' : 'error');
+
+        if (data.success) {
+            loadMyBusinesses();
+        }
+    } catch (e) {
+        console.error('Remove slot error:', e);
+        showToast('Hata: ' + e.message, 'error');
+    }
+}
+
+// Para çekme modalı
+async function showWithdrawModal(bizId, balance) {
+    if (balance === 0) {
+        showToast('Kasada para yok', 'error');
+        return;
+    }
+
+    const confirmed = await showConfirmDialog(`
+        <div style="text-align:center;">
+            <h3 style="margin:0 0 20px 0;">💰 Para Çek</h3>
+
+            <div style="background:rgba(0,0,0,0.3); padding:15px; border-radius:8px; margin-bottom:15px;">
+                <div style="font-size:0.8rem; color:#888; margin-bottom:5px;">Kasadaki Para:</div>
+                <div style="font-size:1.8rem; font-weight:900; color:#ffcc00;">${balance.toLocaleString()}💰</div>
+            </div>
+
+            <label style="display:block; text-align:left; margin-bottom:5px; font-size:0.9rem;">Çekilecek Miktar:</label>
+            <input type="number" id="withdraw-amount-input" value="${balance}" min="1" max="${balance}"
+                   style="width:100%; padding:12px; background:rgba(0,0,0,0.5); border:1px solid rgba(255,255,255,0.2); border-radius:8px; color:white; font-size:1rem; margin-bottom:10px;">
+
+            <button onclick="document.getElementById('withdraw-amount-input').value=${balance}"
+                    style="width:100%; padding:8px; background:rgba(255,255,255,0.1); border:none; border-radius:6px; color:#aaa; cursor:pointer; margin-bottom:15px;">
+                Tamamını Çek
+            </button>
+
+            <div style="font-size:0.75rem; color:#aaa;">
+                Para cüzdanına aktarılacak
+            </div>
+        </div>
+    `);
+
+    if (!confirmed) return;
+
+    const amountInput = document.getElementById('withdraw-amount-input');
+    const amount = parseInt(amountInput?.value) || 0;
+
+    if (amount < 1 || amount > balance) {
+        showToast('Geçersiz miktar', 'error');
+        return;
+    }
+
+    try {
+        const res = await fetch('/api/business/withdraw', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({
+                username: currentUser,
+                bizId: bizId,
+                amount: amount
+            })
+        });
+
+        const data = await res.json();
+        showToast(data.message || data.error, data.success ? 'success' : 'error');
+
+        if (data.success) {
+            loadMyBusinesses();
+            loadUserBalance(); // Ana bakiyeyi güncelle
+        }
+    } catch (e) {
+        console.error('Withdraw error:', e);
+        showToast('Hata: ' + e.message, 'error');
+    }
+}
+
+// Bakım yapma modalı
+async function showRepairModal(bizId, currentMaintenance) {
+    if (currentMaintenance >= 100) {
+        showToast('Bakım zaten maksimumda', 'error');
+        return;
+    }
+
+    const neededRepair = 100 - Math.floor(currentMaintenance);
+    const repairCost = neededRepair * 1000;
+
+    const confirmed = await showConfirmDialog(`
+        <div style="text-align:center;">
+            <h3 style="margin:0 0 20px 0;">🔧 Bakım Yap</h3>
+
+            <div style="background:rgba(0,0,0,0.3); padding:15px; border-radius:8px; margin-bottom:15px;">
+                <div style="font-size:0.8rem; color:#888; margin-bottom:5px;">Mevcut Bakım:</div>
+                <div style="font-size:1.8rem; font-weight:900; color:#ff8800;">${Math.floor(currentMaintenance)}%</div>
+            </div>
+
+            <div style="background:rgba(255,136,0,0.1); border:1px solid rgba(255,136,0,0.3); padding:15px; border-radius:8px; margin-bottom:15px;">
+                <div style="margin-bottom:8px;">🔧 Gerekli Onarım: <b>%${neededRepair}</b></div>
+                <div style="margin-bottom:8px;">💰 Maliyet: <b>${repairCost.toLocaleString()}💰</b></div>
+                <div style="font-size:0.8rem; color:#888;">(Her %1 = 1,000💰)</div>
+            </div>
+
+            <div style="font-size:0.75rem; color:#aaa;">
+                ⚠️ Bakım seviyesi ne kadar düşükse satışlar o kadar yavaş olur
+            </div>
+        </div>
+    `);
+
+    if (!confirmed) return;
+
+    try {
+        const res = await fetch('/api/business/repair', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({
+                username: currentUser,
+                bizId: bizId
+            })
+        });
+
+        const data = await res.json();
+        showToast(data.message || data.error, data.success ? 'success' : 'error');
+
+        if (data.success) {
+            loadMyBusinesses();
+            loadUserBalance();
+        }
+    } catch (e) {
+        console.error('Repair error:', e);
         showToast('Hata: ' + e.message, 'error');
     }
 }
