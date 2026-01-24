@@ -3729,6 +3729,20 @@ let marketPrices = {};
 let marketEvents = [];
 let userLicenses = [];
 
+// --- SHARED UTILS (Hoisted) ---
+async function loadUserBalance() {
+    if (!currentUser) return;
+    try {
+        const res = await fetch('/api/user/' + currentUser);
+        const data = await res.json();
+        if (data && !data.error) {
+            updateUserUI(data);
+        }
+    } catch (e) {
+        console.error("Balance update failed:", e);
+    }
+}
+
 // İşletme verilerini yükle
 async function loadBusinessData() {
     try {
@@ -5928,19 +5942,6 @@ function calculateSaleTime(businessType, productCode, price, quality, maintenanc
     const productSpeedMultiplier = PRODUCT_SALE_SPEED_MULTIPLIERS[productCode] || 1.0;
     const finalTime = (baseTime * priceMultiplier * (1 - qualityBonus) * (1 + maintenancePenalty)) / (productSpeedMultiplier * (1 + adBonus));
     return Math.max(5, Math.min(180, Math.round(finalTime)));
-}
-
-async function loadUserBalance() {
-    if (!currentUser) return;
-    try {
-        const res = await fetch('/api/user/' + currentUser);
-        const data = await res.json();
-        if (data && !data.error) {
-            updateUserUI(data);
-        }
-    } catch (e) {
-        console.error("Balance update failed:", e);
-    }
 }
 
 function calculateCityDistance(city1, city2) {
