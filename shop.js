@@ -4014,7 +4014,7 @@ async function loadMyBusinesses() {
                                 <div style="font-size:0.7rem; color:#888;">Stok: ${slot.stock} • Fiyat: ${slot.price}💰</div>
                                 <div style="font-size:0.7rem; color:#aaa;">Kalite: %${slot.quality} • Satılan: ${slot.totalSold || 0}</div>
                                 <div style="font-size:0.65rem; color:var(--primary); margin-top:3px; font-weight:700;">
-                                    ⏱️ Yaklaşık ${calculateSaleTime(biz.type, slot.productCode, slot.price, slot.quality, maintenance, biz.advertising || 0)} dk / satış
+                                    ⏱️ Stok Tahmini: ${calculateStockFinishTime(calculateSaleTime(biz.type, slot.productCode, slot.price, slot.quality, maintenance, biz.advertising || 0), slot.stock)} biter
                                 </div>
                             </div>
                         `;
@@ -5942,6 +5942,22 @@ function calculateSaleTime(businessType, productCode, price, quality, maintenanc
     const productSpeedMultiplier = PRODUCT_SALE_SPEED_MULTIPLIERS[productCode] || 1.0;
     const finalTime = (baseTime * priceMultiplier * (1 - qualityBonus) * (1 + maintenancePenalty)) / (productSpeedMultiplier * (1 + adBonus));
     return Math.max(5, Math.min(180, Math.round(finalTime)));
+}
+
+function calculateStockFinishTime(interval, stock) {
+    if (stock <= 0) return "Tükendi";
+    // Ortalama satış miktarı 12.5 adet (5-20 arası)
+    const avgSalePerInterval = 12.5;
+    const totalMinutes = (stock / avgSalePerInterval) * interval;
+
+    if (totalMinutes < 60) return `~${Math.round(totalMinutes)} dk`;
+    const hours = Math.floor(totalMinutes / 60);
+    const mins = Math.round(totalMinutes % 60);
+    if (hours < 24) return `~${hours} sa ${mins} dk`;
+
+    const days = Math.floor(hours / 24);
+    const remHours = hours % 24;
+    return `~${days} gün ${remHours} sa`;
 }
 
 function calculateCityDistance(city1, city2) {
