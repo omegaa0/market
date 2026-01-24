@@ -8501,6 +8501,59 @@ async function trackWatchTime() {
                 // DEBUG LOG
                 console.log(`[Watch] Kanal: ${chan.username}, Canlı mı: ${isLive ? 'EVET' : 'HAYIR'} (Kaynak: ${apiSource}, Chat Aktif: ${hasChatters ? 'Evet' : 'Hayır'})`);
 
+                // --- YAYIN BİLDİRİMİ (Watch döngüsünde) ---
+                // Stats'tan önceki durumu al ve karşılaştır
+                const statsSnap = await db.ref(`channels/${chanId}/stats`).once('value');
+                const currentStats = statsSnap.val() || { is_live: false };
+                const wasLive = currentStats.is_live || false;
+
+                // Yayın durumu değişti mi? (HAYIR -> EVET)
+                if (isLive && !wasLive) {
+                    console.log(`🎥 [Watch] ${chan.username} yayına girdi! Discord bildirimi kontrol ediliyor...`);
+
+                    // Webhook URL'yi ayarlardan al
+                    const settingsSnap = await db.ref(`channels/${chanId}/settings`).once('value');
+                    const settings = settingsSnap.val() || {};
+                    const webhookUrl = settings.discord_live_webhook;
+
+                    if (webhookUrl) {
+                        try {
+                            // Yayın bilgilerini al
+                            let streamTitle = "Yayındayım!";
+                            let streamGame = "Just Chatting";
+
+                            // V2 API'den yayın detaylarını al
+                            if (v2Res && v2Res.data && v2Res.data.livestream) {
+                                streamTitle = v2Res.data.livestream.session_title || streamTitle;
+                                streamGame = v2Res.data.livestream.categories?.[0]?.name || streamGame;
+                            }
+
+                            await axios.post(webhookUrl, {
+                                content: `@everyone ${chan.username} KICK'TE YAYINDA! 🔴\nhttps://kick.com/${chan.username}`,
+                                embeds: [{
+                                    title: streamTitle,
+                                    url: `https://kick.com/${chan.username}`,
+                                    color: 5763719, // Kick Green
+                                    fields: [
+                                        { name: "Oyun/Kategori", value: streamGame, inline: true }
+                                    ],
+                                    thumbnail: { url: `https://kick.com/api/v2/channels/${chan.username}/thumbnail` },
+                                    timestamp: new Date().toISOString()
+                                }]
+                            });
+                            console.log(`✅ [Watch] ${chan.username} için Discord bildirimi GÖNDERİLDİ!`);
+                            addLog("Discord Bildirim", `Yayın başladı bildirimi gönderildi (Watch).`, chanId);
+                        } catch (webhookErr) {
+                            console.error(`❌ [Watch] ${chan.username} Webhook hatası:`, webhookErr.response?.data || webhookErr.message);
+                        }
+                    } else {
+                        console.log(`⚠️ [Watch] ${chan.username} için discord_live_webhook ayarlanmamış!`);
+                    }
+                }
+
+                // Yayın durumunu güncelle (sonraki kontrol için)
+                await db.ref(`channels/${chanId}/stats`).update({ is_live: isLive, last_watch_check: Date.now() });
+
                 if (!isLive) {
                     continue;
                 }
@@ -8625,6 +8678,9 @@ async function syncSingleChannelStats(chanId, chan) {
         // 1. Fetch Latest Data via GraphQL (Most Reliable for Live Status)
         const gql = await fetchKickGraphQL(username);
 
+        // DEBUG: GraphQL sonucunu logla
+        console.log(`[Sync] ${username} - GraphQL Sonuç: ${gql ? 'VAR' : 'YOK'}, Livestream: ${gql?.livestream ? 'VAR' : 'YOK'}, is_live: ${gql?.livestream?.is_live}`);
+
         // Fallback or additional checks could go here, but GraphQL is usually sufficient for Live/Followers
 
         if (gql) {
@@ -8635,6 +8691,9 @@ async function syncSingleChannelStats(chanId, chan) {
             const wasLive = currentStats.is_live || false;
             const isLive = gql.livestream && gql.livestream.is_live;
 
+            // DEBUG: Durum değişikliğini logla
+            console.log(`[Sync] ${username} - wasLive: ${wasLive}, isLive: ${isLive}, Bildirim gerekli mi: ${isLive && !wasLive ? 'EVET' : 'HAYIR'}`);
+
             // 2. DISCORD NOTIFICATION LOGIC
             if (isLive && !wasLive) {
                 console.log(`🎥 ${username} yayına girdi! Bildirim gönderiliyor...`);
@@ -8642,6 +8701,8 @@ async function syncSingleChannelStats(chanId, chan) {
                 const settingsSnap = await db.ref(`channels/${chanId}/settings`).once('value');
                 const settings = settingsSnap.val() || {};
                 const webhookUrl = settings.discord_live_webhook;
+
+                console.log(`[Webhook] ${username} - Webhook URL: ${webhookUrl ? webhookUrl.substring(0, 50) + '...' : 'YOK'}`);
 
                 if (webhookUrl) {
                     try {
@@ -8662,11 +8723,14 @@ async function syncSingleChannelStats(chanId, chan) {
                                 timestamp: new Date().toISOString()
                             }]
                         });
+                        console.log(`✅ [Webhook] ${username} için Discord bildirimi GÖNDERİLDİ!`);
                         addLog("Discord Bildirim", `Yayın başladı bildirimi gönderildi.`, chanId);
                     } catch (err) {
-                        console.error(`Webhook Error (${username}):`, err.message);
+                        console.error(`❌ [Webhook] ${username} Hata:`, err.response?.data || err.message);
                         addLog("Discord Hata", `Webhook hatası: ${err.message}`, chanId);
                     }
+                } else {
+                    console.log(`⚠️ [Webhook] ${username} için discord_live_webhook ayarlanmamış!`);
                 }
             }
 
@@ -11997,14 +12061,83 @@ app.get('/api/marketplace/listings', async (req, res) => {
                     shopType: (() => {
                         const prod = PRODUCTS[p.code];
                         const cat = prod?.category;
-                        if (cat === 'food' || cat === 'fresh') return 'manav';
-                        if (cat === 'meat' || cat === 'animal') return 'kasap';
-                        if (cat === 'drink' || cat === 'market') return 'market';
-                        if (cat === 'tech' || cat === 'energy') return 'elektronik';
-                        if (cat === 'clothing') return 'tekstil';
-                        if (cat === 'mining' || cat === 'industry' || cat === 'raw') return 'hirdavat';
-                        if (cat === 'home') return 'mobilya';
-                        if (cat === 'care') return 'kozmetik';
+                        const name = (prod?.name || '').toLowerCase();
+                        const code = p.code.toLowerCase();
+
+                        // Manav - Taze sebze meyve (fresh kategorisi)
+                        if (cat === 'fresh') return 'manav';
+
+                        // Kasap - Et ve hayvansal ürünler (animal kategorisi)
+                        if (cat === 'animal') return 'kasap';
+
+                        // Restoran - Hazır yemekler (ready kategorisi)
+                        if (cat === 'ready') return 'restoran';
+
+                        // Premium ürünler - Elektronik/Mücevher
+                        if (cat === 'premium') {
+                            if (name.includes('elektronik') || name.includes('cihaz')) return 'elektronik';
+                            if (name.includes('altın') || name.includes('mücevher')) return 'optik';
+                            if (name.includes('araba') || name.includes('otomobil')) return 'market';
+                            if (name.includes('ilaç')) return 'eczane';
+                            return 'market';
+                        }
+
+                        // Ham maddeler (raw kategorisi) -> Hırdavat
+                        if (cat === 'raw') return 'hirdavat';
+
+                        // İşlenmiş ürünler (processed) - İsme göre dağıt
+                        if (cat === 'processed') {
+                            // Mobilya ürünleri
+                            if (name.includes('masa') || name.includes('sandalye') || name.includes('koltuk') ||
+                                name.includes('dolap') || name.includes('mobilya')) return 'mobilya';
+
+                            // Giyim ürünleri
+                            if (name.includes('giysi') || name.includes('tişört') || name.includes('pantolon') ||
+                                name.includes('mont') || name.includes('şapka') || name.includes('ayakkabı') ||
+                                name.includes('kumaş')) return 'tekstil';
+
+                            // Elektronik ürünler
+                            if (name.includes('telefon') || name.includes('tablet') || name.includes('bilgisayar') ||
+                                name.includes('kulaklık')) return 'elektronik';
+
+                            // Optik & Saat
+                            if (name.includes('gözlük') || name.includes('saat')) return 'optik';
+
+                            // Kozmetik
+                            if (name.includes('parfüm') || name.includes('kozmetik')) return 'kozmetik';
+
+                            // Oyuncak
+                            if (name.includes('oyuncak')) return 'oyuncak';
+
+                            // Kırtasiye
+                            if (name.includes('kitap') || name.includes('gazete') || name.includes('kağıt') ||
+                                name.includes('mürekkep')) return 'kirtasiye';
+
+                            // Spor
+                            if (name.includes('spor')) return 'spor';
+
+                            // Şarküteri
+                            if (name.includes('peynir') || name.includes('yoğurt') || name.includes('sucuk') ||
+                                name.includes('sosis') || name.includes('salam') || name.includes('tereyağ')) return 'sarkuteri';
+
+                            // Pastane
+                            if (name.includes('pasta') || name.includes('ekmek') || name.includes('çikolata') ||
+                                name.includes('bisküvi')) return 'pastane';
+
+                            // Kuruyemiş
+                            if (name.includes('çekirdek') || name.includes('baharat')) return 'kuruyemis';
+
+                            // Züccaciye
+                            if (name.includes('mutfak') || name.includes('tabak') || name.includes('bardak') ||
+                                name.includes('cam')) return 'züccaciye';
+
+                            // Hediyelik
+                            if (name.includes('hediyelik')) return 'hediyelik';
+
+                            // Diğer işlenmiş ürünler market'e
+                            return 'market';
+                        }
+
                         return 'market'; // Default fallback
                     })(),
                     isSystem: true,
