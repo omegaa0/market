@@ -10489,20 +10489,54 @@ app.post('/admin-api/businesses/update-full', authAdmin, async (req, res) => {
 app.post('/admin-api/marketplace/all', authAdmin, async (req, res) => {
     const { search, type } = req.body;
     try {
+        // Kullanıcı ilanları (Firebase'den)
         const listingsSnap = await db.ref('marketplace').once('value');
         const allListings = listingsSnap.val() || {};
 
         let listings = Object.entries(allListings).map(([id, data]) => ({
             id,
             ...data,
-            productName: PRODUCTS[data.productCode]?.name || data.productCode
+            productName: PRODUCTS[data.productCode]?.name || data.productCode,
+            isSystem: false
         }));
+
+        // Sistem ilanları (marketplace_system_stocks'dan)
+        if (type !== 'user') {
+            const sysStocksSnap = await db.ref('marketplace_system_stocks').once('value');
+            const sysStocks = sysStocksSnap.val() || {};
+
+            // Sistem stoklarını ilan formatına çevir
+            Object.entries(sysStocks).forEach(([stockId, qty]) => {
+                if (qty <= 0) return;
+
+                // stockId formatı: system_productCode_city (örn: system_domates_Adıyaman)
+                const parts = stockId.split('_');
+                if (parts.length < 3) return;
+
+                const productCode = parts.slice(1, -1).join('_'); // city dışındaki kısım
+                const city = parts[parts.length - 1];
+                const product = PRODUCTS[productCode];
+
+                listings.push({
+                    id: stockId,
+                    seller: 'SYSTEM',
+                    productCode,
+                    productName: product?.name || productCode,
+                    quantity: qty,
+                    pricePerUnit: product?.basePrice || 10,
+                    quality: 10,
+                    city,
+                    createdAt: 0,
+                    isSystem: true
+                });
+            });
+        }
 
         // Sistem/kullanıcı filtresi
         if (type === 'user') {
-            listings = listings.filter(l => l.seller !== 'SYSTEM');
+            listings = listings.filter(l => !l.isSystem);
         } else if (type === 'system') {
-            listings = listings.filter(l => l.seller === 'SYSTEM');
+            listings = listings.filter(l => l.isSystem === true);
         }
 
         // Arama filtresi
@@ -10511,12 +10545,17 @@ app.post('/admin-api/marketplace/all', authAdmin, async (req, res) => {
             listings = listings.filter(l =>
                 l.seller?.toLowerCase().includes(q) ||
                 l.productCode?.toLowerCase().includes(q) ||
-                l.productName?.toLowerCase().includes(q)
+                l.productName?.toLowerCase().includes(q) ||
+                l.city?.toLowerCase().includes(q)
             );
         }
 
-        // En yeni önce
-        listings.sort((a, b) => (b.createdAt || 0) - (a.createdAt || 0));
+        // Sıralama: kullanıcı ilanları önce, sonra sistem ilanları
+        listings.sort((a, b) => {
+            if (a.isSystem && !b.isSystem) return 1;
+            if (!a.isSystem && b.isSystem) return -1;
+            return (b.createdAt || 0) - (a.createdAt || 0);
+        });
 
         res.json({ success: true, listings });
     } catch (e) {
