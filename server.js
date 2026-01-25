@@ -12732,7 +12732,8 @@ app.get('/api/marketplace/listings', async (req, res) => {
             }
         });
     } catch (e) {
-        res.status(500).json({ success: false, error: e.message });
+        console.error('Marketplace listings error:', e);
+        res.status(500).json({ success: false, error: e.message, stack: e.stack });
     }
 });
 
