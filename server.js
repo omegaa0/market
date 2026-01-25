@@ -682,7 +682,6 @@ function initializeBackgroundTasks() {
 
     // Otomatik işletme satışları (Her 5 dakikada bir kontrol)
     setInterval(processBusinessSales, 300000); // 5 dakika = 300000ms
-    setTimeout(processBusinessSales, 60000); // İlk satış 1 dakika sonra
 
     console.log("✅ Tüm arka plan görevleri kuyruğa alındı.");
 }
