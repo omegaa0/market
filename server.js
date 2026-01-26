@@ -1577,28 +1577,29 @@ const PRODUCT_SALE_SPEED_MULTIPLIERS = {
 };
 
 const BUSINESS_TYPES = {
-    // ==================== PERAKENDE (Satış Noktaları) ====================
-    "manav": { name: "Manav", category: "retail", saleCategory: "retail_food", setupCost: 300000, icon: "🥬", taxRate: 0.05, baseMaintenance: 5000, products: ["domates", "biber", "salatalik", "patlican", "elma", "armut", "uzum", "kiraz", "seftali", "portakal", "limon", "mandalina", "muz", "kavun", "karpuz", "patates", "sogan", "sarimsak"], requiredLicense: null, requiredShopType: "Küçük Dükkan" },
-    "kasap": { name: "Kasap", category: "retail", setupCost: 500000, icon: "🥩", taxRate: 0.06, baseMaintenance: 8000, products: ["et", "tavuk", "hindi_eti", "ordek_eti", "tavsan_eti", "kaz_eti", "deri"], requiredLicense: "gida_lisansi", requiredShopType: "Küçük Dükkan" },
-    "balik": { name: "Balıkçı", category: "retail", setupCost: 400000, icon: "🐟", taxRate: 0.05, baseMaintenance: 7000, products: ["balik", "havyar", "karides", "istiridye", "salyangoz"], requiredLicense: "gida_lisansi", requiredShopType: "Küçük Dükkan" },
-    "firinci": { name: "Fırın", category: "retail", setupCost: 600000, icon: "🥖", taxRate: 0.04, baseMaintenance: 10000, products: ["ekmek", "pasta"], requiredLicense: null, requiredShopType: "Orta Boy Dükkan" },
-    "market": { name: "Süpermarket", category: "retail", setupCost: 2000000, icon: "🛒", taxRate: 0.08, baseMaintenance: 25000, products: ["et", "sut", "ekmek", "yumurta", "yag", "seker", "un", "makarna", "spagetti", "konserve", "deterjan", "sabun", "sampuan", "cikolata", "biskuvi", "cips", "kola", "meyve_suyu"], requiredLicense: "market_ruhsati", requiredShopType: "Büyük Mağaza" },
-    "eczane": { name: "Eczane", category: "retail", setupCost: 5000000, icon: "💊", taxRate: 0.10, baseMaintenance: 15000, products: ["ilac"], requiredLicense: "eczaci_diplomasi", requiredShopType: "Orta Boy Dükkan" },
-    "elektronik": { name: "Elektronik Mağaza", category: "retail", setupCost: 3000000, icon: "📱", taxRate: 0.09, baseMaintenance: 12000, products: ["elektronik", "telefon", "tablet", "bilgisayar", "kulaklik"], requiredLicense: null, requiredShopType: "Büyük Mağaza" },
-    "kuyumcu": { name: "Kuyumcu", category: "retail", setupCost: 10000000, icon: "💎", taxRate: 0.12, baseMaintenance: 20000, products: ["altin", "mucevher", "inci"], requiredLicense: "kuyumcu_belgesi", requiredShopType: "Küçük Dükkan" },
-    "galeri": { name: "Araba Galerisi", category: "retail", setupCost: 50000000, icon: "🚗", taxRate: 0.15, baseMaintenance: 50000, products: ["araba", "at"], requiredLicense: "galeri_ruhsati", requiredShopType: "Büyük Mağaza" },
-    "restoran": { name: "Restoran", category: "retail", setupCost: 4000000, icon: "🍽️", taxRate: 0.07, baseMaintenance: 18000, products: ["yemek"], requiredLicense: "isletme_ruhsati", requiredShopType: "Orta Boy Dükkan" },
-    "cafe": { name: "Kafe", category: "retail", setupCost: 1500000, icon: "☕", taxRate: 0.06, baseMaintenance: 10000, products: ["kahve", "tatli", "dondurma"], requiredLicense: null, requiredShopType: "Küçük Dükkan" },
+    // ==================== PERAKENDE (Satış Noktaları) - %45 İNDİRİMLİ ====================
+    "manav": { name: "Manav", category: "retail", saleCategory: "retail_food", setupCost: 165000, icon: "🥬", taxRate: 0.05, baseMaintenance: 5000, products: ["domates", "biber", "salatalik", "patlican", "elma", "armut", "uzum", "kiraz", "seftali", "portakal", "limon", "mandalina", "muz", "kavun", "karpuz", "patates", "sogan", "sarimsak"], requiredLicense: null, requiredShopType: "Küçük Dükkan" },
+    "kasap": { name: "Kasap", category: "retail", setupCost: 275000, icon: "🥩", taxRate: 0.06, baseMaintenance: 8000, products: ["et", "tavuk", "hindi_eti", "ordek_eti", "tavsan_eti", "kaz_eti", "deri"], requiredLicense: "gida_lisansi", requiredShopType: "Küçük Dükkan" },
+    "balik": { name: "Balıkçı", category: "retail", setupCost: 220000, icon: "🐟", taxRate: 0.05, baseMaintenance: 7000, products: ["balik", "havyar", "karides", "istiridye", "salyangoz"], requiredLicense: "gida_lisansi", requiredShopType: "Küçük Dükkan" },
+    "firinci": { name: "Fırın", category: "retail", setupCost: 330000, icon: "🥖", taxRate: 0.04, baseMaintenance: 10000, products: ["ekmek", "pasta"], requiredLicense: null, requiredShopType: "Orta Boy Dükkan" },
+    "market": { name: "Süpermarket", category: "retail", setupCost: 1100000, icon: "🛒", taxRate: 0.08, baseMaintenance: 25000, products: ["et", "sut", "ekmek", "yumurta", "yag", "seker", "un", "makarna", "spagetti", "konserve", "deterjan", "sabun", "sampuan", "cikolata", "biskuvi", "cips", "kola", "meyve_suyu", "sigara", "puro", "sarap", "viski", "raki", "bira", "votka"], requiredLicense: "market_ruhsati", requiredShopType: "Büyük Mağaza" },
+    "eczane": { name: "Eczane", category: "retail", setupCost: 2750000, icon: "💊", taxRate: 0.10, baseMaintenance: 15000, products: ["ilac"], requiredLicense: "eczaci_diplomasi", requiredShopType: "Orta Boy Dükkan" },
+    "elektronik": { name: "Elektronik Mağaza", category: "retail", setupCost: 1650000, icon: "📱", taxRate: 0.09, baseMaintenance: 12000, products: ["elektronik", "telefon", "tablet", "bilgisayar", "kulaklik"], requiredLicense: null, requiredShopType: "Büyük Mağaza" },
+    "kuyumcu": { name: "Kuyumcu", category: "retail", setupCost: 5500000, icon: "💎", taxRate: 0.12, baseMaintenance: 20000, products: ["altin", "mucevher", "inci"], requiredLicense: "kuyumcu_belgesi", requiredShopType: "Küçük Dükkan" },
+    "galeri": { name: "Araba Galerisi", category: "retail", setupCost: 27500000, icon: "🚗", taxRate: 0.15, baseMaintenance: 50000, products: ["araba", "at"], requiredLicense: "galeri_ruhsati", requiredShopType: "Büyük Mağaza" },
+    "restoran": { name: "Restoran", category: "retail", setupCost: 2200000, icon: "🍽️", taxRate: 0.07, baseMaintenance: 18000, products: ["yemek"], requiredLicense: "isletme_ruhsati", requiredShopType: "Orta Boy Dükkan" },
+    "cafe": { name: "Kafe", category: "retail", setupCost: 825000, icon: "☕", taxRate: 0.06, baseMaintenance: 10000, products: ["kahve", "tatli", "dondurma"], requiredLicense: null, requiredShopType: "Küçük Dükkan" },
     // YENİ PERAKENDE
-    "giyim": { name: "Giyim Mağazası", category: "retail", setupCost: 2500000, icon: "👔", taxRate: 0.08, baseMaintenance: 15000, products: ["giysi", "ayakkabi", "kumas", "tisort", "pantolon", "mont", "sapka"], requiredLicense: null, requiredShopType: "Orta Boy Dükkan" },
-    "mobilya": { name: "Mobilya Mağazası", category: "retail", setupCost: 5000000, icon: "🛋️", taxRate: 0.09, baseMaintenance: 20000, products: ["mobilya", "masa", "sandalye", "koltuk", "dolap"], requiredLicense: null, requiredShopType: "Büyük Mağaza" },
-    "yapi_market": { name: "Yapı Market", category: "retail", setupCost: 8000000, icon: "🔨", taxRate: 0.08, baseMaintenance: 30000, products: ["kereste", "cimento", "demir", "cam", "boya", "civi", "vida"], requiredLicense: "insaat_ruhsati", requiredShopType: "Büyük Mağaza" },
-    "akaryakit": { name: "Akaryakıt İstasyonu", category: "retail", setupCost: 25000000, icon: "⛽", taxRate: 0.12, baseMaintenance: 40000, products: ["benzin", "mazot"], requiredLicense: "akaryakit_lisansi", requiredShopType: "Büyük Mağaza" },
-    "parfumeri": { name: "Parfümeri", category: "retail", setupCost: 3000000, icon: "🧴", taxRate: 0.10, baseMaintenance: 12000, products: ["parfum", "kozmetik"], requiredLicense: null, requiredShopType: "Orta Boy Dükkan" },
-    "oyuncakci": { name: "Oyuncakçı", category: "retail", setupCost: 1000000, icon: "🧸", taxRate: 0.05, baseMaintenance: 6000, products: ["oyuncak"], requiredLicense: null, requiredShopType: "Orta Boy Dükkan" },
-    "kitapci": { name: "Kitabevi", category: "retail", setupCost: 800000, icon: "📚", taxRate: 0.04, baseMaintenance: 5000, products: ["kitap", "gazete"], requiredLicense: null, requiredShopType: "Orta Boy Dükkan" },
-    "spor": { name: "Spor Mağazası", category: "retail", setupCost: 2000000, icon: "🏀", taxRate: 0.07, baseMaintenance: 10000, products: ["spor_ekipman"], requiredLicense: null, requiredShopType: "Orta Boy Dükkan" },
-    "pet_shop": { name: "Pet Shop", category: "retail", setupCost: 1200000, icon: "🐕", taxRate: 0.06, baseMaintenance: 8000, products: ["evcil_hayvan", "yem"], requiredLicense: "hayvancilik_ruhsati", requiredShopType: "Küçük Dükkan" },
+    "giyim": { name: "Giyim Mağazası", category: "retail", setupCost: 1375000, icon: "👔", taxRate: 0.08, baseMaintenance: 15000, products: ["giysi", "ayakkabi", "kumas", "tisort", "pantolon", "mont", "sapka"], requiredLicense: null, requiredShopType: "Orta Boy Dükkan" },
+    "mobilya": { name: "Mobilya Mağazası", category: "retail", setupCost: 2750000, icon: "🛋️", taxRate: 0.09, baseMaintenance: 20000, products: ["mobilya", "masa", "sandalye", "koltuk", "dolap"], requiredLicense: null, requiredShopType: "Büyük Mağaza" },
+    "yapi_market": { name: "Yapı Market", category: "retail", setupCost: 4400000, icon: "🔨", taxRate: 0.08, baseMaintenance: 30000, products: ["kereste", "cimento", "demir", "cam", "boya", "civi", "vida"], requiredLicense: "insaat_ruhsati", requiredShopType: "Büyük Mağaza" },
+    "akaryakit": { name: "Akaryakıt İstasyonu", category: "retail", setupCost: 13750000, icon: "⛽", taxRate: 0.12, baseMaintenance: 40000, products: ["benzin", "mazot"], requiredLicense: "akaryakit_lisansi", requiredShopType: "Büyük Mağaza" },
+    "parfumeri": { name: "Parfümeri", category: "retail", setupCost: 1650000, icon: "🧴", taxRate: 0.10, baseMaintenance: 12000, products: ["parfum", "kozmetik"], requiredLicense: null, requiredShopType: "Orta Boy Dükkan" },
+    "oyuncakci": { name: "Oyuncakçı", category: "retail", setupCost: 550000, icon: "🧸", taxRate: 0.05, baseMaintenance: 6000, products: ["oyuncak"], requiredLicense: null, requiredShopType: "Orta Boy Dükkan" },
+    "kitapci": { name: "Kitabevi", category: "retail", setupCost: 440000, icon: "📚", taxRate: 0.04, baseMaintenance: 5000, products: ["kitap", "gazete"], requiredLicense: null, requiredShopType: "Orta Boy Dükkan" },
+    "spor": { name: "Spor Mağazası", category: "retail", setupCost: 1100000, icon: "🏀", taxRate: 0.07, baseMaintenance: 10000, products: ["spor_ekipman"], requiredLicense: null, requiredShopType: "Orta Boy Dükkan" },
+    "pet_shop": { name: "Pet Shop", category: "retail", setupCost: 660000, icon: "🐕", taxRate: 0.06, baseMaintenance: 8000, products: ["evcil_hayvan", "yem"], requiredLicense: "hayvancilik_ruhsati", requiredShopType: "Küçük Dükkan" },
+    "tekel": { name: "Tekel Bayii", category: "retail", setupCost: 400000, icon: "🍷", taxRate: 0.15, baseMaintenance: 12000, products: ["sigara", "puro", "sarap", "viski", "raki", "bira", "votka"], requiredLicense: "tekel_ruhsati", requiredShopType: "Orta Boy Dükkan" },
 
     // ==================== ÜRETİM (Fabrikalar) ====================
     "sut_fabrikasi": { name: "Süt Fabrikası", category: "production", setupCost: 8000000, icon: "🧀", taxRate: 0.08, baseMaintenance: 30000, produces: ["sut", "peynir", "yogurt"], requires: ["sut_ham"], requiredLicense: "uretim_izni" },
@@ -1703,24 +1704,24 @@ const BUSINESS_TYPES = {
 
 
 
-    // ==================== YENİ PERAKENDE İŞLETMELER ====================
-    "tuhafiye": { name: "Tuhafiye", category: "retail", setupCost: 600000, icon: "🧶", taxRate: 0.06, baseMaintenance: 6000, products: ["iplik", "dugme", "kumas"], requiredLicense: null, requiredShopType: "Küçük Dükkan" },
-    "optik": { name: "Optik", category: "retail", setupCost: 1800000, icon: "👓", taxRate: 0.08, baseMaintenance: 10000, products: ["gozluk"], requiredLicense: null, requiredShopType: "Küçük Dükkan" },
-    "saat_magazasi": { name: "Saat Mağazası", category: "retail", setupCost: 2500000, icon: "⌚", taxRate: 0.09, baseMaintenance: 12000, products: ["saat"], requiredLicense: null, requiredShopType: "Orta Boy Dükkan" },
-    "hediyelik": { name: "Hediyelik Eşya", category: "retail", setupCost: 700000, icon: "🎁", taxRate: 0.06, baseMaintenance: 7000, products: ["hediyelik"], requiredLicense: null, requiredShopType: "Küçük Dükkan" },
-    "cicek_magazasi": { name: "Çiçekçi", category: "retail", setupCost: 500000, icon: "💐", taxRate: 0.05, baseMaintenance: 5000, products: ["cicek", "demet", "lavanta"], requiredLicense: null, requiredShopType: "Küçük Dükkan" },
-    "tatlici": { name: "Tatlıcı", category: "retail", setupCost: 1200000, icon: "🍰", taxRate: 0.07, baseMaintenance: 9000, products: ["tatli", "dondurma", "biskuvi", "gofret"], requiredLicense: "gida_lisansi", requiredShopType: "Orta Boy Dükkan" },
-    "kasarci": { name: "Kasarcı", category: "retail", setupCost: 800000, icon: "🧀", taxRate: 0.06, baseMaintenance: 8000, products: ["peynir", "tereyagi", "zeytin", "yogurt", "keci_peyniri", "bal"], requiredLicense: "gida_lisansi", requiredShopType: "Küçük Dükkan" },
-    "kuruyemis": { name: "Kuruyemiş", category: "retail", setupCost: 650000, icon: "🥜", taxRate: 0.05, baseMaintenance: 6000, products: ["findik", "cekirdek", "badem", "ceviz", "antep_fistigi", "susam"], requiredLicense: null, requiredShopType: "Küçük Dükkan" },
-    "sarkuteri": { name: "Şarküteri", category: "retail", setupCost: 1000000, icon: "🥓", taxRate: 0.07, baseMaintenance: 10000, products: ["salam", "sucuk", "sosis"], requiredLicense: "gida_lisansi", requiredShopType: "Orta Boy Dükkan" },
-    "icecek_market": { name: "İçecek Marketi", category: "retail", setupCost: 1500000, icon: "🥤", taxRate: 0.07, baseMaintenance: 12000, products: ["meşrubat", "su", "meyve_suyu"], requiredLicense: null, requiredShopType: "Orta Boy Dükkan" },
-    "zuhuurat": { name: "Züccaciye", category: "retail", setupCost: 900000, icon: "🍴", taxRate: 0.06, baseMaintenance: 8000, products: ["mutfak_esyasi", "tabak", "bardak", "fincan", "vazo"], requiredLicense: null, requiredShopType: "Orta Boy Dükkan" },
-    "hirdavat": { name: "Hırdavat", category: "retail", setupCost: 1100000, icon: "🔧", taxRate: 0.07, baseMaintenance: 9000, products: ["civi", "vida", "boya"], requiredLicense: null, requiredShopType: "Orta Boy Dükkan" },
-    "hali_magazasi": { name: "Halı Mağazası", category: "retail", setupCost: 3500000, icon: "🪢", taxRate: 0.09, baseMaintenance: 18000, products: ["hali", "kilim"], requiredLicense: null, requiredShopType: "Büyük Mağaza" },
-    "perde_magazasi": { name: "Perde Mağazası", category: "retail", setupCost: 2000000, icon: "🪟", taxRate: 0.08, baseMaintenance: 14000, products: ["perde", "tul", "nevresim", "havlu"], requiredLicense: null, requiredShopType: "Orta Boy Dükkan" },
-    "aydinlatma": { name: "Aydınlatma Mağazası", category: "retail", setupCost: 2800000, icon: "💡", taxRate: 0.08, baseMaintenance: 16000, products: ["avize", "lamba"], requiredLicense: null, requiredShopType: "Büyük Mağaza" },
-    "beyaz_esya": { name: "Beyaz Eşya Mağazası", category: "retail", setupCost: 8000000, icon: "🏠", taxRate: 0.10, baseMaintenance: 30000, products: ["buzdolabi", "camasir_makinesi", "bulasik_makinesi"], requiredLicense: null, requiredShopType: "Büyük Mağaza" },
-    "oto_yedek_parca": { name: "Oto Yedek Parça", category: "retail", setupCost: 5000000, icon: "🔩", taxRate: 0.09, baseMaintenance: 22000, products: ["lastik", "aku", "fren_balatasi"], requiredLicense: null, requiredShopType: "Büyük Mağaza" },
+    // ==================== YENİ PERAKENDE İŞLETMELER - %45 İNDİRİMLİ ====================
+    "tuhafiye": { name: "Tuhafiye", category: "retail", setupCost: 330000, icon: "🧶", taxRate: 0.06, baseMaintenance: 6000, products: ["iplik", "dugme", "kumas"], requiredLicense: null, requiredShopType: "Küçük Dükkan" },
+    "optik": { name: "Optik", category: "retail", setupCost: 990000, icon: "👓", taxRate: 0.08, baseMaintenance: 10000, products: ["gozluk"], requiredLicense: null, requiredShopType: "Küçük Dükkan" },
+    "saat_magazasi": { name: "Saat Mağazası", category: "retail", setupCost: 1375000, icon: "⌚", taxRate: 0.09, baseMaintenance: 12000, products: ["saat"], requiredLicense: null, requiredShopType: "Orta Boy Dükkan" },
+    "hediyelik": { name: "Hediyelik Eşya", category: "retail", setupCost: 385000, icon: "🎁", taxRate: 0.06, baseMaintenance: 7000, products: ["hediyelik"], requiredLicense: null, requiredShopType: "Küçük Dükkan" },
+    "cicek_magazasi": { name: "Çiçekçi", category: "retail", setupCost: 275000, icon: "💐", taxRate: 0.05, baseMaintenance: 5000, products: ["cicek", "demet", "lavanta"], requiredLicense: null, requiredShopType: "Küçük Dükkan" },
+    "tatlici": { name: "Tatlıcı", category: "retail", setupCost: 660000, icon: "🍰", taxRate: 0.07, baseMaintenance: 9000, products: ["tatli", "dondurma", "biskuvi", "gofret"], requiredLicense: "gida_lisansi", requiredShopType: "Orta Boy Dükkan" },
+    "kasarci": { name: "Kasarcı", category: "retail", setupCost: 440000, icon: "🧀", taxRate: 0.06, baseMaintenance: 8000, products: ["peynir", "tereyagi", "zeytin", "yogurt", "keci_peyniri", "bal"], requiredLicense: "gida_lisansi", requiredShopType: "Küçük Dükkan" },
+    "kuruyemis": { name: "Kuruyemiş", category: "retail", setupCost: 357500, icon: "🥜", taxRate: 0.05, baseMaintenance: 6000, products: ["findik", "cekirdek", "badem", "ceviz", "antep_fistigi", "susam"], requiredLicense: null, requiredShopType: "Küçük Dükkan" },
+    "sarkuteri": { name: "Şarküteri", category: "retail", setupCost: 550000, icon: "🥓", taxRate: 0.07, baseMaintenance: 10000, products: ["salam", "sucuk", "sosis"], requiredLicense: "gida_lisansi", requiredShopType: "Orta Boy Dükkan" },
+    "icecek_market": { name: "İçecek Marketi", category: "retail", setupCost: 825000, icon: "🥤", taxRate: 0.07, baseMaintenance: 12000, products: ["meşrubat", "su", "meyve_suyu"], requiredLicense: null, requiredShopType: "Orta Boy Dükkan" },
+    "zuhuurat": { name: "Züccaciye", category: "retail", setupCost: 495000, icon: "🍴", taxRate: 0.06, baseMaintenance: 8000, products: ["mutfak_esyasi", "tabak", "bardak", "fincan", "vazo"], requiredLicense: null, requiredShopType: "Orta Boy Dükkan" },
+    "hirdavat": { name: "Hırdavat", category: "retail", setupCost: 605000, icon: "🔧", taxRate: 0.07, baseMaintenance: 9000, products: ["civi", "vida", "boya"], requiredLicense: null, requiredShopType: "Orta Boy Dükkan" },
+    "hali_magazasi": { name: "Halı Mağazası", category: "retail", setupCost: 1925000, icon: "🪢", taxRate: 0.09, baseMaintenance: 18000, products: ["hali", "kilim"], requiredLicense: null, requiredShopType: "Büyük Mağaza" },
+    "perde_magazasi": { name: "Perde Mağazası", category: "retail", setupCost: 1100000, icon: "🪟", taxRate: 0.08, baseMaintenance: 14000, products: ["perde", "tul", "nevresim", "havlu"], requiredLicense: null, requiredShopType: "Orta Boy Dükkan" },
+    "aydinlatma": { name: "Aydınlatma Mağazası", category: "retail", setupCost: 1540000, icon: "💡", taxRate: 0.08, baseMaintenance: 16000, products: ["avize", "lamba"], requiredLicense: null, requiredShopType: "Büyük Mağaza" },
+    "beyaz_esya": { name: "Beyaz Eşya Mağazası", category: "retail", setupCost: 4400000, icon: "🏠", taxRate: 0.10, baseMaintenance: 30000, products: ["buzdolabi", "camasir_makinesi", "bulasik_makinesi"], requiredLicense: null, requiredShopType: "Büyük Mağaza" },
+    "oto_yedek_parca": { name: "Oto Yedek Parça", category: "retail", setupCost: 2750000, icon: "🔩", taxRate: 0.09, baseMaintenance: 22000, products: ["lastik", "aku", "fren_balatasi"], requiredLicense: null, requiredShopType: "Büyük Mağaza" },
 
     // ==================== YENİ ÜRETİM (FABRIKA) ====================
     "bisküvi_fabrikasi": { name: "Bisküvi Fabrikası", category: "production", setupCost: 18000000, icon: "🍪", taxRate: 0.09, baseMaintenance: 45000, produces: ["biskuvi", "gofret"], requires: ["un", "seker", "yag"], requiredLicense: "uretim_izni" },
@@ -1734,6 +1735,13 @@ const BUSINESS_TYPES = {
     "beton_santrali": { name: "Beton Santrali", category: "production", setupCost: 40000000, icon: "🏗️", taxRate: 0.10, baseMaintenance: 60000, produces: ["beton"], requires: ["cimento", "kum", "su"], requiredLicense: "sanayi_ruhsati" },
     "tekstil_boya_fabrikasi": { name: "Boyahane", category: "production", setupCost: 12000000, icon: "🧶", taxRate: 0.08, baseMaintenance: 35000, produces: ["kumas_boyali"], requires: ["kumas", "boya"], requiredLicense: "uretim_izni" },
 
+    // ==================== ALKOL & TÜTÜN ÜRETİMİ ====================
+    "sigara_fabrikasi": { name: "Sigara Fabrikası", category: "production", setupCost: 8000000, icon: "🚬", taxRate: 0.20, baseMaintenance: 35000, produces: ["sigara", "puro"], requires: ["tutun", "kagit"], requiredLicense: "tutun_uretim_lisansi" },
+    "saraphane": { name: "Şaraphane", category: "production", setupCost: 4500000, icon: "🍷", taxRate: 0.18, baseMaintenance: 22000, produces: ["sarap"], requires: ["sarap_uzumu"], requiredLicense: "alkol_uretim_lisansi" },
+    "raki_fabrikasi": { name: "Rakı Fabrikası", category: "production", setupCost: 6000000, icon: "🥃", taxRate: 0.20, baseMaintenance: 28000, produces: ["raki"], requires: ["sarap_uzumu", "anason"], requiredLicense: "alkol_uretim_lisansi" },
+    "bira_fabrikasi": { name: "Bira Fabrikası", category: "production", setupCost: 5000000, icon: "🍺", taxRate: 0.18, baseMaintenance: 25000, produces: ["bira"], requires: ["arpa", "serbetciotu"], requiredLicense: "alkol_uretim_lisansi" },
+    "distileri": { name: "Distileri (Damıtımevi)", category: "production", setupCost: 9000000, icon: "🥂", taxRate: 0.22, baseMaintenance: 38000, produces: ["viski", "votka"], requires: ["arpa", "patates"], requiredLicense: "alkol_uretim_lisansi" },
+
     // ==================== YENİ TARIM ====================
     "antep_fistigi": { name: "Antep Fıstığı Bahçesi", category: "farming", setupCost: 3500000, icon: "🥜", taxRate: 0.05, baseMaintenance: 15000, produces: ["antep_fistigi"], requires: [], requiredLicense: null },
     "badem_bahcesi": { name: "Badem Bahçesi", category: "farming", setupCost: 2800000, icon: "🌰", taxRate: 0.04, baseMaintenance: 12000, produces: ["badem"], requires: [], requiredLicense: null },
@@ -1741,6 +1749,9 @@ const BUSINESS_TYPES = {
     "susam_tarlasi": { name: "Susam Tarlası", category: "farming", setupCost: 800000, icon: "🌾", taxRate: 0.03, baseMaintenance: 5000, produces: ["susam"], requires: [], requiredLicense: null },
     "tutun_tarlasi": { name: "Tütün Tarlası", category: "farming", setupCost: 3000000, icon: "🚬", taxRate: 0.08, baseMaintenance: 18000, produces: ["tutun"], requires: [], requiredLicense: "ozel_uretim_izni" },
     "keten_tarlasi": { name: "Keten Tarlası", category: "farming", setupCost: 1200000, icon: "🌾", taxRate: 0.04, baseMaintenance: 7000, produces: ["keten"], requires: [], requiredLicense: null },
+    "anason_tarlasi": { name: "Anason Tarlası", category: "farming", setupCost: 400000, icon: "🌿", taxRate: 0.05, baseMaintenance: 6000, produces: ["anason"], requires: [], requiredLicense: null },
+    "serbetciotu_tarlasi": { name: "Şerbetçiotu Tarlası", category: "farming", setupCost: 500000, icon: "🍀", taxRate: 0.05, baseMaintenance: 7000, produces: ["serbetciotu"], requires: [], requiredLicense: null },
+    "saraplik_uzum_bagi": { name: "Şaraplık Üzüm Bağı", category: "farming", setupCost: 900000, icon: "🍇", taxRate: 0.06, baseMaintenance: 12000, produces: ["sarap_uzumu"], requires: [], requiredLicense: null },
 
     // ==================== YENİ HAYVANCILIK ====================
     "kaz_ciftligi": { name: "Kaz Çiftliği", category: "livestock", setupCost: 1000000, icon: "🦆", taxRate: 0.04, baseMaintenance: 6000, produces: ["kaz_eti", "kaz_tuyu"], requires: ["yem"], requiredLicense: null },
@@ -1792,14 +1803,32 @@ function calculateSaleTime(businessType, productCode, price, quality, maintenanc
     const product = PRODUCTS[productCode];
     const marketPrice = product?.basePrice || 100;
 
-    // Fiyat etkisi: Pahalı = yavaş, ucuz = hızlı (Eksponansiyel ceza)
-    let priceMultiplier = price / marketPrice;
+    // Kaliteye göre gerçek piyasa değerini hesapla
+    let qualityMultiplier = 1.0;
+    if (quality <= 10) qualityMultiplier = 1.3;
+    else if (quality <= 25) qualityMultiplier = 1.5;
+    else if (quality <= 50) qualityMultiplier = 1.75;
+    else if (quality <= 75) qualityMultiplier = 2.1;
+    else qualityMultiplier = 2.5;
+
+    const realMarketPrice = marketPrice * qualityMultiplier;
+
+    // Fiyat etkisi: Kaliteye göre ayarlanmış piyasa fiyatına göre hesapla
+    let priceMultiplier = price / realMarketPrice;
+
+    // Aşırı pahalı fiyatlara çok ağır ceza
     if (priceMultiplier > 1) {
-        priceMultiplier = Math.pow(priceMultiplier, 2); // 2 kat fiyat = 4 kat süre
+        // 2 kat fiyat = 4 kat süre, 5 kat fiyat = 25 kat süre, 10 kat fiyat = 100 kat süre
+        priceMultiplier = Math.pow(priceMultiplier, 2);
+
+        // Eğer fiyat önerilen aralığın 3 katından fazlaysa ekstra ceza
+        if (priceMultiplier > 9) {
+            priceMultiplier = priceMultiplier * Math.log10(priceMultiplier); // Logaritmik ekstra ceza
+        }
     }
 
-    // Kalite bonusu: Yüksek kalite = hızlı satış (max %70 hızlandırma)
-    const qualityBonus = (quality / 100) * 0.7;
+    // Kalite bonusu: Yüksek kalite = hızlı satış (max %50 hızlandırma)
+    const qualityBonus = (quality / 100) * 0.5;
 
     // Bakım cezası: Düşük bakım = yavaş satış (max %30 yavaşlatma)
     const maintenancePenalty = (1 - maintenance / 100) * 0.3;
@@ -1906,8 +1935,8 @@ async function processBusinessSales() {
                     updates[`businesses/${bizId}/total_revenue`] = (biz.total_revenue || 0) + revenue;
                     updates[`businesses/${bizId}/total_sales`] = (biz.total_sales || 0) + saleAmount;
 
-                    // Bakım düşür (her satışta -0.5%)
-                    const newMaintenance = Math.max(0, maintenance - 0.5);
+                    // Bakım düşür (her satışta -0.3%)
+                    const newMaintenance = Math.max(0, maintenance - 0.3);
                     updates[`businesses/${bizId}/maintenance`] = newMaintenance;
 
                     await db.ref().update(updates);
@@ -1924,11 +1953,11 @@ async function processBusinessSales() {
 
 // --- KALİTE SİSTEMİ ---
 const QUALITY_LEVELS = {
-    10: { name: "Çok Düşük", color: "#666", sellTimeMultiplier: 5.0, priceMultiplier: 0.5 },
-    25: { name: "Düşük", color: "#ff4444", sellTimeMultiplier: 3.0, priceMultiplier: 0.7 },
-    50: { name: "Orta", color: "#ffaa00", sellTimeMultiplier: 1.5, priceMultiplier: 1.0 },
-    75: { name: "İyi", color: "#88ff00", sellTimeMultiplier: 0.8, priceMultiplier: 1.3 },
-    100: { name: "Mükemmel", color: "#00ff88", sellTimeMultiplier: 0.5, priceMultiplier: 1.8 }
+    10: { name: "Çok Düşük", color: "#666", sellTimeMultiplier: 5.0, priceMultiplier: 1.3 },
+    25: { name: "Düşük", color: "#ff4444", sellTimeMultiplier: 3.0, priceMultiplier: 1.5 },
+    50: { name: "Orta", color: "#ffaa00", sellTimeMultiplier: 1.5, priceMultiplier: 1.75 },
+    75: { name: "İyi", color: "#88ff00", sellTimeMultiplier: 0.8, priceMultiplier: 2.1 },
+    100: { name: "Mükemmel", color: "#00ff88", sellTimeMultiplier: 0.5, priceMultiplier: 2.5 }
 };
 
 // --- AR-GE SİSTEMİ (Ürün bazlı kalite artışı) ---
@@ -1958,41 +1987,41 @@ function calculateQualityUpgradeDuration(currentQuality) {
 // --- İŞLETME LİSANSI SİSTEMİ (Perakende + Üretim) ---
 const BUSINESS_LICENSE_LEVELS = {
     1: { name: "Başlangıç İzni", maxBusinesses: 1, cost: 0 },
-    2: { name: "Temel Lisans", maxBusinesses: 2, cost: 500000 },
-    3: { name: "Genişletilmiş Lisans", maxBusinesses: 4, cost: 2000000 },
-    4: { name: "Profesyonel Lisans", maxBusinesses: 6, cost: 10000000 },
-    5: { name: "Kurumsal Lisans", maxBusinesses: 10, cost: 50000000 },
-    6: { name: "Holding Lisansı", maxBusinesses: 15, cost: 200000000 },
-    7: { name: "Sınırsız Lisans", maxBusinesses: 999, cost: 500000000 }
+    2: { name: "Temel Lisans", maxBusinesses: 2, cost: 250000 },
+    3: { name: "Genişletilmiş Lisans", maxBusinesses: 4, cost: 1000000 },
+    4: { name: "Profesyonel Lisans", maxBusinesses: 6, cost: 5000000 },
+    5: { name: "Kurumsal Lisans", maxBusinesses: 10, cost: 25000000 },
+    6: { name: "Holding Lisansı", maxBusinesses: 15, cost: 100000000 },
+    7: { name: "Sınırsız Lisans", maxBusinesses: 999, cost: 250000000 }
 };
 
 // --- TARIM LİSANSI SİSTEMİ ---
 const FARMING_LICENSE_LEVELS = {
     1: { name: "Küçük Çiftçi", maxFarms: 1, cost: 0 },
-    2: { name: "Tarım Ruhsatı", maxFarms: 3, cost: 1000000 },
-    3: { name: "Büyük Çiftçi", maxFarms: 5, cost: 4000000 },
-    4: { name: "Tarım Şirketi", maxFarms: 8, cost: 20000000 },
-    5: { name: "Tarım Holdingu", maxFarms: 15, cost: 100000000 },
-    6: { name: "Tarım İmparatorluğu", maxFarms: 999, cost: 500000000 }
+    2: { name: "Tarım Ruhsatı", maxFarms: 3, cost: 500000 },
+    3: { name: "Büyük Çiftçi", maxFarms: 5, cost: 2000000 },
+    4: { name: "Tarım Şirketi", maxFarms: 8, cost: 10000000 },
+    5: { name: "Tarım Holdingu", maxFarms: 15, cost: 50000000 },
+    6: { name: "Tarım İmparatorluğu", maxFarms: 999, cost: 250000000 }
 };
 
 // --- HAYVANCILIK LİSANSI SİSTEMİ ---
 const LIVESTOCK_LICENSE_LEVELS = {
     1: { name: "Küçük Hayvancı", maxLivestock: 1, cost: 0 },
-    2: { name: "Hayvancılık Ruhsatı", maxLivestock: 3, cost: 5000000 },
-    3: { name: "Büyük Hayvancı", maxLivestock: 5, cost: 20000000 },
-    4: { name: "Hayvancılık Şirketi", maxLivestock: 8, cost: 100000000 },
-    5: { name: "Hayvancılık Holdingu", maxLivestock: 15, cost: 500000000 },
-    6: { name: "Hayvancılık İmparatorluğu", maxLivestock: 999, cost: 2000000000 }
+    2: { name: "Hayvancılık Ruhsatı", maxLivestock: 3, cost: 1000000 },
+    3: { name: "Büyük Hayvancı", maxLivestock: 5, cost: 4000000 },
+    4: { name: "Hayvancılık Şirketi", maxLivestock: 8, cost: 15000000 },
+    5: { name: "Hayvancılık Holdingu", maxLivestock: 15, cost: 75000000 },
+    6: { name: "Hayvancılık İmparatorluğu", maxLivestock: 999, cost: 300000000 }
 };
 
 // --- ÖZEL İŞLETME LİSANSI SİSTEMİ ---
 const SPECIAL_LICENSE_LEVELS = {
     1: { name: "Temel İzin", maxSpecial: 1, cost: 0 },
-    2: { name: "Özel İşletme İzni", maxSpecial: 2, cost: 100000000 },
-    3: { name: "Stratejik İşletme Ruhsatı", maxSpecial: 3, cost: 500000000 },
-    4: { name: "Mega İşletme Lisansı", maxSpecial: 5, cost: 2000000000 },
-    5: { name: "Sınırsız Özel Lisans", maxSpecial: 999, cost: 5000000000 }
+    2: { name: "Özel İşletme İzni", maxSpecial: 2, cost: 15000000 },
+    3: { name: "Stratejik İşletme Ruhsatı", maxSpecial: 3, cost: 75000000 },
+    4: { name: "Mega İşletme Lisansı", maxSpecial: 5, cost: 300000000 },
+    5: { name: "Sınırsız Özel Lisans", maxSpecial: 999, cost: 750000000 }
 };
 
 // --- ÜRÜN VERİLERİ ---
@@ -2223,24 +2252,39 @@ const PRODUCTS = {
     "bildircin_yumurtasi": { name: "Bıldırcın Yumurtası", basePrice: 150, category: "animal", unit: "koli", icon: "🥚" },
     "bildircin_eti": { name: "Bıldırcın Eti", basePrice: 250, category: "animal", unit: "kg", icon: "🐦" },
 
-    // Tarım Ürünleri  
+    // Tarım Ürünleri
     "tutun": { name: "Tütün", basePrice: 800, category: "fresh", unit: "kg", icon: "🚬" },
     "keten": { name: "Keten", basePrice: 120, category: "fresh", unit: "kg", icon: "🌾" },
     "beton": { name: "Beton", basePrice: 500, category: "processed", unit: "m³", icon: "🏗️" },
-    "kumas_boyali": { name: "Boyalı Kumaş", basePrice: 450, category: "processed", unit: "m", icon: "🌈" }
+    "kumas_boyali": { name: "Boyalı Kumaş", basePrice: 450, category: "processed", unit: "m", icon: "🌈" },
+
+    // ==================== ALKOL & TÜTÜN ÜRÜNLERİ ====================
+    // Hammaddeler
+    "anason": { name: "Anason", basePrice: 250, category: "fresh", unit: "kg", icon: "🌿" },
+    "serbetciotu": { name: "Şerbetçiotu", basePrice: 350, category: "fresh", unit: "kg", icon: "🍀" },
+    "sarap_uzumu": { name: "Şaraplık Üzüm", basePrice: 150, category: "fresh", unit: "kg", icon: "🍇" },
+
+    // İşlenmiş Ürünler
+    "sigara": { name: "Sigara", basePrice: 120, category: "processed", unit: "paket", icon: "🚬" },
+    "puro": { name: "Puro", basePrice: 500, category: "processed", unit: "adet", icon: "🚬" },
+    "sarap": { name: "Şarap", basePrice: 300, category: "processed", unit: "şişe", icon: "🍷" },
+    "raki": { name: "Rakı", basePrice: 450, category: "processed", unit: "şişe", icon: "🥃" },
+    "bira": { name: "Bira", basePrice: 80, category: "processed", unit: "şişe", icon: "🍺" },
+    "viski": { name: "Viski", basePrice: 800, category: "processed", unit: "şişe", icon: "🥃" },
+    "votka": { name: "Votka", basePrice: 400, category: "processed", unit: "şişe", icon: "🍸" }
 };
 
 // --- LİSANS SİSTEMİ ---
 const LICENSES = {
     "gida_lisansi": { name: "Gıda İşletme Lisansı", price: 100000, duration: null, icon: "📋" },
     "market_ruhsati": { name: "Market Ruhsatı", price: 250000, duration: null, icon: "🏪" },
-    "eczaci_diplomasi": { name: "Eczacılık Diploması", price: 1000000, duration: null, requiresEdu: 5, icon: "💊" },
+    "eczaci_diplomasi": { name: "Eczacılık Diploması", price: 1000000, duration: null, icon: "💊" },
     "kuyumcu_belgesi": { name: "Kuyumculuk Belgesi", price: 500000, duration: null, icon: "💎" },
     "galeri_ruhsati": { name: "Galeri Ruhsatı", price: 2000000, duration: null, icon: "🚗" },
     "isletme_ruhsati": { name: "Restoran İşletme Ruhsatı", price: 150000, duration: null, icon: "📜" },
     "uretim_izni": { name: "Üretim İzni", price: 300000, duration: null, icon: "🏭" },
     "sanayi_ruhsati": { name: "Sanayi Ruhsatı", price: 5000000, duration: null, icon: "🔧" },
-    "saglik_uretim_izni": { name: "Sağlık Üretim İzni", price: 3000000, duration: null, requiresEdu: 4, icon: "💉" },
+    "saglik_uretim_izni": { name: "Sağlık Üretim İzni", price: 3000000, duration: null, icon: "💉" },
     "hayvancilik_ruhsati": { name: "Hayvancılık Ruhsatı", price: 200000, duration: null, icon: "🐄" },
     "su_urunleri_izni": { name: "Su Ürünleri İzni", price: 350000, duration: null, icon: "🐠" },
     // YENİ LİSANSLAR
@@ -2250,7 +2294,11 @@ const LICENSES = {
     "ozel_uretim_izni": { name: "Özel Üretim İzni", price: 400000, duration: null, icon: "🐌" },
     "maden_ruhsati": { name: "Maden Ruhsatı", price: 20000000, duration: null, icon: "⛏️" },
     "petrol_lisansi": { name: "Petrol Lisansı", price: 100000000, duration: null, icon: "🛢️" },
-    "rafineri_lisansi": { name: "Rafineri Lisansı", price: 50000000, duration: null, icon: "🏭" }
+    "rafineri_lisansi": { name: "Rafineri Lisansı", price: 50000000, duration: null, icon: "🏭" },
+    // ALKOL & TÜTÜN LİSANSLARI
+    "tekel_ruhsati": { name: "Tekel Satış Ruhsatı", price: 200000, duration: null, icon: "🍷" },
+    "alkol_uretim_lisansi": { name: "Alkol Üretim Lisansı", price: 5000000, duration: null, icon: "🍺" },
+    "tutun_uretim_lisansi": { name: "Tütün Üretim Lisansı", price: 3000000, duration: null, icon: "🚬" }
 };
 
 // --- SİSTEM PAZAR ÜRÜNLERİ (Kalite %10) ---
@@ -2279,17 +2327,18 @@ const MARKET_EVENTS = [
 ];
 
 // --- İŞLETME SEVİYE SİSTEMİ ---
+// slots: Satış slotu sayısı, maxPerSlot: Slot başına maksimum ürün
 const BUSINESS_LEVELS = {
-    1: { slots: 3, storageMultiplier: 1.0, salesBonus: 0, upgradeCost: 0 },
-    2: { slots: 4, storageMultiplier: 1.2, salesBonus: 0.05, upgradeCost: 100000 },
-    3: { slots: 5, storageMultiplier: 1.5, salesBonus: 0.10, upgradeCost: 300000 },
-    4: { slots: 6, storageMultiplier: 1.8, salesBonus: 0.15, upgradeCost: 700000 },
-    5: { slots: 8, storageMultiplier: 2.2, salesBonus: 0.20, upgradeCost: 1500000 },
-    6: { slots: 10, storageMultiplier: 2.7, salesBonus: 0.25, upgradeCost: 3000000 },
-    7: { slots: 12, storageMultiplier: 3.3, salesBonus: 0.30, upgradeCost: 6000000 },
-    8: { slots: 15, storageMultiplier: 4.0, salesBonus: 0.35, upgradeCost: 12000000 },
-    9: { slots: 18, storageMultiplier: 5.0, salesBonus: 0.40, upgradeCost: 25000000 },
-    10: { slots: 25, storageMultiplier: 6.0, salesBonus: 0.50, upgradeCost: 50000000 }
+    1: { slots: 3, maxPerSlot: 100, upgradeCost: 0 },
+    2: { slots: 4, maxPerSlot: 250, upgradeCost: 100000 },
+    3: { slots: 5, maxPerSlot: 500, upgradeCost: 300000 },
+    4: { slots: 6, maxPerSlot: 750, upgradeCost: 700000 },
+    5: { slots: 8, maxPerSlot: 1000, upgradeCost: 1500000 },
+    6: { slots: 10, maxPerSlot: 1500, upgradeCost: 3000000 },
+    7: { slots: 12, maxPerSlot: 2000, upgradeCost: 6000000 },
+    8: { slots: 15, maxPerSlot: 3000, upgradeCost: 12000000 },
+    9: { slots: 18, maxPerSlot: 4000, upgradeCost: 25000000 },
+    10: { slots: 25, maxPerSlot: 5000, upgradeCost: 50000000 }
 };
 
 // --- REKLAM SEVİYELERİ ---
@@ -2967,9 +3016,9 @@ const REAL_ESTATE_TYPES = [
     { name: "Rezidans Katı", minPrice: 5000000, maxPrice: 9000000, minInc: 7000, maxInc: 14000, category: "residence", icon: "hotel" },
 
     // DÜKKANLAR (Kira Getirmez - İleride İşletme Olacak)
-    { name: "Küçük Dükkan", minPrice: 500000, maxPrice: 1500000, minInc: 0, maxInc: 0, category: "shop", icon: "store" },
-    { name: "Orta Boy Dükkan", minPrice: 2000000, maxPrice: 5000000, minInc: 0, maxInc: 0, category: "shop", icon: "store" },
-    { name: "Büyük Mağaza", minPrice: 10000000, maxPrice: 25000000, minInc: 0, maxInc: 0, category: "shop", icon: "building-columns" },
+    { name: "Küçük Dükkan", minPrice: 150000, maxPrice: 900000, minInc: 0, maxInc: 0, category: "shop", icon: "store" },
+    { name: "Orta Boy Dükkan", minPrice: 1000000, maxPrice: 3500000, minInc: 0, maxInc: 0, category: "shop", icon: "store" },
+    { name: "Büyük Mağaza", minPrice: 4500000, maxPrice: 6000000, minInc: 0, maxInc: 0, category: "shop", icon: "building-columns" },
 
     // ARAZİLER (Tek Tip: Arazi)
     { name: "Küçük Arazi", minPrice: 250000, maxPrice: 1500000, minInc: 0, maxInc: 0, category: "land", icon: "map" },
@@ -5672,26 +5721,64 @@ app.post('/webhook/kick', async (req, res) => {
 
                 if (isLive) {
                     try {
-                        // Daha zengin veri için GraphQL'den taze bilgileri çek
+                        // Daha zengin veri için V2 API ve GraphQL'den taze bilgileri çek
                         const slug = channelData.slug || channelData.username || broadcasterId;
-                        const gqlData = await fetchKickGraphQL(slug);
 
                         let currentFollowers = "-";
-                        let currentViewers = "Yeni başladı!";
+                        let currentViewers = "0";
                         let finalTitle = streamTitle;
                         let finalCategory = category;
                         let finalThumbnail = thumbnail;
 
-                        if (gqlData) {
-                            currentFollowers = gqlData.followersCount?.toLocaleString() || "-";
-                            if (gqlData.livestream && gqlData.livestream.is_live) {
-                                currentViewers = gqlData.livestream.viewer_count?.toLocaleString() || "Yeni başladı!";
-                                if (gqlData.livestream.session_title) finalTitle = gqlData.livestream.session_title;
-                                // Thumbnail URL'sini Kick formatına dönüştür (e-at-large gibi placeholderları temizle)
-                                if (thumbnail && thumbnail.includes('{width}') && thumbnail.includes('{height}')) {
-                                    finalThumbnail = thumbnail.replace('{width}', '1920').replace('{height}', '1080');
+                        // Önce V2 API'yi dene (daha güvenilir)
+                        try {
+                            const v2Res = await axios.get(`https://kick.com/api/v2/channels/${slug}`, {
+                                headers: { 'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36' },
+                                timeout: 5000
+                            });
+                            if (v2Res && v2Res.data) {
+                                const v2Data = v2Res.data;
+                                // Takipçi sayısı
+                                currentFollowers = (v2Data.followers_count || v2Data.followersCount ||
+                                                   v2Data.follower_count || 0).toLocaleString();
+
+                                // Livestream verileri
+                                if (v2Data.livestream) {
+                                    const ls = v2Data.livestream;
+                                    // İzleyici sayısı
+                                    const viewers = ls.viewer_count || ls.viewers || ls.viewerCount || 0;
+                                    currentViewers = viewers.toLocaleString();
+                                    // Başlık
+                                    finalTitle = ls.session_title || ls.title || ls.stream_title || finalTitle;
+                                    // Kategori
+                                    finalCategory = ls.categories?.[0]?.name || ls.category?.name ||
+                                                   ls.game_name || ls.category_name || finalCategory;
+                                    // Thumbnail
+                                    finalThumbnail = ls.thumbnail?.url || ls.thumbnail?.src || ls.thumbnail_url ||
+                                                    ls.preview_url || (ls.thumbnail && typeof ls.thumbnail === 'string' ? ls.thumbnail : null);
+                                }
+                                console.log(`[Webhook Status] V2 API başarılı - Takipçi: ${currentFollowers}, İzleyici: ${currentViewers}, Başlık: ${finalTitle}`);
+                            }
+                        } catch (v2Err) {
+                            console.log(`[Webhook Status] V2 API başarısız, GraphQL deneniyor: ${v2Err.message}`);
+                            // V2 başarısız olursa GraphQL dene
+                            const gqlData = await fetchKickGraphQL(slug);
+                            if (gqlData) {
+                                currentFollowers = gqlData.followersCount?.toLocaleString() || "-";
+                                if (gqlData.livestream && gqlData.livestream.is_live) {
+                                    currentViewers = (gqlData.livestream.viewer_count || gqlData.livestream.viewers || 0).toLocaleString();
+                                    if (gqlData.livestream.session_title) finalTitle = gqlData.livestream.session_title;
                                 }
                             }
+                        }
+
+                        // Thumbnail yoksa veya placeholder ise düzelt
+                        if (!finalThumbnail || finalThumbnail.includes('{width}')) {
+                            finalThumbnail = `https://stream.kick.com/thumbnails/livestream/${slug}/thumb.jpg`;
+                        }
+                        // Cache buster ekle
+                        if (finalThumbnail && !finalThumbnail.includes('?t=')) {
+                            finalThumbnail = `${finalThumbnail}?t=${Date.now()}`;
                         }
 
                         const embedColor = 5238290; // Yeşil
@@ -7109,7 +7196,7 @@ EK TALİMAT: ${aiInst}`;
                         { role: "system", content: systemMsg },
                         { role: "user", content: prompt }
                     ],
-                    model: "grok-3",
+                    model: "grok-4-1-fast",
                     temperature: 0.8
                 }, {
                     headers: {
@@ -8923,21 +9010,44 @@ async function trackWatchTime() {
                             // V2 API'den yayın detaylarını al
                             if (v2Res && v2Res.data) {
                                 const channelData = v2Res.data;
-                                profilePic = channelData.user?.profile_pic || channelData.profile_pic;
-                                followerCount = channelData.followersCount || channelData.followers_count || 0;
+
+                                // Profil resmi
+                                profilePic = channelData.user?.profile_pic || channelData.profile_pic || null;
+
+                                // Takipçi sayısı - farklı field isimlerini dene
+                                followerCount = channelData.followers_count || channelData.followersCount ||
+                                               channelData.follower_count || channelData.subscriber_count || 0;
 
                                 if (channelData.livestream) {
-                                    streamTitle = channelData.livestream.session_title || streamTitle;
-                                    streamGame = channelData.livestream.categories?.[0]?.name ||
-                                        channelData.livestream.category?.name || streamGame;
-                                    viewerCount = channelData.livestream.viewer_count || 0;
-                                    thumbnailUrl = channelData.livestream.thumbnail?.url;
+                                    const ls = channelData.livestream;
+
+                                    // Yayın başlığı
+                                    streamTitle = ls.session_title || ls.title || ls.stream_title || streamTitle;
+
+                                    // Kategori/Oyun
+                                    streamGame = ls.categories?.[0]?.name ||
+                                                ls.category?.name ||
+                                                ls.game_name ||
+                                                ls.category_name || streamGame;
+
+                                    // İzleyici sayısı
+                                    viewerCount = ls.viewer_count || ls.viewers || ls.viewerCount || 0;
+
+                                    // Thumbnail - farklı formatları dene
+                                    thumbnailUrl = ls.thumbnail?.url ||
+                                                  ls.thumbnail?.src ||
+                                                  ls.thumbnail_url ||
+                                                  ls.preview_url ||
+                                                  (ls.thumbnail && typeof ls.thumbnail === 'string' ? ls.thumbnail : null);
                                 }
+
+                                // DEBUG: Alınan verileri logla
+                                console.log(`[Discord Debug] ${chan.username} - Başlık: "${streamTitle}", İzleyici: ${viewerCount}, Takipçi: ${followerCount}, Thumbnail: ${thumbnailUrl ? 'VAR' : 'YOK'}`);
                             }
 
-                            // Thumbnail yoksa varsayılan kullan
+                            // Thumbnail yoksa yayın thumbnail'i kullan
                             if (!thumbnailUrl) {
-                                thumbnailUrl = `https://kick.com/api/v2/channels/${chan.username}/thumbnail?t=${Date.now()}`;
+                                thumbnailUrl = `https://stream.kick.com/thumbnails/livestream/${chan.username}/thumb.jpg?t=${Date.now()}`;
                             }
 
                             // Premium Discord Embed
@@ -9139,14 +9249,32 @@ async function syncSingleChannelStats(chanId, chan) {
 
                 if (webhookUrl) {
                     try {
-                        const streamTitle = gql.livestream.session_title || "Yayındayım!";
-                        const streamGame = gql.livestream.categories?.[0]?.name || "Just Chatting";
-                        const thumbUrl = gql.livestream.thumbnail?.url || "https://kick.com/favicon.ico";
+                        const ls = gql.livestream;
+
+                        // Yayın bilgilerini düzgün al
+                        const streamTitle = ls.session_title || ls.title || "Yayındayım!";
+                        const streamGame = ls.categories?.[0]?.name || ls.category?.name || "Just Chatting";
+                        const viewerCount = ls.viewer_count || ls.viewers || 0;
+                        const followerCount = gql.followersCount || gql.followers_count || gql.follower_count || 0;
+
+                        // Thumbnail URL - farklı formatları dene
+                        let thumbUrl = ls.thumbnail?.url || ls.thumbnail?.src || ls.thumbnail_url ||
+                                      (ls.thumbnail && typeof ls.thumbnail === 'string' ? ls.thumbnail : null);
+
+                        if (!thumbUrl) {
+                            thumbUrl = `https://stream.kick.com/thumbnails/livestream/${username}/thumb.jpg?t=${Date.now()}`;
+                        }
+
+                        // Profil resmi
+                        const profilePic = gql.user?.profile_pic || gql.profile_pic || chan.profile_pic || "https://kick.com/favicon.ico";
+
+                        // DEBUG
+                        console.log(`[Discord Sync Debug] ${username} - Başlık: "${streamTitle}", İzleyici: ${viewerCount}, Takipçi: ${followerCount}`);
 
                         await axios.post(webhookUrl, {
                             content: "@everyone",
                             username: "Kick Bildirim",
-                            avatar_url: chan.profile_pic || "https://kick.com/favicon.ico",
+                            avatar_url: profilePic,
                             embeds: [{
                                 title: "🟢 ALOSKEGANG KICK'TE YAYINDA!",
                                 description: `**${streamTitle}**`,
@@ -9154,11 +9282,11 @@ async function syncSingleChannelStats(chanId, chan) {
                                 color: 0x53FC18, // Kick Green
                                 fields: [
                                     { name: "🎮 Kategori", value: streamGame, inline: true },
-                                    { name: "👥 İzleyici", value: (gql.livestream.viewer_count || 0) > 0 ? gql.livestream.viewer_count.toLocaleString() : "Yeni başladı!", inline: true },
-                                    { name: "❤️ Takipçi", value: (gql.followersCount || 0) > 0 ? gql.followersCount.toLocaleString() : "-", inline: true }
+                                    { name: "👥 İzleyici", value: viewerCount > 0 ? viewerCount.toLocaleString() : "Yeni başladı!", inline: true },
+                                    { name: "❤️ Takipçi", value: followerCount > 0 ? followerCount.toLocaleString() : "-", inline: true }
                                 ],
-                                image: thumbUrl ? { url: thumbUrl.replace('{width}', '1920').replace('{height}', '1080') + "?t=" + Date.now() } : undefined,
-                                thumbnail: { url: chan.profile_pic || "https://kick.com/favicon.ico" },
+                                image: { url: thumbUrl.replace('{width}', '1920').replace('{height}', '1080') },
+                                thumbnail: { url: profilePic },
                                 footer: { text: "Aloskegang şuan yayında! • Kick.com", icon_url: "https://kick.com/favicon.ico" },
                                 timestamp: new Date().toISOString()
                             }],
@@ -11688,10 +11816,6 @@ app.post('/api/business/sell', transactionLimiter, async (req, res) => {
         // Fiyat hesapla
         let price = calculateProductPrice(productCode);
 
-        // İşletme bonusları
-        const levelData = BUSINESS_LEVELS[biz.level] || BUSINESS_LEVELS[1];
-        price *= (1 + levelData.salesBonus);
-
         // Reklam bonusu
         const adData = ADVERTISING_LEVELS[biz.advertising || 0];
         price *= (1 + adData.salesBonus);
@@ -13199,11 +13323,20 @@ app.post('/api/business/add-slot', transactionLimiter, async (req, res) => {
         // Kalite kontrolü - inventoryQualities doğrudan users altında
         const quality = (user.inventoryQualities || {})[productCode] || 50;
 
+        // Seviye verilerini al
+        const levelData = BUSINESS_LEVELS[biz.level || 1] || BUSINESS_LEVELS[1];
+
         // Slot limiti kontrolü (seviyeye göre)
-        const maxSlots = (biz.level || 1) * 2 + 2; // Seviye 1 = 4 slot, Seviye 5 = 12 slot
+        const maxSlots = levelData.slots;
         const currentSlots = Object.keys(biz.sales_slots || {}).length;
         if (currentSlots >= maxSlots) {
-            return res.json({ success: false, error: `Maksimum ${maxSlots} slot kullanabilirsiniz!` });
+            return res.json({ success: false, error: `Maksimum ${maxSlots} slot kullanabilirsiniz! Seviye yükseltin.` });
+        }
+
+        // Slot başına maksimum ürün kontrolü
+        const maxPerSlot = levelData.maxPerSlot;
+        if (addAmount > maxPerSlot) {
+            return res.json({ success: false, error: `Slot başına maksimum ${maxPerSlot} ürün ekleyebilirsiniz! Seviye yükseltin.` });
         }
 
         // Yeni slot oluştur
@@ -13211,7 +13344,7 @@ app.post('/api/business/add-slot', transactionLimiter, async (req, res) => {
         const slotData = {
             productCode,
             price: parseInt(price),
-            stock,
+            stock: addAmount,
             quality,
             lastSale: Date.now(),
             totalSold: 0,
@@ -13312,8 +13445,8 @@ app.post('/api/business/withdraw', transactionLimiter, async (req, res) => {
             return res.json({ success: false, error: 'İşletme kasasında yeterli para yok!' });
         }
 
-        // %15 Vergi hesapla
-        const tax = Math.floor(withdrawAmount * 0.15);
+        // %10 Vergi hesapla
+        const tax = Math.floor(withdrawAmount * 0.10);
         const netAmount = withdrawAmount - tax;
 
         // Para transferi
@@ -13327,7 +13460,7 @@ app.post('/api/business/withdraw', transactionLimiter, async (req, res) => {
 
         res.json({
             success: true,
-            message: `${netAmount.toLocaleString()}₺ bakiyene eklendi (%15 vergi: ${tax.toLocaleString()}₺ kesildi)`,
+            message: `${netAmount.toLocaleString()}₺ bakiyene eklendi (%10 vergi: ${tax.toLocaleString()}₺ kesildi)`,
             newBalance: bizBalance - withdrawAmount
         });
     } catch (e) {

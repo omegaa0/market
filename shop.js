@@ -3904,15 +3904,16 @@ function renderMarketEvents() {
     `;
 }
 
-// Alt sekme değiştir
+// Alt sekme değiştir (İşletmeler)
 function switchBusinessTab(tabName) {
     document.querySelectorAll('.business-sub-content').forEach(el => el.classList.add('hidden'));
-    document.querySelectorAll('.sub-tab-btn').forEach(btn => btn.classList.remove('active'));
+    // Sadece işletme sekmesindeki butonları hedefle
+    document.querySelectorAll('.business-tab-btn').forEach(btn => btn.classList.remove('active'));
 
     const targetTab = document.getElementById('business-sub-' + tabName);
     if (targetTab) targetTab.classList.remove('hidden');
 
-    event.target.classList.add('active');
+    if (event && event.target) event.target.classList.add('active');
 
     // Tab açıldığında içeriği yükle
     if (tabName === 'my-businesses') loadMyBusinesses();
@@ -4922,7 +4923,8 @@ function switchMarketTab(tab) {
     document.querySelectorAll('.market-sub-content').forEach(d => d.classList.add('hidden'));
     document.getElementById('market-sub-' + tab).classList.remove('hidden');
 
-    document.querySelectorAll('.sub-tab-btn').forEach(b => b.classList.remove('active'));
+    // Sadece pazar yeri sekmesindeki butonları hedefle
+    document.querySelectorAll('.market-tab-btn').forEach(b => b.classList.remove('active'));
     if (window.event) window.event.currentTarget.classList.add('active');
 
     if (tab === 'browse') loadMarketListings(1);
@@ -5629,6 +5631,7 @@ async function showAddSlotModal(bizId) {
 
         // KULLANICI envanterini kullan (işletme envanteri değil!)
         const inventory = data.userInventory || {};
+        const inventoryQualities = data.userInventoryQualities || {};
         const availableProducts = allowedProducts.filter(code => (inventory[code] || 0) > 0);
 
         if (availableProducts.length === 0) {
@@ -5636,14 +5639,20 @@ async function showAddSlotModal(bizId) {
             return;
         }
 
+        // İşletme seviyesi ve maxPerSlot bilgisi
+        const bizLevel = biz.level || 1;
+        const bizLevelData = levelData[bizLevel] || levelData[1] || { slots: 3, maxPerSlot: 100 };
+        const maxPerSlot = bizLevelData.maxPerSlot || 100;
+
         // Modal içeriği oluştur
         let productsHTML = availableProducts.map(code => {
             const product = productData[code];
             const stock = inventory[code] || 0;
+            const quality = inventoryQualities[code] || 50;
             const marketPrice = marketPrices[code] || product?.basePrice || 100;
 
             return `
-                <div onclick="selectProductForSlot('${bizId}', '${code}', ${stock}, ${marketPrice})"
+                <div onclick="selectProductForSlot('${bizId}', '${code}', ${stock}, ${marketPrice}, ${quality}, ${maxPerSlot})"
                      style="background:rgba(0,0,0,0.3); padding:15px; border-radius:8px; cursor:pointer; transition:all 0.2s;"
                      onmouseover="this.style.background='rgba(0,255,136,0.1)'"
                      onmouseout="this.style.background='rgba(0,0,0,0.3)'">
@@ -5673,10 +5682,36 @@ async function showAddSlotModal(bizId) {
 }
 
 // Ürün seçildiğinde fiyat girme modalı
-async function selectProductForSlot(bizId, productCode, maxStock, marketPrice) {
+async function selectProductForSlot(bizId, productCode, maxStock, marketPrice, quality = 50, maxPerSlot = 100) {
     closeModal();
 
     const product = productData[productCode];
+
+    // Slot başına maksimum miktar (depodaki ve seviye limitinden küçük olan)
+    const effectiveMax = Math.min(maxStock, maxPerSlot);
+
+    // Kaliteye göre önerilen fiyat aralığı hesapla
+    let minMultiplier, maxMultiplier, qualityName, qualityColor;
+    if (quality <= 10) {
+        minMultiplier = 1.25; maxMultiplier = 1.65;
+        qualityName = "Çok Düşük"; qualityColor = "#666";
+    } else if (quality <= 25) {
+        minMultiplier = 1.45; maxMultiplier = 1.95;
+        qualityName = "Düşük"; qualityColor = "#ff4444";
+    } else if (quality <= 50) {
+        minMultiplier = 1.70; maxMultiplier = 2.25;
+        qualityName = "Orta"; qualityColor = "#ffaa00";
+    } else if (quality <= 75) {
+        minMultiplier = 2.05; maxMultiplier = 2.75;
+        qualityName = "İyi"; qualityColor = "#44ff44";
+    } else {
+        minMultiplier = 2.45; maxMultiplier = 3.25;
+        qualityName = "Mükemmel"; qualityColor = "#00ffcc";
+    }
+
+    const suggestedMin = Math.round(marketPrice * minMultiplier);
+    const suggestedMax = Math.round(marketPrice * maxMultiplier);
+    const suggestedDefault = Math.round((suggestedMin + suggestedMax) / 2);
 
     const confirmed = await showConfirmDialog(`
         <div style="text-align:center;">
@@ -5685,16 +5720,18 @@ async function selectProductForSlot(bizId, productCode, maxStock, marketPrice) {
 
             <div style="text-align:left; background:rgba(0,0,0,0.3); padding:15px; border-radius:8px; margin-bottom:15px;">
                 <div style="margin-bottom:8px;">📦 Depoda: <b>${maxStock}</b></div>
+                <div style="margin-bottom:8px;">📊 Slot Limiti: <b>${maxPerSlot}</b></div>
+                <div style="margin-bottom:8px;">⭐ Kalite: <b style="color:${qualityColor}">${qualityName} (%${quality})</b></div>
                 <div style="margin-bottom:8px;">💰 Piyasa Fiyatı: <b>${marketPrice}💰</b></div>
-                <div style="font-size:0.8rem; color:#888;">Önerilen: ${Math.round(marketPrice * 0.9)}-${Math.round(marketPrice * 1.3)}💰</div>
+                <div style="font-size:0.8rem; color:#888;">Önerilen: ${suggestedMin}-${suggestedMax}💰</div>
             </div>
 
             <label style="display:block; text-align:left; margin-bottom:5px; font-size:0.9rem;">Satış Fiyatı:</label>
-            <input type="number" id="slot-price-input" value="${marketPrice}" min="1" max="999999"
+            <input type="number" id="slot-price-input" value="${suggestedDefault}" min="1" max="999999"
                    style="width:100%; padding:12px; background:rgba(0,0,0,0.5); border:1px solid rgba(255,255,255,0.2); border-radius:8px; color:white; font-size:1rem; margin-bottom:15px;">
 
-            <label style="display:block; text-align:left; margin-bottom:5px; font-size:0.9rem;">Miktar (Maks ${maxStock}):</label>
-            <input type="number" id="slot-amount-input" value="${maxStock}" min="1" max="${maxStock}"
+            <label style="display:block; text-align:left; margin-bottom:5px; font-size:0.9rem;">Miktar (Maks ${effectiveMax}):</label>
+            <input type="number" id="slot-amount-input" value="${effectiveMax}" min="1" max="${effectiveMax}"
                    style="width:100%; padding:12px; background:rgba(0,0,0,0.5); border:1px solid rgba(255,255,255,0.2); border-radius:8px; color:white; font-size:1rem; margin-bottom:10px;">
 
             <div style="font-size:0.75rem; color:#aaa;">

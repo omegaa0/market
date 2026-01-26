@@ -516,21 +516,23 @@
 
                 <!-- Alt Sekmeler -->
                 <div class="business-sub-tabs" style="display:flex; gap:10px; margin-bottom:20px; flex-wrap:wrap;">
-                    <button class="sub-tab-btn active" onclick="switchBusinessTab('my-businesses')"
+                    <button class="sub-tab-btn business-tab-btn active" onclick="switchBusinessTab('my-businesses')"
                         title="Sahip olduğunuz işletmeleri görüntüleyin">📋
                         İşletmelerim</button>
-                    <button class="sub-tab-btn" onclick="switchBusinessTab('new-business')" title="Yeni işletme kurun">➕
+                    <button class="sub-tab-btn business-tab-btn" onclick="switchBusinessTab('new-business')" title="Yeni işletme kurun">➕
                         Yeni İşletme</button>
-                    <button class="sub-tab-btn" onclick="switchBusinessTab('warehouse')"
+                    <button class="sub-tab-btn business-tab-btn" onclick="switchBusinessTab('warehouse')"
                         title="Depo kapasitesini artır">📦 Depo</button>
-                    <button class="sub-tab-btn" onclick="switchBusinessTab('rnd')" title="AR-GE yükseltmeleri yapın">🔬
+                    <button class="sub-tab-btn business-tab-btn" onclick="switchBusinessTab('rnd')" title="AR-GE yükseltmeleri yapın">🔬
                         AR-GE <span
                             style="background:var(--primary); color:black; font-size:0.6rem; padding:2px 5px; border-radius:4px; margin-left:5px; font-weight:800;">YENİ</span></button>
-                    <button class="sub-tab-btn" onclick="switchBusinessTab('licenses')"
+                    <button class="sub-tab-btn business-tab-btn" onclick="switchBusinessTab('licenses')"
                         title="İşletme lisanslarını görüntüleyin">📜 Lisanslar</button>
-                    <button class="sub-tab-btn" onclick="switchBusinessTab('market-prices')"
+                    <button class="sub-tab-btn business-tab-btn" onclick="switchBusinessTab('market-prices')"
                         title="Piyasa durumunu kontrol edin">📊 Piyasa
                         Durumu</button>
+                    <button class="sub-tab-btn business-tab-btn" onclick="switchBusinessTab('tutorial')"
+                        title="İşletme sistemi hakkında bilgi edinin">📖 Eğitim</button>
                 </div>
 
                 <!-- İşletmelerim -->
@@ -662,6 +664,90 @@
                     </div>
                 </div>
             </div>
+
+            <!-- Eğitim -->
+            <div id="business-sub-tutorial" class="business-sub-content hidden">
+                <div class="glass-panel" style="padding:25px;">
+                    <h3 style="margin:0 0 20px 0; display:flex; align-items:center; gap:10px;">
+                        <span style="font-size:2rem;">📖</span> İşletme Sistemi Rehberi
+                    </h3>
+
+                    <!-- Temel Bilgiler -->
+                    <div style="background:rgba(0,200,100,0.1); border:1px solid rgba(0,200,100,0.3); border-radius:12px; padding:20px; margin-bottom:20px;">
+                        <h4 style="color:#00c864; margin:0 0 15px 0;">🚀 Başlarken</h4>
+                        <ul style="color:var(--text-dim); line-height:2; margin:0; padding-left:20px;">
+                            <li><strong>İşletme Kurma:</strong> "Yeni İşletme" sekmesinden istediğin işletmeyi seç ve kur.</li>
+                            <li><strong>Lisans Gereksinimi:</strong> Bazı işletmeler özel lisans gerektirir. "Lisanslar" sekmesinden alabilirsin.</li>
+                            <li><strong>Dükkan Gereksinimi:</strong> Perakende işletmeler için uygun büyüklükte dükkan gerekir (Emlak'tan al).</li>
+                            <li><strong>Şehir Seçimi:</strong> İşletmeni kuracağın şehri seç. Lojistik maliyetlerini etkiler.</li>
+                        </ul>
+                    </div>
+
+                    <!-- İşletme Türleri -->
+                    <div style="background:rgba(100,100,255,0.1); border:1px solid rgba(100,100,255,0.3); border-radius:12px; padding:20px; margin-bottom:20px;">
+                        <h4 style="color:#6464ff; margin:0 0 15px 0;">🏢 İşletme Türleri</h4>
+                        <div style="display:grid; grid-template-columns: repeat(auto-fit, minmax(200px, 1fr)); gap:15px;">
+                            <div style="background:rgba(0,0,0,0.2); padding:15px; border-radius:8px;">
+                                <div style="font-size:1.5rem; margin-bottom:5px;">🏪 Perakende</div>
+                                <p style="color:var(--text-dim); font-size:0.85rem; margin:0;">Manav, Kasap, Market gibi satış noktaları. Ürünleri müşterilere satarsın.</p>
+                            </div>
+                            <div style="background:rgba(0,0,0,0.2); padding:15px; border-radius:8px;">
+                                <div style="font-size:1.5rem; margin-bottom:5px;">🏭 Üretim</div>
+                                <p style="color:var(--text-dim); font-size:0.85rem; margin:0;">Fabrikalar. Hammaddeleri işlenmiş ürünlere dönüştürür.</p>
+                            </div>
+                            <div style="background:rgba(0,0,0,0.2); padding:15px; border-radius:8px;">
+                                <div style="font-size:1.5rem; margin-bottom:5px;">🌾 Tarım</div>
+                                <p style="color:var(--text-dim); font-size:0.85rem; margin:0;">Tarlalar ve bahçeler. Hammadde üretir (buğday, meyve vb.).</p>
+                            </div>
+                            <div style="background:rgba(0,0,0,0.2); padding:15px; border-radius:8px;">
+                                <div style="font-size:1.5rem; margin-bottom:5px;">🐄 Hayvancılık</div>
+                                <p style="color:var(--text-dim); font-size:0.85rem; margin:0;">Çiftlikler. Et, süt, yumurta gibi hayvansal ürünler üretir.</p>
+                            </div>
+                            <div style="background:rgba(0,0,0,0.2); padding:15px; border-radius:8px;">
+                                <div style="font-size:1.5rem; margin-bottom:5px;">⭐ Özel</div>
+                                <p style="color:var(--text-dim); font-size:0.85rem; margin:0;">Maden, Petrol gibi stratejik işletmeler. Yüksek gelir, yüksek maliyet.</p>
+                            </div>
+                        </div>
+                    </div>
+
+                    <!-- Satış Sistemi -->
+                    <div style="background:rgba(255,200,0,0.1); border:1px solid rgba(255,200,0,0.3); border-radius:12px; padding:20px; margin-bottom:20px;">
+                        <h4 style="color:#ffc800; margin:0 0 15px 0;">💰 Satış Sistemi</h4>
+                        <ul style="color:var(--text-dim); line-height:2; margin:0; padding-left:20px;">
+                            <li><strong>Satış Slotu:</strong> İşletmene ürün ekle ve fiyat belirle. Otomatik satılır.</li>
+                            <li><strong>Kalite Etkisi:</strong> Yüksek kaliteli ürünler daha hızlı ve pahalıya satılır.</li>
+                            <li><strong>Fiyatlandırma:</strong> Önerilen fiyat aralığında kal. Çok pahalı = çok yavaş satış!</li>
+                            <li><strong>Bakım:</strong> Her satışta bakım %0.3 düşer. %50 altında satış yavaşlar.</li>
+                            <li><strong>Seviye:</strong> İşletme seviyesi arttıkça daha fazla slot ve bonus kazanırsın.</li>
+                        </ul>
+                    </div>
+
+                    <!-- Lisans Sistemi -->
+                    <div style="background:rgba(255,100,100,0.1); border:1px solid rgba(255,100,100,0.3); border-radius:12px; padding:20px; margin-bottom:20px;">
+                        <h4 style="color:#ff6464; margin:0 0 15px 0;">📜 Lisans Sistemi</h4>
+                        <ul style="color:var(--text-dim); line-height:2; margin:0; padding-left:20px;">
+                            <li><strong>İşletme Lisansı:</strong> Kaç perakende/üretim işletmesi kurabileceğini belirler.</li>
+                            <li><strong>Tarım Lisansı:</strong> Kaç tarım işletmesi kurabileceğini belirler.</li>
+                            <li><strong>Hayvancılık Lisansı:</strong> Kaç hayvancılık işletmesi kurabileceğini belirler.</li>
+                            <li><strong>Özel Üretim İzni:</strong> Maden, petrol gibi özel işletmeler için gerekli.</li>
+                            <li><strong>Yükseltme:</strong> Lisansları yükselterek daha fazla işletme kurabilirsin.</li>
+                        </ul>
+                    </div>
+
+                    <!-- İpuçları -->
+                    <div style="background:rgba(0,200,255,0.1); border:1px solid rgba(0,200,255,0.3); border-radius:12px; padding:20px;">
+                        <h4 style="color:#00c8ff; margin:0 0 15px 0;">💡 Profesyonel İpuçları</h4>
+                        <ul style="color:var(--text-dim); line-height:2; margin:0; padding-left:20px;">
+                            <li>🔗 <strong>Üretim Zinciri:</strong> Tarım → Üretim → Perakende zinciri kur, kârı maksimize et.</li>
+                            <li>📍 <strong>Şehir Seçimi:</strong> İşletmelerini aynı şehirde kurarak lojistik maliyetini düşür.</li>
+                            <li>📊 <strong>Piyasa Takibi:</strong> "Piyasa Durumu"nu takip et, fiyatlar değişir!</li>
+                            <li>🔧 <strong>Bakım:</strong> Bakımı %80 üzerinde tut, satışlar hızlanır.</li>
+                            <li>📦 <strong>Depo:</strong> Depo kapasiteni artırarak daha fazla stok tut.</li>
+                            <li>🔬 <strong>AR-GE:</strong> AR-GE yükseltmeleri ile üretim verimini artır.</li>
+                        </ul>
+                    </div>
+                </div>
+            </div>
         </div>
 
         <!-- MARKETPLACE TAB -->
@@ -673,9 +759,10 @@
 
             <!-- Alt Sekmeler -->
             <div style="display:flex; gap:10px; margin-bottom:20px; flex-wrap:wrap;">
-                <button class="sub-tab-btn active" onclick="switchMarketTab('browse')">🔍 İlanlar</button>
-                <button class="sub-tab-btn" onclick="switchMarketTab('my-listings')">📋 İlanlarım</button>
-                <button class="sub-tab-btn" onclick="switchMarketTab('create')">➕ İlan Ver</button>
+                <button class="sub-tab-btn market-tab-btn active" onclick="switchMarketTab('browse')">🔍 İlanlar</button>
+                <button class="sub-tab-btn market-tab-btn" onclick="switchMarketTab('my-listings')">📋 İlanlarım</button>
+                <button class="sub-tab-btn market-tab-btn" onclick="switchMarketTab('create')">➕ İlan Ver</button>
+                <button class="sub-tab-btn market-tab-btn" onclick="switchMarketTab('tutorial')">📖 Eğitim</button>
             </div>
 
             <!-- Browse Listings -->
@@ -806,6 +893,90 @@
                     </div>
                     <button onclick="createMarketListing()" class="primary-btn" style="width:100%;">📢 İlan
                         Ver</button>
+                </div>
+            </div>
+
+            <!-- Pazar Yeri Eğitim -->
+            <div id="market-sub-tutorial" class="market-sub-content hidden">
+                <div class="glass-panel" style="padding:25px;">
+                    <h3 style="margin:0 0 20px 0; display:flex; align-items:center; gap:10px;">
+                        <span style="font-size:2rem;">📖</span> Pazar Yeri Rehberi
+                    </h3>
+
+                    <!-- Pazar Nedir -->
+                    <div style="background:rgba(0,200,100,0.1); border:1px solid rgba(0,200,100,0.3); border-radius:12px; padding:20px; margin-bottom:20px;">
+                        <h4 style="color:#00c864; margin:0 0 15px 0;">🛍️ Pazar Yeri Nedir?</h4>
+                        <p style="color:var(--text-dim); line-height:1.8; margin:0;">
+                            Pazar yeri, oyuncuların birbirleriyle ürün alışverişi yapabildiği bir platformdur.
+                            Envanterindeki ürünleri satabilir veya diğer oyuncuların ilanlarından ürün satın alabilirsin.
+                            Sistem ilanları da bulunur ve hammadde tedariki için kullanılabilir.
+                        </p>
+                    </div>
+
+                    <!-- Nasıl Satılır -->
+                    <div style="background:rgba(255,200,0,0.1); border:1px solid rgba(255,200,0,0.3); border-radius:12px; padding:20px; margin-bottom:20px;">
+                        <h4 style="color:#ffc800; margin:0 0 15px 0;">💰 Nasıl Satış Yapılır?</h4>
+                        <ol style="color:var(--text-dim); line-height:2; margin:0; padding-left:20px;">
+                            <li><strong>"İlan Ver"</strong> sekmesine git.</li>
+                            <li>Satmak istediğin ürünü seç (envanterinden).</li>
+                            <li>Miktar ve birim fiyat belirle.</li>
+                            <li>İlan oluştur - ürünler envanterinden düşer.</li>
+                            <li>Biri satın alınca para hesabına geçer.</li>
+                        </ol>
+                    </div>
+
+                    <!-- Nasıl Alınır -->
+                    <div style="background:rgba(100,100,255,0.1); border:1px solid rgba(100,100,255,0.3); border-radius:12px; padding:20px; margin-bottom:20px;">
+                        <h4 style="color:#6464ff; margin:0 0 15px 0;">🛒 Nasıl Alışveriş Yapılır?</h4>
+                        <ol style="color:var(--text-dim); line-height:2; margin:0; padding-left:20px;">
+                            <li><strong>"İlanlar"</strong> sekmesinde ürünleri incele.</li>
+                            <li>Filtreleri kullanarak istediğin ürünü bul.</li>
+                            <li>Ürün kalitesini ve fiyatını kontrol et.</li>
+                            <li>Almak istediğin miktarı gir ve satın al.</li>
+                            <li>Ürünler envanterine eklenir.</li>
+                        </ol>
+                    </div>
+
+                    <!-- İlan Türleri -->
+                    <div style="background:rgba(200,100,255,0.1); border:1px solid rgba(200,100,255,0.3); border-radius:12px; padding:20px; margin-bottom:20px;">
+                        <h4 style="color:#c864ff; margin:0 0 15px 0;">📋 İlan Türleri</h4>
+                        <div style="display:grid; grid-template-columns: repeat(auto-fit, minmax(200px, 1fr)); gap:15px;">
+                            <div style="background:rgba(0,0,0,0.2); padding:15px; border-radius:8px;">
+                                <div style="font-size:1.2rem; margin-bottom:5px;">👤 Oyuncu İlanları</div>
+                                <p style="color:var(--text-dim); font-size:0.85rem; margin:0;">Diğer oyuncuların oluşturduğu ilanlar. Kalite ve fiyat değişkendir.</p>
+                            </div>
+                            <div style="background:rgba(0,0,0,0.2); padding:15px; border-radius:8px;">
+                                <div style="font-size:1.2rem; margin-bottom:5px;">🏪 Sistem İlanları</div>
+                                <p style="color:var(--text-dim); font-size:0.85rem; margin:0;">Sistem tarafından sağlanan hammaddeler. %10 kalite, sabit fiyat.</p>
+                            </div>
+                        </div>
+                    </div>
+
+                    <!-- Kalite Sistemi -->
+                    <div style="background:rgba(255,100,100,0.1); border:1px solid rgba(255,100,100,0.3); border-radius:12px; padding:20px; margin-bottom:20px;">
+                        <h4 style="color:#ff6464; margin:0 0 15px 0;">⭐ Kalite Sistemi</h4>
+                        <p style="color:var(--text-dim); margin-bottom:15px;">Ürün kalitesi satış hızını ve değerini etkiler:</p>
+                        <div style="display:flex; flex-wrap:wrap; gap:10px;">
+                            <span style="background:#666; padding:5px 12px; border-radius:20px; font-size:0.85rem;">%10 Çok Düşük</span>
+                            <span style="background:#ff4444; padding:5px 12px; border-radius:20px; font-size:0.85rem;">%25 Düşük</span>
+                            <span style="background:#ffaa00; padding:5px 12px; border-radius:20px; font-size:0.85rem;">%50 Orta</span>
+                            <span style="background:#88ff00; color:#000; padding:5px 12px; border-radius:20px; font-size:0.85rem;">%75 İyi</span>
+                            <span style="background:#00ff88; color:#000; padding:5px 12px; border-radius:20px; font-size:0.85rem;">%100 Mükemmel</span>
+                        </div>
+                    </div>
+
+                    <!-- İpuçları -->
+                    <div style="background:rgba(0,200,255,0.1); border:1px solid rgba(0,200,255,0.3); border-radius:12px; padding:20px;">
+                        <h4 style="color:#00c8ff; margin:0 0 15px 0;">💡 Profesyonel İpuçları</h4>
+                        <ul style="color:var(--text-dim); line-height:2; margin:0; padding-left:20px;">
+                            <li>📊 <strong>Fiyat Araştırması:</strong> Satmadan önce benzer ürünlerin fiyatlarını kontrol et.</li>
+                            <li>⭐ <strong>Kalite Önemli:</strong> Yüksek kalite = yüksek fiyat ve hızlı satış.</li>
+                            <li>🏪 <strong>Sistem İlanları:</strong> Hammadde ihtiyacın için sistem ilanlarını kullan.</li>
+                            <li>📍 <strong>Şehir Filtresi:</strong> Yakın şehirlerden al, lojistik maliyetini düşür.</li>
+                            <li>📋 <strong>İlanlarım:</strong> Satılmayan ilanlarını "İlanlarım"dan iptal edebilirsin.</li>
+                            <li>💰 <strong>Rekabetçi Fiyat:</strong> Çok pahalı ilanlar satılmaz, makul fiyat koy.</li>
+                        </ul>
+                    </div>
                 </div>
             </div>
         </div>
