@@ -1816,10 +1816,10 @@ function calculateSaleTime(businessType, productCode, price, quality, maintenanc
     // Fiyat etkisi: Kaliteye göre ayarlanmış piyasa fiyatına göre hesapla
     let priceMultiplier = price / realMarketPrice;
 
-    // Pahalı fiyatlara minimum ceza
+    // Pahalı fiyatlara dengeli ceza
     if (priceMultiplier > 1) {
-        // 2 kat fiyat = 1.32 kat süre, 3 kat fiyat = 1.55 kat süre
-        priceMultiplier = Math.pow(priceMultiplier, 0.4);
+        // 2 kat fiyat = 1.62 kat süre, 3 kat fiyat = 2.16 kat süre
+        priceMultiplier = Math.pow(priceMultiplier, 0.7);
 
         // Eğer fiyat çok aşırıysa (6 kattan fazla) hafif ekstra ceza
         if (priceMultiplier > 6) {

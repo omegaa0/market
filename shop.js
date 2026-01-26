@@ -5988,7 +5988,7 @@ function calculateSaleTime(businessType, productCode, price, quality, maintenanc
     const marketPrice = product?.basePrice || 100;
     let priceMultiplier = price / marketPrice;
     if (priceMultiplier > 1) {
-        priceMultiplier = Math.pow(priceMultiplier, 0.4); // Minimal penalty
+        priceMultiplier = Math.pow(priceMultiplier, 0.7); // Balanced penalty
     }
 
     const qualityBonus = (quality / 100) * 0.7; // Max %70 speedup
